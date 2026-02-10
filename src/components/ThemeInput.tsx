@@ -161,6 +161,7 @@ const style = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
+    marginVertical: heightPixel(5),
   },
   container: {
     flex: 1,

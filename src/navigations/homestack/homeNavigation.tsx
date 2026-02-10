@@ -10,7 +10,7 @@ const AuthStack = createNativeStackNavigator();
 export const HomeNavigation = () => {
   return (
     <AuthStack.Navigator
-      initialRouteName={routes.splash}
+      initialRouteName={routes.home}
       screenOptions={{
         headerShown: false,
         // cardStyleInterpolator: CardStyleInterpolators.forFadeFromCenter,

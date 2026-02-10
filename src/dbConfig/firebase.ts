@@ -1,18 +1,23 @@
-import { getApp, getApps } from '@react-native-firebase/app';
+import { initializeApp, getApps, getApp } from 'firebase/app';
+import {
+  getAuth,
+} from 'firebase/auth';
 
-export const logFirebaseApp = () => {
-  try {
-    const app = getApps().length ? getApp() : null;
 
-    if (!app) {
-      console.log('❌ No Firebase app initialized yet');
-      return;
-    }
-
-    console.log('🔥 Firebase App Name:', app.name);
-    console.log('🔥 Firebase Options:', app.options);
-    console.log('🔥 Project ID:', app.options.projectId);
-  } catch (e) {
-    console.log('❌ Firebase log failed:', e);
-  }
+const firebaseConfig = {
+  apiKey: "AIzaSyCtp1UGKB-mfwtryAYW8969QdOTlO03sZs",
+  authDomain: "cricketapp-6f24b.firebaseapp.com",
+  projectId: "cricketapp-6f24b",
+  storageBucket: "cricketapp-6f24b.firebasestorage.app",
+  messagingSenderId: "629094445826",
+  appId: "1:629094445826:android:361783360f3a705c8ec81b",
 };
+
+
+
+export const app = getApps().length === 0
+  ? initializeApp(firebaseConfig)
+  : getApp();
+
+
+export const auth = getAuth(app);

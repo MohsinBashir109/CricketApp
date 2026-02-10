@@ -12,6 +12,7 @@ import { colors } from '../utils/colors';
 import { fontFamilies } from '../utils/fontfamilies';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeContext } from '../theme/themeContext';
+import { ball, logo, logo2 } from '../assets/images/index';
 
 type props = {
   text?: string;
@@ -38,27 +39,9 @@ const AuthWrapper = ({ children, text, desText }: props) => {
         backgroundColor={'transparent'}
         barStyle={'dark-content'}
       />
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'center',
-          marginTop: heightPixel(40),
-        }}
-      >
-        <View
-          style={{
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Image source={undefined} resizeMode="contain" style={styles.image} />
-        </View>
-        <View
-          style={{
-            flex: 1,
-          }}
-        >
+      <View style={styles.content}>
+        <View style={styles.header}>
+          <Image source={logo2} resizeMode="contain" style={styles.image} />
           {text && (
             <ThemeText color="text" style={styles.textChildern}>
               {text}
@@ -70,18 +53,12 @@ const AuthWrapper = ({ children, text, desText }: props) => {
             </ThemeText>
           )}
         </View>
+        <View style={styles.formArea}>
+          
+          {children}
+        </View>
       </View>
-      <Image
-        resizeMode="contain"
-        source={undefined}
-        style={styles.imageDroplets}
-      />
-      <Image
-        resizeMode="contain"
-        source={undefined}
-        style={styles.imageDroplets2}
-      />
-      {children}
+     
     </ImageBackground>
   );
 };
@@ -89,14 +66,27 @@ const AuthWrapper = ({ children, text, desText }: props) => {
 export default AuthWrapper;
 
 const styles = StyleSheet.create({
+  content: {
+    flex: 1,
+    width: '100%',
+  },
+  header: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: heightPixel(40),
+    paddingHorizontal: widthPixel(25),
+  },
+  formArea: {
+    flex: 1,
+    width: '100%',
+    paddingHorizontal: widthPixel(25),
+  },
   image: {
-    width: widthPixel(80),
-    height: heightPixel(110),
-    marginBottom: heightPixel(40),
+    width: widthPixel(120),
+    height: heightPixel(180),
   },
   background: {
     flex: 1,
-    paddingHorizontal: widthPixel(25),
     justifyContent: 'flex-start',
     alignItems: 'center',
   },

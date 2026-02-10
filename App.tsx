@@ -18,13 +18,14 @@ import {
 } from 'react-native-safe-area-context';
 import { use, useEffect } from 'react';
 
+
 import { MainNavigator } from './src/navigations/MainNavigation';
 import { ThemeProvider } from '../CricketApp/src/theme/themeContext';
-import { logFirebaseApp } from './src/dbConfig/firebase';
+import { app } from './src/dbConfig/firebase';
 
 function App() {
   useEffect(() => {
-    logFirebaseApp();
+    console.log('App mounted', app);
   }, []);
   LogBox.ignoreAllLogs();
   return (
