@@ -7,7 +7,7 @@ import { routes } from '../../utils/routes';
 
 const AuthStack = createNativeStackNavigator();
 
-export const AuthNavigation = () => {
+export const HomeNavigation = () => {
   return (
     <AuthStack.Navigator
       initialRouteName={routes.splash}
