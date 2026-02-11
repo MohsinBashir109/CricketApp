@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, TouchableOpacity } from 'react-native';
+import React, { Activity, useState } from 'react';
+import { StyleSheet, View, TouchableOpacity, ActivityIndicator } from 'react-native';
 
 import AuthWrapper from '../../../wrappers/AuthWrapper';
 import ThemeInput from '../../../components/ThemeInput';
@@ -42,6 +42,11 @@ const Signin = () => {
 
     
   };
+  if(isloading){
+    return (
+      <AuthWrapper>
+        <ActivityIndicator size="large" color="#0000ff" />
+      </AuthWrapper>)}
   
 
   return (

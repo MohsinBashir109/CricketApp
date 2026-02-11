@@ -12,14 +12,16 @@ import { colors } from '../utils/colors';
 import { fontFamilies } from '../utils/fontfamilies';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeContext } from '../theme/themeContext';
+import { UserHeader } from '../components/Headers/UserHeader';
 
 type props = {
   text?: string;
   children: React.ReactNode;
   desText?: string;
+  headerShown ?: boolean;
 };
 
-const HomeWrapper = ({ children, text, desText }: props) => {
+const HomeWrapper = ({ children, text, desText, headerShown }: props) => {
   const insets = useSafeAreaInsets();
   const { isDark } = useThemeContext();
   return (
@@ -38,49 +40,10 @@ const HomeWrapper = ({ children, text, desText }: props) => {
         backgroundColor={'transparent'}
         barStyle={'dark-content'}
       />
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'center',
-          marginTop: heightPixel(40),
-        }}
-      >
-        <View
-          style={{
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Image source={undefined} resizeMode="contain" style={styles.image} />
-        </View>
-        <View
-          style={{
-            flex: 1,
-          }}
-        >
-          {text && (
-            <ThemeText color="text" style={styles.textChildern}>
-              {text}
-            </ThemeText>
-          )}
-          {desText && (
-            <ThemeText color="desText" style={styles.desText}>
-              {desText}
-            </ThemeText>
-          )}
-        </View>
-      </View>
-      <Image
-        resizeMode="contain"
-        source={undefined}
-        style={styles.imageDroplets}
-      />
-      <Image
-        resizeMode="contain"
-        source={undefined}
-        style={styles.imageDroplets2}
-      />
+      {headerShown && <UserHeader />}
+
+     
+      
       {children}
     </ImageBackground>
   );

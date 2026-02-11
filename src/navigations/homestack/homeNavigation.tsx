@@ -4,19 +4,21 @@ import React, { useEffect, useState } from 'react';
 
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { routes } from '../../utils/routes';
+import { BottomTabs } from './bottomNavigation';
 
-const AuthStack = createNativeStackNavigator();
+const HomeStack = createNativeStackNavigator();
 
 export const HomeNavigation = () => {
   return (
-    <AuthStack.Navigator
-      initialRouteName={routes.home}
+    <HomeStack.Navigator
+     
       screenOptions={{
         headerShown: false,
         // cardStyleInterpolator: CardStyleInterpolators.forFadeFromCenter,
       }}
     >
-      <AuthStack.Screen name={routes.home} component={Home.Home} />
-    </AuthStack.Navigator>
+      <HomeStack.Screen name={routes.myTabs} component={BottomTabs} />
+      <HomeStack.Screen name={routes.startMatch} component={Home.Startmatch} />
+    </HomeStack.Navigator>
   );
 };
