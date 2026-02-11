@@ -16,6 +16,10 @@ interface ButtonProps {
   disabled?: boolean;
   rightIcon?: any;
   leftIcon?: any;
+  lefticonStyle?: any;
+  righticonStyle?: any;
+  leftIconTintColor?: string;
+  rightIconTintColor?: string;
 }
 
 const Button = (props: ButtonProps) => {
@@ -29,6 +33,10 @@ const Button = (props: ButtonProps) => {
     leftIcon,
     bgColor,
     textColor,
+    lefticonStyle,
+    righticonStyle,
+    leftIconTintColor,
+    rightIconTintColor,
   } = props;
   const { isDark } = useThemeContext();
   return (
@@ -56,7 +64,8 @@ const Button = (props: ButtonProps) => {
       {leftIcon && (
         <Image
           source={leftIcon}
-          style={[styles.icon, { marginRight: widthPixel(8) }]}
+          style={[styles.icon,lefticonStyle, { marginRight: widthPixel(8) }]}
+          tintColor={leftIconTintColor}
         />
       )}
       <Text
@@ -81,7 +90,8 @@ const Button = (props: ButtonProps) => {
       {rightIcon && (
         <Image
           source={rightIcon}
-          style={[styles.icon, { marginLeft: widthPixel(8) }]}
+          style={[styles.icon,righticonStyle, { marginLeft: widthPixel(8) }]}
+          tintColor={rightIconTintColor}
         />
       )}
     </Pressable>

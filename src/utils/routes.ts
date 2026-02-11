@@ -1,3 +1,5 @@
+
+
 export const routes = {
   onboarding: 'onboarding',
   auth: 'auth',
@@ -7,6 +9,10 @@ export const routes = {
 
   // home screens
   home: 'home',
+  profile: 'profile',
+  matches: 'matches',
+  myTabs: 'myTabs',
+  startMatch: 'startMatch',
 
   // home screens
 };
