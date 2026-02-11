@@ -1,58 +1,44 @@
-import React, { useEffect } from 'react';
+import { CommonActions, useNavigation } from '@react-navigation/native';
 import { Image, Platform, StatusBar, StyleSheet, View } from 'react-native';
-
-import { onAuthStateChanged } from 'firebase/auth'; // ✅ no getAuth
-import { useNavigation, CommonActions } from '@react-navigation/native';
-
-import { useThemeContext } from '../../../theme/themeContext';
+import React, { useEffect } from 'react';
 import { heightPixel, widthPixel } from '../../../utils/constants';
-import { logo } from '../../../assets/images';
+
 import ThemeText from '../../../components/ThemeText';
+import { auth } from '../../../dbConfig/firebase';
+import { logo } from '../../../assets/images';
+import { onAuthStateChanged } from 'firebase/auth';
 import { routes } from '../../../utils/routes';
-import { auth } from '../../../dbConfig/firebase'; 
-import { listenAuthState } from '../../../services/authServices';
+import { useThemeContext } from '../../../theme/themeContext';
 
 const Splash = () => {
   const navigation = useNavigation<any>();
   const { isDark } = useThemeContext();
 
-useEffect(() => {
-  const unsub = listenAuthState(user => {
-    navigation.dispatch(
-      CommonActions.reset({
-        index: 0,
-        routes: [{ name: user ? routes.home : routes.signIn }],
-      }),
-    );
-  });
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, user => {
+      console.log('Auth state changed, user:', user);
+      const timer = setTimeout(() => {
+        navigation.dispatch(
+          CommonActions.reset({
+            index: 0,
+            routes: [{ name: user ? routes.home : routes.signIn }],
+          }),
+        );
+      }, 3000);
 
-  return unsub;
-}, [navigation]);
-//   const unsub = onAuthStateChanged(auth, user => {
-//     console.log('Auth state changed, user:', user);
-//     const timer = setTimeout(() => {
-//       navigation.dispatch(
-//         CommonActions.reset({
-//           index: 0,
-//           routes: [{ name: user ? routes.home : routes.signIn }],
-//         }),
-//       );
-//     }, 5000); 
+      return () => clearTimeout(timer);
+    });
 
-    
-//     return () => clearTimeout(timer);
-//   });
-
-//   return unsub;
-// }, [navigation]);
-
-
+    return unsub;
+  }, [navigation]);
 
   return (
     <View
       style={[
         styles.container,
-        { paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 34 },
+        {
+          paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 34,
+        },
       ]}
     >
       <StatusBar
