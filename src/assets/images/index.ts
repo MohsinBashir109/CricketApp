@@ -9,16 +9,20 @@ import homeIcon from './home.png';
 import profile from './profile.png';
 import matches from './matches.png';
 import backarrow from './backarrow.png';
-export  {
-    matches,
-    profile,
-    homeIcon,
-    logo,
-    ball,
-    logo2,
-    mail,
-    lock,
-    visibility,
-    usernameicon,
-    backarrow
-}
+import team from './team.png';
+import cross from './cross.png';
+export {
+  cross,
+  matches,
+  profile,
+  homeIcon,
+  logo,
+  ball,
+  logo2,
+  mail,
+  lock,
+  visibility,
+  usernameicon,
+  backarrow,
+  team,
+};

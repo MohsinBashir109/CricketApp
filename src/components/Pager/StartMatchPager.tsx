@@ -5,30 +5,35 @@ import OverSelection from '../Flatlistcomponents/OverSelection';
 import PagerView from 'react-native-pager-view';
 import StartmatchHeader from '../Headers/StartmatchHeader';
 import { useNavigation } from '@react-navigation/native';
+import SelectTeams from '../Flatlistcomponents/SelectTeams';
+import { MatchSetup } from '../../types/Playertype';
+import AddPlayers from '../Flatlistcomponents/AddPlayers';
 
 const DATA = [
-  { id: '1', title: ' 2 overs', overs: 2 },
-  { id: '2', title: '5 overs', overs: 5 },
-  { id: '3', title: '10 overs', overs: 10 },
-  { id: '4', title: '20 overs', overs: 20 },
-  { id: '5', title: '30 overs', overs: 30 },
-  { id: '6', title: '40 overs', overs: 40 },
-  { id: '7', title: '50 overs ', overs: 50 },
-  { id: '8', title: 'Custom overs', overs: 0 },
+  { id: '1', title: '10 overs', overs: 10 },
+  { id: '2', title: '20 overs', overs: 20 },
+  { id: '3', title: '50 overs ', overs: 50 },
+  { id: '4', title: 'Custom overs', overs: 0 },
 ];
 const StartMatchPager = () => {
   const navigation = useNavigation<any>();
   const pagerRef = useRef<PagerView>(null);
   const [page, setPage] = useState(0);
+  const [match, setMatch] = useState<MatchSetup>({
+    teamA: { id: 1, name: '', players: [] },
+    teamB: { id: 2, name: '', players: [] },
+  });
+
   console.log('Current page:', page);
+  console.log('Selected teams:', match);
   const pageTittle = (page: number) => {
     switch (page) {
       case 0:
         return 'Select the number of overs';
       case 1:
-        return 'Page 2';
+        return 'Create Teams';
       case 2:
-        return 'Page 3';
+        return 'Add Players';
       default:
         return 'Select the number of overs';
     }
@@ -66,10 +71,35 @@ const StartMatchPager = () => {
           />
         </View>
         <View key="2" style={styles.page}>
-          <Text style={styles.pageText}>Page 2</Text>
+          <SelectTeams
+            onSelect={teams => {
+              setMatch(prev => ({
+                ...prev,
+                teamA: {
+                  ...prev?.teamA,
+                  name: teams?.teamA,
+                },
+                teamB: {
+                  ...prev?.teamB,
+                  name: teams?.teamB,
+                },
+              }));
+              pagerRef.current?.setPage(2);
+            }}
+          />
         </View>
         <View key="3" style={styles.page}>
-          <Text style={styles.pageText}>Page 3</Text>
+          <AddPlayers
+            teamsSelected={match}
+            onSelect={players => {
+              setMatch(prev => ({
+                ...prev,
+                teamA: { ...prev.teamA, players: players },
+                teamB: { ...prev.teamB, players: players },
+              }));
+              pagerRef.current?.setPage(3);
+            }}
+          />
         </View>
       </PagerView>
     </View>

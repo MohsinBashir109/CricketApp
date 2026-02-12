@@ -1,7 +1,10 @@
 import { Animated, StyleSheet, Text, View } from 'react-native';
 import React, { useEffect, useMemo, useRef } from 'react';
 
-import { FlatList } from 'react-native/Libraries/Lists/FlatList';
+import { colors } from '../../utils/colors';
+import { useThemeContext } from '../../theme/themeContext';
+import { fontFamilies } from '../../utils/fontfamilies';
+import { fontPixel,widthPixel,heightPixel } from '../../utils/constants';
 
 interface Step {
   id: string;
@@ -14,9 +17,10 @@ interface Props {
 }
 
 const DashesProgressBar = (props: Props) => {
-  const dashWidth = 42;
-  const dashHeight = 6;
-  const dashGap = 10;
+  const { isDark } = useThemeContext();
+  const dashWidth = widthPixel(80);
+  const dashHeight = heightPixel(5);
+  const dashGap = widthPixel(3);
   const progress = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     Animated.timing(progress, {
@@ -52,6 +56,7 @@ const DashesProgressBar = (props: Props) => {
                   width: dashWidth,
                   height: dashHeight,
                   borderRadius: dashHeight / 2,
+                  borderColor: colors[isDark ? 'dark' : 'light'].primary,
                 },
               ]}
             >
@@ -63,15 +68,12 @@ const DashesProgressBar = (props: Props) => {
                     width: dashFillWidths[i],
                     height: dashHeight,
                     borderRadius: dashHeight / 2,
+                    borderColor: colors[isDark ? 'dark' : 'light'].primary,
+                    backgroundColor: colors[isDark ? 'dark' : 'light'].primary,
                   },
                 ]}
               />
             </View>
-
-            {/* Label */}
-            <Text style={[styles.label, isActive && styles.labelActive]}>
-              {step.title}
-            </Text>
           </View>
         );
       })}
@@ -85,20 +87,24 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
   },
   dashOuter: {
     borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: 'rgba(255,255,255,0.5)',
+    // borderColor: 'rgba(255,255,255,0.5)',
     overflow: 'hidden',
     backgroundColor: 'transparent',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   dashFill: {
-    backgroundColor: 'white',
+    // backgroundColor: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   label: {
-    marginTop: 6,
-    fontSize: 12,
+    marginTop: heightPixel(6),
+    fontSize: fontPixel(12),
     color: 'rgba(255,255,255,0.6)',
   },
   labelActive: {
