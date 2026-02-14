@@ -1,15 +1,15 @@
 export type PlayerRole = 'batsman' | 'bowler' | 'allrounder' | 'wicketkeeper';
 
 export interface Player {
-  id: string;
+  id: number;
   name: string;
   role?: PlayerRole;
   // Batting
-  runs: number;
-  balls: number;
-  fours: number;
-  sixes: number;
-  isOut: boolean;
+  runs: number | null;
+  balls: number | null;
+  fours: number | null;
+  sixes: number | null;
+  isOut: boolean | null;
   outType?:
     | 'bowled'
     | 'caught'
@@ -17,19 +17,20 @@ export interface Player {
     | 'runout'
     | 'stumped'
     | 'hitwicket'
-    | 'retired';
-  outByBowlerId?: string;
-  outByFielderId?: string;
+    | 'retired'
+    | '';
+  outByBowlerId?: string | null;
+  outByFielderId?: string | null;
 
   // Bowling (optional for later)
-  overs: number; // you can store ballsBowled instead (recommended)
-  maidens: number;
-  conceded: number;
-  wickets: number;
+  overs: number | null; // you can store ballsBowled instead (recommended)
+  maidens: number | null;
+  conceded: number | null;
+  wickets: number | null;
 
   // Extras (if you ever attribute)
-  wides: number;
-  noBalls: number;
+  wides: number | null;
+  noBalls: number | null;
 }
 export interface Team {
   id: number | null;

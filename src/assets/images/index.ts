@@ -11,7 +11,12 @@ import matches from './matches.png';
 import backarrow from './backarrow.png';
 import team from './team.png';
 import cross from './cross.png';
+import players from './players.png';
+import bowler from './bowler.png';
+import allrounder from './allrounder.png';
 export {
+  allrounder,
+  players,
   cross,
   matches,
   profile,
@@ -25,4 +30,5 @@ export {
   usernameicon,
   backarrow,
   team,
+  bowler,
 };
