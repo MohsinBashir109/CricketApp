@@ -64,7 +64,7 @@ const Button = (props: ButtonProps) => {
       {leftIcon && (
         <Image
           source={leftIcon}
-          style={[styles.icon,lefticonStyle, { marginRight: widthPixel(8) }]}
+          style={[styles.icon, lefticonStyle, { marginRight: widthPixel(8) }]}
           tintColor={leftIconTintColor}
         />
       )}
@@ -90,7 +90,7 @@ const Button = (props: ButtonProps) => {
       {rightIcon && (
         <Image
           source={rightIcon}
-          style={[styles.icon,righticonStyle, { marginLeft: widthPixel(8) }]}
+          style={[styles.icon, righticonStyle, { marginLeft: widthPixel(8) }]}
           tintColor={rightIconTintColor}
         />
       )}
@@ -115,6 +115,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
+    marginVertical: heightPixel(5),
   },
   buttonTitle: {
     textAlign: 'center',

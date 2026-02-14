@@ -91,11 +91,11 @@ const StartMatchPager = () => {
         <View key="3" style={styles.page}>
           <AddPlayers
             teamsSelected={match}
-            onSelect={players => {
+            onSelect={(teamAPlayers, teamBPlayers) => {
               setMatch(prev => ({
                 ...prev,
-                teamA: { ...prev.teamA, players: players },
-                teamB: { ...prev.teamB, players: players },
+                teamA: { ...prev.teamA, players: teamAPlayers },
+                teamB: { ...prev.teamB, players: teamBPlayers },
               }));
               pagerRef.current?.setPage(3);
             }}
