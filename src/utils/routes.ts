@@ -1,5 +1,3 @@
-
-
 export const routes = {
   onboarding: 'onboarding',
   auth: 'auth',
@@ -13,6 +11,7 @@ export const routes = {
   matches: 'matches',
   myTabs: 'myTabs',
   startMatch: 'startMatch',
+  matchscoring: 'matchScoring',
 
   // home screens
 };

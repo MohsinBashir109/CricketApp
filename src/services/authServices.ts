@@ -30,11 +30,7 @@ export const handleSignIn = async (
   password: string,
 ): Promise<AuthResult> => {
   try {
-    const res = await signInWithEmailAndPassword(
-      auth,
-      email.trim(),
-      password,
-    );
+    const res = await signInWithEmailAndPassword(auth, email.trim(), password);
     return { ok: true, user: res.user };
   } catch (err) {
     return toAuthResultError(err);
@@ -62,7 +58,7 @@ export const handleSignUp = async (
     return { ok: true, user: res.user };
   } catch (err) {
     console.log(err);
-    
+
     return toAuthResultError(err);
   }
 };
@@ -72,7 +68,6 @@ export const handleSignOut = async (): Promise<{ ok: true } | AuthResult> => {
   try {
     await signOut(auth);
     return { ok: true };
-    
   } catch (err) {
     return toAuthResultError(err);
   }

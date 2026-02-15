@@ -1,18 +1,19 @@
-import Modal from 'react-native-modal';
 import { FlatList, Image, Pressable, StyleSheet, View } from 'react-native';
-import React, { useEffect, useState } from 'react';
-import { colors } from '../../utils/colors';
-import { useThemeContext } from '../../theme/themeContext';
-import ThemeText from '../ThemeText';
-import { fontPixel, heightPixel, widthPixel } from '../../utils/constants';
-import { cross, players } from '../../assets/images';
 import { MatchSetup, Player, PlayerRole, Team } from '../../types/Playertype';
-import ThemeInput from '../ThemeInput';
-import Button from '../themeButton';
+import React, { useEffect, useState } from 'react';
+import { cross, players } from '../../assets/images';
+import { fontPixel, heightPixel, widthPixel } from '../../utils/constants';
+
 import AddPlayerCheckBox from '../Checkbox/AddPlayerCheckBox';
-import { fontFamilies } from '../../utils/fontfamilies';
-import PlayersHeader from '../Headers/PlayersHeader';
+import Button from '../themeButton';
+import Modal from 'react-native-modal';
 import PlayerAddedRow from '../Flatlistcomponents/PlayerAddedRow';
+import PlayersHeader from '../Headers/PlayersHeader';
+import ThemeInput from '../ThemeInput';
+import ThemeText from '../ThemeText';
+import { colors } from '../../utils/colors';
+import { fontFamilies } from '../../utils/fontfamilies';
+import { useThemeContext } from '../../theme/themeContext';
 
 interface AddPlayersModalProps {
   isVisible: boolean;
@@ -149,19 +150,24 @@ const AddPlayersModal = ({
               />
             ))}
           </View>
+          {!isTeamFull && (
+            <Button
+              title="Add Player"
+              onPress={handleAddPlayer}
+              disabled={isTeamFull}
+            />
+          )}
+          {isTeamFull && (
+            <Button
+              title="Done"
+              onPress={() => {
+                onSubmit(selectedPlayers);
+                onClose();
+              }}
+              // disabled={isTeamFull}
+            />
+          )}
 
-          <Button
-            title="Add Player"
-            onPress={handleAddPlayer}
-            disabled={isTeamFull}
-          />
-          <Button
-            title="Done"
-            onPress={() => {
-              onSubmit(selectedPlayers);
-            }}
-            // disabled={isTeamFull}
-          />
           <View style={styles.scroll}>
             <PlayersHeader />
             {/* <View> */}
