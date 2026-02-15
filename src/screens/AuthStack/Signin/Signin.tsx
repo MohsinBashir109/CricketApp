@@ -1,36 +1,42 @@
+import {
+  ActivityIndicator,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import React, { Activity, useState } from 'react';
-import { StyleSheet, View, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { lock, mail, visibility } from '../../../assets/images';
 
 import AuthWrapper from '../../../wrappers/AuthWrapper';
+import Button from '../../../components/themeButton';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import ThemeInput from '../../../components/ThemeInput';
 import ThemeText from '../../../components/ThemeText';
+import { handleSignIn } from '../../../services/authServices';
 import { heightPixel } from '../../../utils/constants';
 import { routes } from '../../../utils/routes';
+import { setuser } from '../../../features/auth/authSlice';
+import { useDispatch } from 'react-redux';
 import { useNavigation } from '@react-navigation/native';
-import Button from '../../../components/themeButton';
-import { mail, lock, visibility } from '../../../assets/images';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
-import { handleSignIn } from '../../../services/authServices';
 
 const Signin = () => {
   const navigation = useNavigation<any>();
-
+  const dispatch = useDispatch();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isloading, setIsloading] = useState(false);
 
- const Signin= async() => {
-    if(!email || !password ){
-      
+  const Signin = async () => {
+    if (!email || !password) {
       return;
     }
-    
-    
+
     try {
       setIsloading(true);
-       const res = await handleSignIn(email, password);
+      const res = await handleSignIn(email, password);
       console.log('signin', res);
-      if(res?.ok){
+      if (res?.ok) {
+        dispatch(setuser(res.user));
         navigation.navigate(routes.home);
       }
       setIsloading(false);
@@ -38,16 +44,14 @@ const Signin = () => {
       console.log('signup error', error);
       setIsloading(false);
     }
-     
-
-    
   };
-  if(isloading){
+  if (isloading) {
     return (
       <AuthWrapper>
         <ActivityIndicator size="large" color="#0000ff" />
-      </AuthWrapper>)}
-  
+      </AuthWrapper>
+    );
+  }
 
   return (
     <AuthWrapper
@@ -62,48 +66,52 @@ const Signin = () => {
         enableOnAndroid
         extraScrollHeight={20}
       > */}
-        <View style={styles.form}>
-          <ThemeInput
-            placeholder="Email"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            leftIcon={mail}
-          />
+      <View style={styles.form}>
+        <ThemeInput
+          placeholder="Email"
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          leftIcon={mail}
+        />
 
-          <View style={{ height: heightPixel(12) }} />
+        <View style={{ height: heightPixel(12) }} />
 
-          <ThemeInput
-            placeholder="Password"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            leftIcon={lock}
-            rightIcon={visibility}
-          />
+        <ThemeInput
+          placeholder="Password"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          leftIcon={lock}
+          rightIcon={visibility}
+        />
 
-          <TouchableOpacity onPress={() => {}} style={styles.forgot} activeOpacity={0.8}>
-            <ThemeText color="secondary" style={styles.forgotText}>
-              Forgot password?
+        <TouchableOpacity
+          onPress={() => {}}
+          style={styles.forgot}
+          activeOpacity={0.8}
+        >
+          <ThemeText color="secondary" style={styles.forgotText}>
+            Forgot password?
+          </ThemeText>
+        </TouchableOpacity>
+
+        <View style={{ height: heightPixel(18) }} />
+
+        <Button title="Sign In" onPress={Signin} />
+
+        <View style={styles.bottomRow}>
+          <ThemeText color="secondary">Don&apos;t have an account? </ThemeText>
+          <TouchableOpacity
+            onPress={() => navigation.navigate(routes.signUp)}
+            activeOpacity={0.8}
+          >
+            <ThemeText color="text" style={styles.link}>
+              Sign Up
             </ThemeText>
           </TouchableOpacity>
-
-          <View style={{ height: heightPixel(18) }} />
-
-          <Button title="Sign In" onPress={Signin} />
-
-          <View style={styles.bottomRow}>
-            <ThemeText color="secondary">Don&apos;t have an account? </ThemeText>
-            <TouchableOpacity
-              onPress={() => navigation.navigate(routes.signUp)}
-              activeOpacity={0.8}
-            >
-              <ThemeText color="text" style={styles.link}>
-                Sign Up
-              </ThemeText>
-            </TouchableOpacity>
-          </View>
         </View>
+      </View>
       {/* </KeyboardAwareScrollView> */}
     </AuthWrapper>
   );
@@ -113,11 +121,11 @@ export default Signin;
 
 const styles = StyleSheet.create({
   scroll: {
-        // ✅ important
+    // ✅ important
     width: '100%',
   },
   scrollContent: {
-    flexGrow: 1,    // ✅ important
+    flexGrow: 1, // ✅ important
     paddingTop: heightPixel(30),
     paddingBottom: heightPixel(24),
   },

@@ -37,7 +37,43 @@ export interface Team {
   name: string;
   players: Player[];
 }
+
+export interface Ball {
+  ballNumber: number; // global ball number
+  over: number;
+  ballInOver: number; // 1–6
+  runs: number;
+  extra?: 'wide' | 'noball' | null;
+  wicket?: boolean;
+}
+
+export interface Innings {
+  totalRuns: number;
+  totalWickets: number;
+  totalBalls: number;
+  balls: Ball[];
+}
+
 export interface MatchSetup {
-  teamA: Team;
-  teamB: Team;
+  teamA: Team | null;
+  teamB: Team | null;
+  tossWinner?: 'teamA' | 'teamB' | '';
+  electedTo?: 'bat' | 'bowl' | '';
+  overs?: number | null;
+
+  currentInnings: 1 | 2 | null;
+
+  innings1: Innings | null;
+  innings2: Innings | null;
+}
+
+export interface Innings {
+  battingTeam: 'teamA' | 'teamB';
+  bowlingTeam: 'teamA' | 'teamB';
+
+  totalRuns: number;
+  totalWickets: number;
+  totalBalls: number;
+
+  balls: Ball[];
 }

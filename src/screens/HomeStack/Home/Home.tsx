@@ -1,22 +1,29 @@
 import { CommonActions, useNavigation } from '@react-navigation/native';
 import { StyleSheet, Text, View } from 'react-native';
+import { fontPixel, heightPixel } from '../../../utils/constants';
 
 import Button from '../../../components/themeButton';
-import React from 'react';
-import { handleSignOut } from '../../../services/authServices';
-import { routes } from '../../../utils/routes';
 import HomeWrapper from '../../../wrappers/HomeWrapper';
-import { fontPixel, heightPixel } from '../../../utils/constants';
-import { fontFamilies } from '../../../utils/fontfamilies';
-import { matches } from '../../../assets/images';
-import { useThemeContext } from '../../../theme/themeContext';
+import React from 'react';
 import { colors } from '../../../utils/colors';
+import { fontFamilies } from '../../../utils/fontfamilies';
+import { handleSignOut } from '../../../services/authServices';
+import { matches } from '../../../assets/images';
+import { routes } from '../../../utils/routes';
+import { useSelector } from 'react-redux';
+import { useThemeContext } from '../../../theme/themeContext';
+
 export default function Home() {
   const navigation = useNavigation<any>();
-const {isDark} = useThemeContext();
+  const { isDark } = useThemeContext();
+  const { user } = useSelector((state: any) => state.auth);
+  const match = useSelector((state: any) => state.match);
+  console.log('====================================');
+  console.log(match);
+  console.log('====================================');
+  console.log('user in home screen', user);
   const handleLogout = async () => {
     const res = await handleSignOut();
-    
 
     if (res?.ok) {
       navigation.dispatch(
@@ -33,34 +40,32 @@ const {isDark} = useThemeContext();
 
   return (
     <HomeWrapper headerShown={true}>
-    <View style={styles.container}>
-      
-      <Button title="Start New Match" onPress={StartMatch}
-        buttonStyle={styles.button} 
-        titleStyle={styles.text} 
-        leftIcon={matches}
-        leftIconTintColor={colors[isDark ? 'dark' : 'light'].white}
-        
-         />
-         {/* <Button title="Start New Match" onPress={handleLogout}
+      <View style={styles.container}>
+        <Button
+          title="Start New Match"
+          onPress={StartMatch}
+          buttonStyle={styles.button}
+          titleStyle={styles.text}
+          leftIcon={matches}
+          leftIconTintColor={colors[isDark ? 'dark' : 'light'].white}
+        />
+        {/* <Button title="Start New Match" onPress={handleLogout}
         // 
         
          /> */}
-      
-    </View>
+      </View>
     </HomeWrapper>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1,width:'100%' },
-  button :{
-  
-    elevation:5,
-    marginTop:heightPixel(50)
+  container: { flex: 1, width: '100%' },
+  button: {
+    elevation: 5,
+    marginTop: heightPixel(50),
   },
-  text :{
-    fontFamily:fontFamilies.semibold,
-    fontSize:fontPixel(18)
-  }
+  text: {
+    fontFamily: fontFamilies.semibold,
+    fontSize: fontPixel(18),
+  },
 });

@@ -35,7 +35,7 @@ export const colors = {
     orColor: '#6B7280BD',
     transparent: 'transparent',
     bottomTab: '#74EAFF',
-    green: '#008080',
+    green: '#00FF00',
     tabGradient: ['#008080', '#59ACAC'],
     drawerbackground: '#008080',
     settingsBackgroundRows: ['#008080', '#59ACAC'],
@@ -53,7 +53,7 @@ export const colors = {
     wRefresh: '#EAFBE7',
     // ✅ neon accent
     primary: '#00A32C', // neon green
-    green: '#00A32C',
+    green: '#00FF00',
     settingsBackgroundRows: ['#0B0F0E', '#0B0F0E'],
     // ✅ text
     text: '#EAFBE7', // readable on dark

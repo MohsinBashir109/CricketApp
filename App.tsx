@@ -16,10 +16,12 @@ import {
   SafeAreaProvider,
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
+import { persistor, store } from './src/features/store/store';
 import { use, useEffect } from 'react';
 
-
 import { MainNavigator } from './src/navigations/MainNavigation';
+import { PersistGate } from 'redux-persist/integration/react';
+import { Provider } from 'react-redux';
 import { ThemeProvider } from '../CricketApp/src/theme/themeContext';
 import { app } from './src/dbConfig/firebase';
 
@@ -29,9 +31,13 @@ function App() {
   }, []);
   LogBox.ignoreAllLogs();
   return (
-    <ThemeProvider>
-      <MainNavigator />
-    </ThemeProvider>
+    <Provider store={store}>
+      <PersistGate loading={null} persistor={persistor}>
+        <ThemeProvider>
+          <MainNavigator />
+        </ThemeProvider>
+      </PersistGate>
+    </Provider>
   );
 }
 

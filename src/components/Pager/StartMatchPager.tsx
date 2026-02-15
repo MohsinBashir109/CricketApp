@@ -1,27 +1,40 @@
 import React, { useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { useDispatch, useSelector } from 'react-redux';
 
+import AddPlayers from '../Flatlistcomponents/AddPlayers';
+import Button from '../themeButton';
+import { MatchSetup } from '../../types/Playertype';
 import OverSelection from '../Flatlistcomponents/OverSelection';
 import PagerView from 'react-native-pager-view';
-import StartmatchHeader from '../Headers/StartmatchHeader';
-import { useNavigation } from '@react-navigation/native';
 import SelectTeams from '../Flatlistcomponents/SelectTeams';
-import { MatchSetup } from '../../types/Playertype';
-import AddPlayers from '../Flatlistcomponents/AddPlayers';
+import StartmatchHeader from '../Headers/StartmatchHeader';
+import Toss from '../Flatlistcomponents/Toss';
+import { routes } from '../../utils/routes';
+import { setmatch } from '../../features/match/matchSlice';
+import { useNavigation } from '@react-navigation/native';
 
 const DATA = [
-  { id: '1', title: '10 overs', overs: 10 },
-  { id: '2', title: '20 overs', overs: 20 },
-  { id: '3', title: '50 overs ', overs: 50 },
-  { id: '4', title: 'Custom overs', overs: 0 },
+  { id: '1', title: '10 overs' },
+  { id: '2', title: '20 overs' },
+  { id: '3', title: '50 overs ' },
+  { id: '4', title: 'Custom overs' },
 ];
 const StartMatchPager = () => {
   const navigation = useNavigation<any>();
+
+  const dispatch = useDispatch();
   const pagerRef = useRef<PagerView>(null);
   const [page, setPage] = useState(0);
   const [match, setMatch] = useState<MatchSetup>({
     teamA: { id: 1, name: '', players: [] },
     teamB: { id: 2, name: '', players: [] },
+    overs: null,
+    electedTo: '',
+    tossWinner: '',
+    currentInnings: null,
+    innings1: null,
+    innings2: null,
   });
 
   console.log('Current page:', page);
@@ -62,25 +75,26 @@ const StartMatchPager = () => {
         scrollEnabled={false}
         onPageSelected={e => setPage(e.nativeEvent.position)}
       >
-        <View key="1" style={styles.page}>
+        <View key="0" style={styles.page}>
           <OverSelection
             onSelect={overs => {
               console.log('Selected overs:', overs);
+              setMatch(prev => ({ ...prev, overs }));
               pagerRef.current?.setPage(1);
             }}
           />
         </View>
-        <View key="2" style={styles.page}>
+        <View key="1" style={styles.page}>
           <SelectTeams
             onSelect={teams => {
               setMatch(prev => ({
                 ...prev,
                 teamA: {
-                  ...prev?.teamA,
+                  ...prev?.teamA!,
                   name: teams?.teamA,
                 },
                 teamB: {
-                  ...prev?.teamB,
+                  ...prev?.teamB!,
                   name: teams?.teamB,
                 },
               }));
@@ -88,18 +102,45 @@ const StartMatchPager = () => {
             }}
           />
         </View>
-        <View key="3" style={styles.page}>
+        <View key="2" style={styles.page}>
           <AddPlayers
             teamsSelected={match}
             onSelect={(teamAPlayers, teamBPlayers) => {
               setMatch(prev => ({
                 ...prev,
-                teamA: { ...prev.teamA, players: teamAPlayers },
-                teamB: { ...prev.teamB, players: teamBPlayers },
+                teamA: { ...prev?.teamA!, players: teamAPlayers },
+                teamB: { ...prev?.teamB!, players: teamBPlayers },
               }));
-              pagerRef.current?.setPage(3);
+
+              if (teamAPlayers.length > 0 && teamBPlayers.length > 0) {
+                pagerRef.current?.setPage(3);
+              }
             }}
           />
+        </View>
+        <View key="3" style={styles.page}>
+          <Toss
+            match={match}
+            onSelect={(tossWinner, electedTo) => {
+              setMatch(prev => ({
+                ...prev,
+                tossWinner,
+                electedTo,
+              }));
+              pagerRef.current?.setPage(4);
+            }}
+          />
+        </View>
+        <View key="4" style={styles.page}>
+          <View style={{ flex: 1, width: '100%' }}>
+            <Button
+              title="Start Match"
+              onPress={() => {
+                dispatch(setmatch(match));
+                navigation.replace(routes.home);
+              }}
+            />
+          </View>
         </View>
       </PagerView>
     </View>

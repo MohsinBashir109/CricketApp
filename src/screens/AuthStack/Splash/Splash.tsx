@@ -8,15 +8,19 @@ import { auth } from '../../../dbConfig/firebase';
 import { logo } from '../../../assets/images';
 import { onAuthStateChanged } from 'firebase/auth';
 import { routes } from '../../../utils/routes';
+import { setuser } from '../../../features/auth/authSlice';
+import { useDispatch } from 'react-redux';
 import { useThemeContext } from '../../../theme/themeContext';
 
 const Splash = () => {
   const navigation = useNavigation<any>();
   const { isDark } = useThemeContext();
+  const dispatch = useDispatch();
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, user => {
       console.log('Auth state changed, user:', user);
+      dispatch(setuser(user));
       const timer = setTimeout(() => {
         navigation.dispatch(
           CommonActions.reset({
