@@ -1,5 +1,5 @@
 import { Image, Modal, Pressable, StyleSheet, View } from 'react-native';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { fontPixel, heightPixel, widthPixel } from '../../utils/constants';
 
 import Button from '../themeButton';

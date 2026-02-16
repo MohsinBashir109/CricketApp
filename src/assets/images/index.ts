@@ -2,7 +2,7 @@ import allrounder from './allrounder.png';
 import backarrow from './backarrow.png';
 import ball from './ball.png';
 import bat from './bat.png';
-import bowler from './bowler.png';
+import bowlericon from './bowler.png';
 import cross from './cross.png';
 import homeIcon from './home.png';
 import live from './live.png';
@@ -11,6 +11,8 @@ import logo from './logo.png';
 import logo2 from './logo2.png';
 import mail from './mail.png';
 import matches from './matches.png';
+import pause from './pause.png';
+import play from './play.png';
 import players from './players.png';
 import profile from './profile.png';
 import team from './team.png';
@@ -36,6 +38,8 @@ export {
   usernameicon,
   backarrow,
   team,
-  bowler,
+  bowlericon,
   live,
+  pause,
+  play,
 };
