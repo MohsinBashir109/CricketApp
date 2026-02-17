@@ -4,47 +4,72 @@ import {
   ImageSourcePropType,
   Modal,
   StyleSheet,
-  Touchable,
   TouchableOpacity,
   View,
 } from 'react-native';
 import { allrounder, bat, bowlericon, wicket } from '../../assets/images';
 import { fontPixel, heightPixel, widthPixel } from '../../utils/constants';
 
-import React from 'react';
+import React, { useState } from 'react';
 import ThemeText from '../ThemeText';
 import { colors } from '../../utils/colors';
 import { fontFamilies } from '../../utils/fontfamilies';
 import { useThemeContext } from '../../theme/themeContext';
+import { useDispatch } from 'react-redux';
 
-type BatsmanRow = {
+export type BatsmanRow = {
+  id: string;
   name: string;
   isStriker?: boolean;
   runs: number;
   balls: number;
   fours: number;
   sixes: number;
+  role?: 'batsman' | 'bowler' | 'allrounder' | 'wicketkeeper' | string;
 };
 
-type BowlerRow = {
+export type BowlerRow = {
+  id: string;
   name: string;
   overs: string; // "3.2"
   maidens: number;
   runs: number;
   wickets: number;
   econ: number;
+  role?: 'batsman' | 'bowler' | 'allrounder' | 'wicketkeeper' | string;
 };
 
 type Props = {
   batsmen: BatsmanRow[];
-  bowler: BowlerRow;
+  bowler: BowlerRow[];
+  onConfirmOpeners: (payload: {
+    striker: BatsmanRow;
+    nonStriker: BatsmanRow;
+    bowlerSelected: BowlerRow;
+  }) => void;
+  visible: boolean;
+  onClose: () => void;
 };
 
-const BatsmenBowlerCard: React.FC<Props> = ({ batsmen, bowler }) => {
+type ListItem = BatsmanRow | BowlerRow;
+
+const BatsmenBowlerCard: React.FC<Props> = ({
+  batsmen,
+  bowler,
+  onConfirmOpeners,
+  visible,
+  onClose,
+}) => {
   const { isDark } = useThemeContext();
   const theme = colors[isDark ? 'dark' : 'light'];
-  console.log('--------------------->', batsmen);
-  console.log('--------------------->', bowler);
+
+  const [selectedBowlerId, setSelectedBowlerId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [strikerId, setStrikerId] = useState<string | null>(null);
+  const [confirm, setConfirm] = useState(false);
+
+  const data: ListItem[] = confirm ? bowler : batsmen;
+
   const getRoleMeta = (
     role?: string,
   ): { label: string; icon?: ImageSourcePropType } => {
@@ -58,47 +83,135 @@ const BatsmenBowlerCard: React.FC<Props> = ({ batsmen, bowler }) => {
       case 'wicketkeeper':
         return { label: 'Wicketkeeper', icon: wicket };
       default:
-        return { label: 'Unknown' }; // ✅ icon is undefined, not null
+        return { label: 'Unknown' };
     }
   };
-  const renderItem = (item: any) => {
-    const { icon } = getRoleMeta(item?.role);
+
+  // Your original opener confirm logic kept
+  const handleConfirm = () => {
+    if (selectedIds.length !== 2 || !strikerId) {
+      return;
+    }
+    setConfirm(true);
+  };
+
+  // Your original final confirm logic kept
+  const handleFinalConfirm = () => {
+    if (!strikerId || selectedIds.length !== 2 || !selectedBowlerId) return;
+
+    const striker = batsmen.find(b => b.id === strikerId)!;
+    const nonStrikerId = selectedIds.find(id => id !== strikerId)!;
+    const nonStriker = batsmen.find(b => b.id === nonStrikerId)!;
+    const bowlerSelected = bowler.find(b => b.id === selectedBowlerId)!;
+
+    onConfirmOpeners({ striker, nonStriker, bowlerSelected });
+
+    // RESET
+    setConfirm(false);
+    setSelectedIds([]);
+    setStrikerId(null);
+    setSelectedBowlerId(null);
+
+    onClose();
+  };
+
+  // Your original batsman selection logic kept
+  const toggleSelectBat = (id: string) => {
+    setSelectedIds(prev => {
+      // remove if already selected
+      if (prev.includes(id)) {
+        const next = prev.filter(x => x !== id);
+        // if removed striker, reset striker
+        if (strikerId === id) setStrikerId(null);
+        return next;
+      }
+
+      // limit to 2
+      if (prev.length >= 2) return prev;
+
+      const next = [...prev, id];
+      // auto-set striker when first selected
+      if (next.length === 1) setStrikerId(id);
+      return next;
+    });
+  };
+
+  // Bowler single select
+  const toggleSelectBow = (id: string) => {
+    setSelectedBowlerId(prev => (prev === id ? null : id));
+    // If you want strict replace behavior, use:
+    // setSelectedBowlerId(id);
+  };
+
+  const canConfirmOpeners = selectedIds.length === 2 && !!strikerId;
+  const canStartInnings = canConfirmOpeners && !!selectedBowlerId;
+
+  const handleClose = () => {
+    setConfirm(false);
+    setSelectedIds([]);
+    setStrikerId(null);
+    setSelectedBowlerId(null);
+    onClose();
+  };
+
+  const renderItem = (item: ListItem) => {
+    const isSelected = confirm
+      ? selectedBowlerId === item.id
+      : selectedIds.includes(item.id);
+
+    const { icon } = getRoleMeta((item as any)?.role);
+
     return (
       <TouchableOpacity
+        onPress={() => {
+          // IMPORTANT FIX: don't run batsman toggle in bowler step
+          if (confirm) {
+            toggleSelectBow(item.id);
+          } else {
+            toggleSelectBat(item.id);
+          }
+        }}
         style={[
           styles.row,
           {
             borderWidth: 1,
-            borderColor: colors[isDark ? 'dark' : 'light'].gray4,
+            borderColor: isSelected ? theme.green : theme.gray4,
+            backgroundColor: isSelected ? `${theme.primary}20` : 'transparent',
             paddingHorizontal: widthPixel(20),
-            paddingVertical: heightPixel(20),
+            paddingVertical: heightPixel(14),
             marginBottom: heightPixel(10),
             borderRadius: widthPixel(10),
+            alignItems: 'center',
           },
         ]}
       >
         <ThemeText color="text" style={[styles.name, { color: theme.text }]}>
           {item.name}
         </ThemeText>
-        {/* <View style={styles.rowRight}>
-          <ThemeText color="text" style={[styles.cell, { color: theme.text }]}>
-            {item.runs}
+
+        {!confirm && selectedIds.includes(item.id) && (
+          <ThemeText
+            color="text"
+            style={{
+              marginLeft: widthPixel(8),
+              fontSize: fontPixel(11),
+              opacity: 0.8,
+            }}
+          >
+            {strikerId === item.id ? '(Striker)' : '(Non-striker)'}
           </ThemeText>
-          <ThemeText color="text" style={[styles.cell, { color: theme.text }]}>
-            {item.balls}
-          </ThemeText>
-          <ThemeText color="text" style={[styles.cell, { color: theme.text }]}>
-            {item.fours}
-          </ThemeText>
-          <ThemeText color="text" style={[styles.cell, { color: theme.text }]}>
-            {item.sixes}
-          </ThemeText>
-        </View> */}
+        )}
+
         <View style={{ flex: 1 }} />
+
+        <ThemeText color="text" style={{ marginRight: widthPixel(8) }}>
+          {isSelected ? 'Selected' : 'Select'}
+        </ThemeText>
+
         {icon && (
           <Image
             source={icon}
-            style={{ width: 20, height: 20 }}
+            style={{ width: widthPixel(20), height: heightPixel(20) }}
             resizeMode="contain"
           />
         )}
@@ -108,71 +221,14 @@ const BatsmenBowlerCard: React.FC<Props> = ({ batsmen, bowler }) => {
 
   return (
     <View style={styles.container}>
-      {/* Table header */}
-
-      {/* Bowler header */}
-      {/* <View
-        style={[
-          styles.tableHeader,
-          {
-            borderColor: theme.gray4 ?? 'rgba(0,0,0,0.08)',
-            marginTop: heightPixel(10),
-          },
-        ]}
-      >
-        <ThemeText color="text" style={[styles.thName, { color: theme.text }]}>
-          Bowling
-        </ThemeText>
-        <View style={styles.thRight}>
-          <ThemeText color="text" style={[styles.th, { color: theme.text }]}>
-            O
-          </ThemeText>
-          <ThemeText color="text" style={[styles.th, { color: theme.text }]}>
-            M
-          </ThemeText>
-          <ThemeText color="text" style={[styles.th, { color: theme.text }]}>
-            R
-          </ThemeText>
-          <ThemeText color="text" style={[styles.th, { color: theme.text }]}>
-            W
-          </ThemeText>
-          <ThemeText color="text" style={[styles.th, { color: theme.text }]}>
-            Eco
-          </ThemeText>
-        </View>
-      </View> */}
-
-      {/* Bowler row */}
-      {/* <View style={styles.row}>
-        <ThemeText color="text" style={[styles.name, { color: theme.text }]}>
-          {bowler.name}
-        </ThemeText>
-        <View style={styles.rowRight}>
-          <ThemeText color="text" style={[styles.cell, { color: theme.text }]}>
-            {bowler.overs}
-          </ThemeText>
-          <ThemeText color="text" style={[styles.cell, { color: theme.text }]}>
-            {bowler.maidens}
-          </ThemeText>
-          <ThemeText color="text" style={[styles.cell, { color: theme.text }]}>
-            {bowler.runs}
-          </ThemeText>
-          <ThemeText color="text" style={[styles.cell, { color: theme.text }]}>
-            {bowler.wickets}
-          </ThemeText>
-          <ThemeText color="text" style={[styles.cell, { color: theme.text }]}>
-            {bowler.econ}
-          </ThemeText>
-        </View>
-      </View> */}
-      <Modal visible={true} transparent presentationStyle="overFullScreen">
+      <Modal visible={visible} transparent presentationStyle="overFullScreen">
         <View style={styles.containermodal}>
           <View
             style={[
               styles.modalCard,
               {
-                backgroundColor: colors[isDark ? 'dark' : 'light'].background,
-                borderColor: colors[isDark ? 'dark' : 'light'].gray4,
+                backgroundColor: theme.background,
+                borderColor: theme.gray4,
                 borderWidth: 1,
                 borderRadius: widthPixel(12),
               },
@@ -182,51 +238,26 @@ const BatsmenBowlerCard: React.FC<Props> = ({ batsmen, bowler }) => {
               style={[
                 styles.header,
                 {
-                  backgroundColor: colors[isDark ? 'dark' : 'light'].primary,
-                  borderColor: colors[isDark ? 'dark' : 'light'].gray4,
+                  backgroundColor: theme.primary,
+                  borderColor: theme.gray4,
                 },
               ]}
             >
               <ThemeText color="text" style={styles.text}>
-                Pick Batsmen to Open
+                {confirm ? 'Pick Opening Bowler' : 'Pick Batsmen to Open'}
               </ThemeText>
             </View>
 
             <View style={styles.flat}>
-              <View style={[styles.tableHeader]}>
+              <View style={styles.tableHeader}>
                 <ThemeText
                   color="text"
                   style={[styles.thName, { color: theme.text }]}
                 >
-                  Batsmen Name
+                  {confirm ? 'Bowler Name' : 'Batsmen Name'}
                 </ThemeText>
-                {/* <View style={styles.thRight}>
-                  <ThemeText
-                    color="text"
-                    style={[styles.th, { color: theme.text }]}
-                  >
-                    R
-                  </ThemeText>
-                  <ThemeText
-                    color="text"
-                    style={[styles.th, { color: theme.text }]}
-                  >
-                    B
-                  </ThemeText>
-                  <ThemeText
-                    color="text"
-                    style={[styles.th, { color: theme.text }]}
-                  >
-                    4s
-                  </ThemeText>
-                  <ThemeText
-                    color="text"
-                    style={[styles.th, { color: theme.text }]}
-                  >
-                    6s
-                  </ThemeText>
-                </View> */}
               </View>
+
               <View
                 style={{
                   flex: 1,
@@ -235,10 +266,59 @@ const BatsmenBowlerCard: React.FC<Props> = ({ batsmen, bowler }) => {
                 }}
               >
                 <FlatList
-                  data={batsmen}
+                  data={data}
+                  keyExtractor={item => item.id}
                   renderItem={({ item }) => renderItem(item)}
                   showsVerticalScrollIndicator={false}
                 />
+
+                <View
+                  style={{ paddingVertical: heightPixel(10), width: '100%' }}
+                >
+                  <TouchableOpacity
+                    disabled={confirm ? !canStartInnings : !canConfirmOpeners}
+                    onPress={confirm ? handleFinalConfirm : handleConfirm}
+                    style={{
+                      opacity: confirm
+                        ? canStartInnings
+                          ? 1
+                          : 0.5
+                        : canConfirmOpeners
+                        ? 1
+                        : 0.5,
+                      backgroundColor: theme.primary,
+                      paddingVertical: heightPixel(12),
+                      borderRadius: widthPixel(10),
+                      alignItems: 'center',
+                    }}
+                  >
+                    <ThemeText
+                      color="text"
+                      style={{ fontFamily: fontFamilies.bold }}
+                    >
+                      {confirm ? 'Start Innings' : 'Confirm Openers'}
+                    </ThemeText>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={handleClose}
+                    style={{
+                      marginTop: heightPixel(8),
+                      paddingVertical: heightPixel(10),
+                      borderRadius: widthPixel(10),
+                      alignItems: 'center',
+                      borderWidth: 1,
+                      borderColor: theme.gray4,
+                    }}
+                  >
+                    <ThemeText
+                      color="text"
+                      style={{ fontFamily: fontFamilies.medium }}
+                    >
+                      Cancel
+                    </ThemeText>
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
           </View>
@@ -263,7 +343,6 @@ const styles = StyleSheet.create({
     width: '90%',
     overflow: 'hidden',
     justifyContent: 'center',
-    backgroundColor: 'pink',
   },
   containermodal: {
     flex: 1,
@@ -272,6 +351,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: widthPixel(8),
   },
   container: {
     width: '100%',
@@ -279,36 +359,11 @@ const styles = StyleSheet.create({
     paddingTop: heightPixel(10),
   },
 
-  topRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    paddingVertical: heightPixel(10),
-  },
-  teamName: {
-    fontFamily: fontFamilies.medium,
-    fontSize: fontPixel(12),
-    opacity: 0.8,
-  },
-  score: {
-    fontFamily: fontFamilies.bold,
-    fontSize: fontPixel(28),
-    marginTop: heightPixel(4),
-  },
-  overs: {
-    fontFamily: fontFamilies.bold,
-    fontSize: fontPixel(16),
-  },
-  small: {
-    fontFamily: fontFamilies.medium,
-    fontSize: fontPixel(11),
-  },
-
   tableHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    // paddingVertical: heightPixel(8),
     borderTopWidth: 1,
+    paddingTop: heightPixel(10),
   },
   thName: {
     fontFamily: fontFamilies.semibold,
@@ -330,7 +385,6 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: heightPixel(8),
   },
   name: {
     fontFamily: fontFamilies.medium,
@@ -349,9 +403,7 @@ const styles = StyleSheet.create({
   },
   flat: {
     marginTop: heightPixel(10),
-    height: heightPixel(320),
-    // padding: widthPixel(10),
-    // paddingVertical :he
+    height: heightPixel(360),
     paddingHorizontal: widthPixel(15),
   },
 });
