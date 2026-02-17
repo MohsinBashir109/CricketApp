@@ -45,13 +45,8 @@ export interface Ball {
   runs: number;
   extra?: 'wide' | 'noball' | null;
   wicket?: boolean;
-}
-
-export interface Innings {
-  totalRuns: number;
-  totalWickets: number;
-  totalBalls: number;
-  balls: Ball[];
+  strikerId: number | null; // optional but useful
+  bowlerId: number | null;
 }
 
 export interface MatchSetup {
@@ -60,7 +55,7 @@ export interface MatchSetup {
   tossWinner?: 'teamA' | 'teamB' | '';
   electedTo?: 'bat' | 'bowl' | '';
   overs?: number | null;
-
+  tossWinnerName?: string;
   currentInnings: 1 | 2 | null;
 
   innings1: Innings | null;
@@ -70,10 +65,14 @@ export interface MatchSetup {
 export interface Innings {
   battingTeam: 'teamA' | 'teamB';
   bowlingTeam: 'teamA' | 'teamB';
-
+  bowlingTeamName: string;
+  battingTeamName: string;
   totalRuns: number;
   totalWickets: number;
   totalBalls: number;
+  strikerId: number | null;
+  nonStrikerId: number | null;
+  bowlerId: number | null;
 
   balls: Ball[];
 }

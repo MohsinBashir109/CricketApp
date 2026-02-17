@@ -33,6 +33,7 @@ const StartMatchPager = () => {
     electedTo: '',
     tossWinner: '',
     currentInnings: null,
+    tossWinnerName: '',
     innings1: null,
     innings2: null,
   });
@@ -122,10 +123,49 @@ const StartMatchPager = () => {
           <Toss
             match={match}
             onSelect={(tossWinner, electedTo) => {
+              const tossWinnerName =
+                tossWinner === 'teamA'
+                  ? match?.teamA?.name ?? ''
+                  : match?.teamB?.name ?? '';
+              const battingTeam =
+                electedTo === 'bat'
+                  ? tossWinner
+                  : tossWinner === 'teamA'
+                  ? 'teamB'
+                  : 'teamA';
+              const bowlingTeam = battingTeam === 'teamA' ? 'teamB' : 'teamA';
+              const battingTeamName =
+                battingTeam === 'teamA'
+                  ? match.teamA?.name ?? ''
+                  : match.teamB?.name ?? '';
+              const bowlingTeamName =
+                bowlingTeam === 'teamA'
+                  ? match.teamA?.name ?? ''
+                  : match.teamB?.name ?? '';
+              const initInnings = (
+                battingTeam: 'teamA' | 'teamB',
+                bowlingTeam: 'teamA' | 'teamB',
+              ) => ({
+                battingTeam,
+                bowlingTeam,
+                bowlingTeamName,
+                battingTeamName,
+                totalRuns: 0,
+                totalWickets: 0,
+                totalBalls: 0,
+                strikerId: null,
+                nonStrikerId: null,
+                bowlerId: null,
+                balls: [],
+              });
               setMatch(prev => ({
                 ...prev,
                 tossWinner,
                 electedTo,
+                currentInnings: 1,
+                tossWinnerName,
+                innings1: initInnings(battingTeam, bowlingTeam),
+                innings2: initInnings(bowlingTeam, battingTeam),
               }));
               pagerRef.current?.setPage(4);
             }}

@@ -49,10 +49,10 @@ const Button = (props: ButtonProps) => {
         {
           backgroundColor: isDark
             ? colors.dark[
-                bgColor ? (bgColor as keyof typeof colors.dark) : 'green'
+                bgColor ? (bgColor as keyof typeof colors.dark) : 'primary'
               ]
             : colors.light[
-                bgColor ? (bgColor as keyof typeof colors.light) : 'green'
+                bgColor ? (bgColor as keyof typeof colors.light) : 'primary'
               ],
         },
         disabled && {
