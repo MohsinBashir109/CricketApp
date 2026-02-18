@@ -21,9 +21,25 @@ import { useThemeContext } from '../../theme/themeContext';
 
 const ScoringHeader = () => {
   const navigation = useNavigation<any>();
+  const ballsToOvers = (balls: number) =>
+    `${Math.floor(balls / 6)}.${balls % 6}`;
+
+  // for run rate calculation, use real overs as decimal
+  // e.g. 7 balls = 1 + 1/6 = 1.1667 overs
+  const ballsToOversDecimal = (balls: number) =>
+    Math.floor(balls / 6) + (balls % 6) / 6;
+
   const { isDark } = useThemeContext();
   const { currentMatch } = useSelector((state: any) => state.match);
   const tossWinnerKey = currentMatch?.tossWinner;
+  const innings1 = currentMatch?.innings1;
+  console.log('======================>innings1', innings1);
+  const oversBowledText = ballsToOvers(innings1.totalBalls);
+  const oversLimitText = `${currentMatch.overs}`;
+  const oversDecimal = ballsToOversDecimal(innings1.totalBalls);
+  const crr =
+    oversDecimal > 0 ? (innings1.totalRuns / oversDecimal).toFixed(2) : '0.00';
+
   const tossWinnerName =
     tossWinnerKey === 'teamA'
       ? currentMatch?.teamA?.name
@@ -76,7 +92,7 @@ const ScoringHeader = () => {
         </View>
         <View style={{ flexDirection: 'row' }}>
           <ThemeText color="text" style={styles.text}>
-            {tossWinnerName}
+            {innings1.battingTeamName}
           </ThemeText>
           <View style={{ flex: 1 }} />
           <ThemeText color="text" style={styles.text2}>
@@ -86,17 +102,20 @@ const ScoringHeader = () => {
         <View style={{ flexDirection: 'row' }}>
           <View style={{}}>
             <ThemeText color="text" style={styles.text3}>
-              127/3
+              {innings1.totalRuns}
+              <ThemeText color="text" style={styles.text3}>
+                /{innings1.totalWickets}
+              </ThemeText>
             </ThemeText>
           </View>
           <View style={{ flex: 1 }} />
 
           <View style={{}}>
             <ThemeText color="text" style={styles.text4}>
-              0/{currentMatch?.overs}
+              {oversBowledText}/{oversLimitText}
             </ThemeText>
             <ThemeText color="text" style={styles.text5}>
-              CRR : 10.66
+              CRR : {crr}
             </ThemeText>
           </View>
         </View>

@@ -76,3 +76,10 @@ export interface Innings {
 
   balls: Ball[];
 }
+
+export interface SetOpenersAndBowlerPayload {
+  strikerId: number;
+  nonStrikerId: number;
+  bowlerId: number;
+  innings?: 1 | 2; // optional; fallback to currentMatch.currentInnings
+}
