@@ -39,13 +39,19 @@ export interface Team {
 }
 
 export interface Ball {
-  ballNumber: number; // global ball number
+  ballNumber: number;
   over: number;
-  ballInOver: number; // 1–6
-  runs: number;
-  extra?: 'wide' | 'noball' | null;
+  ballInOver: number; // 1–6 (only for legal balls)
+  runs: number; // TOTAL runs added to team score for this delivery
+
+  // extend
+  extra?: 'wide' | 'noball' | 'bye' | 'legbye' | null;
+  extraRuns?: number; // e.g. wide=1, noBall=1, bye=2, etc.
+  runsOffBat?: number; // 0/1/2/3/4/6 (only for normal / noBall+bat)
+
   wicket?: boolean;
-  strikerId: number | null; // optional but useful
+
+  strikerId: number | null;
   bowlerId: number | null;
 }
 
@@ -73,6 +79,9 @@ export interface Innings {
   strikerId: number | null;
   nonStrikerId: number | null;
   bowlerId: number | null;
+  activeModal?: ActiveModal; // which modal UI should show
+  outTarget?: OutTarget | null; // who got out and must be replaced
+  pendingBowlerChange?: boolean; // wicket happened on last ball of over
 
   balls: Ball[];
 }
@@ -83,3 +92,6 @@ export interface SetOpenersAndBowlerPayload {
   bowlerId: number;
   innings?: 1 | 2; // optional; fallback to currentMatch.currentInnings
 }
+
+export type ActiveModal = 'OPENERS' | 'NEXT_BATSMAN' | 'NEXT_BOWLER' | null;
+export type OutTarget = 'STRIKER' | 'NON_STRIKER';

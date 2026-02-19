@@ -1,7 +1,8 @@
-import React, { useMemo } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
+import React, { useMemo } from 'react';
+import { heightPixel, widthPixel } from '../../utils/constants';
+
 import ThemeText from '../ThemeText';
-import { widthPixel } from '../../utils/constants';
 
 interface BatsmenRowProps {
   innings?: any;
@@ -129,23 +130,25 @@ const Batsmenrow = ({ innings, currentMatch }: BatsmenRowProps) => {
   };
 
   return (
-    <FlatList
-      data={batsmenData}
-      keyExtractor={item => String(item.id)}
-      renderItem={renderItem}
-      scrollEnabled={false}
-      contentContainerStyle={{ flexGrow: 0 }}
-      ListEmptyComponent={
-        <View
-          style={{
-            paddingHorizontal: widthPixel(20),
-            paddingVertical: 10,
-          }}
-        >
-          <ThemeText color="text">No batsmen yet</ThemeText>
-        </View>
-      }
-    />
+    <View style={{ height: heightPixel(150) }}>
+      <FlatList
+        data={batsmenData}
+        keyExtractor={item => String(item.id)}
+        renderItem={renderItem}
+        scrollEnabled={true}
+        contentContainerStyle={{ flexGrow: 0 }}
+        ListEmptyComponent={
+          <View
+            style={{
+              paddingHorizontal: widthPixel(20),
+              paddingVertical: 10,
+            }}
+          >
+            <ThemeText color="text">No batsmen yet</ThemeText>
+          </View>
+        }
+      />
+    </View>
   );
 };
 
@@ -158,9 +161,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingVertical: widthPixel(10),
     alignItems: 'center',
-    backgroundColor: 'blue',
   },
-  left: { flex: 1, paddingRight: widthPixel(10), backgroundColor: 'pink' },
+  left: { flex: 1, paddingRight: widthPixel(10) },
   right: { flexDirection: 'row', alignItems: 'center' },
 
   // Match your spacing style

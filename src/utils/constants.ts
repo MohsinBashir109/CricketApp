@@ -36,3 +36,16 @@ export const heightPixel = (size: any) => {
 export const fontPixel = (size: any) => {
   return heightPixel(size);
 };
+
+export const oversToBalls = (overs: number | null | undefined) => {
+  if (!overs) return 0;
+  const whole = Math.floor(overs);
+  const frac = Math.round((overs - whole) * 10); // 0..5 expected
+  return whole * 6 + Math.min(Math.max(frac, 0), 5);
+};
+
+export const ballsToOvers = (balls: number) => {
+  const o = Math.floor(balls / 6);
+  const b = balls % 6;
+  return Number(`${o}.${b}`); // e.g. 2.3
+};

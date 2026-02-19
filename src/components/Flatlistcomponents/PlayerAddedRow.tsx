@@ -1,5 +1,5 @@
 import { Image, StyleSheet, View } from 'react-native';
-import { allrounder, bat, bowler, wicket } from '../../assets/images';
+import { allrounder, bat, bowlericon, wicket } from '../../assets/images';
 import { fontPixel, heightPixel, widthPixel } from '../../utils/constants';
 
 import { Player } from '../../types/Playertype';
@@ -22,7 +22,7 @@ const PlayerAddedRow = ({ item }: PlayerAddedProps) => {
       case 'batsman':
         return { label: 'Batsman', icon: bat };
       case 'bowler':
-        return { label: 'Bowler', icon: bowler };
+        return { label: 'Bowler', icon: bowlericon };
       case 'allrounder':
         return { label: 'All-rounder', icon: allrounder };
       case 'wicketkeeper':

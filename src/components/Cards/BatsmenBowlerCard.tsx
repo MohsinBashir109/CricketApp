@@ -7,15 +7,14 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
 import { allrounder, bat, bowlericon, wicket } from '../../assets/images';
 import { fontPixel, heightPixel, widthPixel } from '../../utils/constants';
 
-import React, { useState } from 'react';
 import ThemeText from '../ThemeText';
 import { colors } from '../../utils/colors';
 import { fontFamilies } from '../../utils/fontfamilies';
 import { useThemeContext } from '../../theme/themeContext';
-import { useDispatch, useSelector } from 'react-redux';
 
 export type BatsmanRow = {
   id: string;
@@ -25,6 +24,7 @@ export type BatsmanRow = {
   balls: number;
   fours: number;
   sixes: number;
+  isOut?: boolean | null; // optional (use if you want to hide out players)
   role?: 'batsman' | 'bowler' | 'allrounder' | 'wicketkeeper' | string;
 };
 
@@ -39,18 +39,29 @@ export type BowlerRow = {
   role?: 'batsman' | 'bowler' | 'allrounder' | 'wicketkeeper' | string;
 };
 
+export type Mode = 'OPENERS' | 'NEXT_BATSMAN' | 'NEXT_BOWLER';
+
 type Props = {
+  mode: Mode;
+
   batsmen: BatsmanRow[];
   bowler: BowlerRow[];
-  innings?: any;
-  currentMatch?: any;
-  onConfirmOpeners: (payload: {
+
+  visible: boolean;
+  onClose: () => void;
+
+  // OPENERS
+  onConfirmOpeners?: (payload: {
     striker: BatsmanRow;
     nonStriker: BatsmanRow;
     bowlerSelected: BowlerRow;
   }) => void;
-  visible: boolean;
-  onClose: () => void;
+
+  // NEXT_BATSMAN
+  onConfirmNextBatsman?: (batsman: BatsmanRow) => void;
+
+  // NEXT_BOWLER
+  onConfirmNextBowler?: (bowler: BowlerRow) => void;
 };
 
 type ListItem = BatsmanRow | BowlerRow;
@@ -58,21 +69,48 @@ type ListItem = BatsmanRow | BowlerRow;
 const BatsmenBowlerCard: React.FC<Props> = ({
   batsmen,
   bowler,
-  onConfirmOpeners,
   visible,
   onClose,
-  innings,
-  currentMatch,
+  mode,
+  onConfirmOpeners,
+  onConfirmNextBatsman,
+  onConfirmNextBowler,
 }) => {
   const { isDark } = useThemeContext();
   const theme = colors[isDark ? 'dark' : 'light'];
 
-  const [selectedBowlerId, setSelectedBowlerId] = useState<string | null>(null);
+  const isOpeners = mode === 'OPENERS';
+  const isNextBat = mode === 'NEXT_BATSMAN';
+  const isNextBow = mode === 'NEXT_BOWLER';
+
+  // OPENERS state
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [strikerId, setStrikerId] = useState<string | null>(null);
-  const [confirm, setConfirm] = useState(false);
+  const [confirmBowlerStep, setConfirmBowlerStep] = useState(false);
+  const [selectedBowlerId, setSelectedBowlerId] = useState<string | null>(null);
 
-  const data: ListItem[] = confirm ? bowler : batsmen;
+  // NEXT_BATSMAN state
+  const [selectedNextBatId, setSelectedNextBatId] = useState<string | null>(
+    null,
+  );
+
+  // NEXT_BOWLER state
+  const [selectedNextBowlerId, setSelectedNextBowlerId] = useState<
+    string | null
+  >(null);
+
+  // Reset local state whenever modal opens or mode changes
+  useEffect(() => {
+    if (!visible) return;
+
+    setSelectedIds([]);
+    setStrikerId(null);
+    setConfirmBowlerStep(false);
+    setSelectedBowlerId(null);
+
+    setSelectedNextBatId(null);
+    setSelectedNextBowlerId(null);
+  }, [visible, mode]);
 
   const getRoleMeta = (
     role?: string,
@@ -91,75 +129,136 @@ const BatsmenBowlerCard: React.FC<Props> = ({
     }
   };
 
-  // Your original opener confirm logic kept
-  const handleConfirm = () => {
-    if (selectedIds.length !== 2 || !strikerId) {
-      return;
+  // Data list based on mode
+  const data: ListItem[] = useMemo(() => {
+    if (isNextBow) return bowler;
+
+    if (isNextBat) {
+      // optional: hide players who are already out
+      return batsmen.filter(b => b?.isOut !== true);
     }
-    setConfirm(true);
-  };
 
-  // Your original final confirm logic kept
-  const handleFinalConfirm = () => {
-    if (!strikerId || selectedIds.length !== 2 || !selectedBowlerId) return;
+    // OPENERS
+    return confirmBowlerStep ? bowler : batsmen;
+  }, [isNextBow, isNextBat, confirmBowlerStep, bowler, batsmen]);
 
-    const striker = batsmen.find(b => b.id === strikerId)!;
-    const nonStrikerId = selectedIds.find(id => id !== strikerId)!;
-    const nonStriker = batsmen.find(b => b.id === nonStrikerId)!;
-    const bowlerSelected = bowler.find(b => b.id === selectedBowlerId)!;
-
-    onConfirmOpeners({ striker, nonStriker, bowlerSelected });
-
-    // RESET
-    setConfirm(false);
-    setSelectedIds([]);
-    setStrikerId(null);
-    setSelectedBowlerId(null);
-
-    onClose();
-  };
-
-  // Your original batsman selection logic kept
+  // OPENERS select batsmen (max 2)
   const toggleSelectBat = (id: string) => {
     setSelectedIds(prev => {
-      // remove if already selected
       if (prev.includes(id)) {
         const next = prev.filter(x => x !== id);
-        // if removed striker, reset striker
         if (strikerId === id) setStrikerId(null);
         return next;
       }
-
-      // limit to 2
       if (prev.length >= 2) return prev;
 
       const next = [...prev, id];
-      // auto-set striker when first selected
       if (next.length === 1) setStrikerId(id);
       return next;
     });
   };
 
-  // Bowler single select
-  const toggleSelectBow = (id: string) => {
+  // OPENERS select bowler in bowler step
+  const toggleSelectBowlerForOpeners = (id: string) => {
     setSelectedBowlerId(prev => (prev === id ? null : id));
-    // If you want strict replace behavior, use:
-    // setSelectedBowlerId(id);
   };
 
+  // NEXT_BOWLER select
+  const toggleSelectNextBowler = (id: string) => {
+    setSelectedNextBowlerId(prev => (prev === id ? null : id));
+  };
+
+  // Titles / headers
+  const titleText = isNextBat
+    ? 'Pick Next Batsman'
+    : isNextBow
+    ? 'Pick Next Bowler'
+    : confirmBowlerStep
+    ? 'Pick Opening Bowler'
+    : 'Pick Batsmen to Open';
+
+  const columnTitle = isNextBow
+    ? 'Bowler Name'
+    : isNextBat
+    ? 'Batsman Name'
+    : confirmBowlerStep
+    ? 'Bowler Name'
+    : 'Batsmen Name';
+
+  // Primary button enable
   const canConfirmOpeners = selectedIds.length === 2 && !!strikerId;
   const canStartInnings = canConfirmOpeners && !!selectedBowlerId;
 
+  const primaryDisabled = isNextBat
+    ? !selectedNextBatId
+    : isNextBow
+    ? !selectedNextBowlerId
+    : confirmBowlerStep
+    ? !canStartInnings
+    : !canConfirmOpeners;
+
+  const primaryText = isNextBat
+    ? 'Confirm Batsman'
+    : isNextBow
+    ? 'Confirm Bowler'
+    : confirmBowlerStep
+    ? 'Start Innings'
+    : 'Confirm Openers';
+
+  const handlePrimaryPress = () => {
+    if (isNextBat) {
+      if (!selectedNextBatId) return;
+      const picked = batsmen.find(b => b.id === selectedNextBatId);
+      if (!picked) return;
+
+      onConfirmNextBatsman?.(picked);
+      onClose();
+      return;
+    }
+
+    if (isNextBow) {
+      if (!selectedNextBowlerId) return;
+      const picked = bowler.find(b => b.id === selectedNextBowlerId);
+      if (!picked) return;
+
+      onConfirmNextBowler?.(picked);
+      onClose();
+      return;
+    }
+
+    // OPENERS flow
+    if (!confirmBowlerStep) {
+      // go to bowler step
+      if (!canConfirmOpeners) return;
+      setConfirmBowlerStep(true);
+      return;
+    }
+
+    // final confirm openers + bowler
+    if (!strikerId || selectedIds.length !== 2 || !selectedBowlerId) return;
+
+    const striker = batsmen.find(b => b.id === strikerId);
+    const nonStrikerId = selectedIds.find(id => id !== strikerId);
+    const nonStriker = batsmen.find(b => b.id === nonStrikerId);
+    const bowlerSelected = bowler.find(b => b.id === selectedBowlerId);
+
+    if (!striker || !nonStriker || !bowlerSelected) return;
+
+    onConfirmOpeners?.({ striker, nonStriker, bowlerSelected });
+    onClose();
+  };
+
   const handleClose = () => {
-    setConfirm(false);
-    setSelectedIds([]);
-    setStrikerId(null);
-    setSelectedBowlerId(null);
     onClose();
   };
 
   const renderItem = (item: ListItem) => {
-    const isSelected = confirm
+    // Determine selection state for each mode
+    const isSelected = isNextBat
+      ? selectedNextBatId === item.id
+      : isNextBow
+      ? selectedNextBowlerId === item.id
+      : confirmBowlerStep
       ? selectedBowlerId === item.id
       : selectedIds.includes(item.id);
 
@@ -168,9 +267,19 @@ const BatsmenBowlerCard: React.FC<Props> = ({
     return (
       <TouchableOpacity
         onPress={() => {
-          // IMPORTANT FIX: don't run batsman toggle in bowler step
-          if (confirm) {
-            toggleSelectBow(item.id);
+          if (isNextBat) {
+            setSelectedNextBatId(item.id);
+            return;
+          }
+
+          if (isNextBow) {
+            toggleSelectNextBowler(item.id);
+            return;
+          }
+
+          // OPENERS
+          if (confirmBowlerStep) {
+            toggleSelectBowlerForOpeners(item.id);
           } else {
             toggleSelectBat(item.id);
           }
@@ -193,18 +302,22 @@ const BatsmenBowlerCard: React.FC<Props> = ({
           {item.name}
         </ThemeText>
 
-        {!confirm && selectedIds.includes(item.id) && (
-          <ThemeText
-            color="text"
-            style={{
-              marginLeft: widthPixel(8),
-              fontSize: fontPixel(11),
-              opacity: 0.8,
-            }}
-          >
-            {strikerId === item.id ? '(Striker)' : '(Non-striker)'}
-          </ThemeText>
-        )}
+        {/* OPENERS only: show striker/non-striker labels */}
+        {isOpeners &&
+          !confirmBowlerStep &&
+          selectedIds.includes(item.id) &&
+          !isNextBat && (
+            <ThemeText
+              color="text"
+              style={{
+                marginLeft: widthPixel(8),
+                fontSize: fontPixel(11),
+                opacity: 0.8,
+              }}
+            >
+              {strikerId === item.id ? '(Striker)' : '(Non-striker)'}
+            </ThemeText>
+          )}
 
         <View style={{ flex: 1 }} />
 
@@ -241,14 +354,11 @@ const BatsmenBowlerCard: React.FC<Props> = ({
             <View
               style={[
                 styles.header,
-                {
-                  backgroundColor: theme.primary,
-                  borderColor: theme.gray4,
-                },
+                { backgroundColor: theme.primary, borderColor: theme.gray4 },
               ]}
             >
               <ThemeText color="text" style={styles.text}>
-                {confirm ? 'Pick Opening Bowler' : 'Pick Batsmen to Open'}
+                {titleText}
               </ThemeText>
             </View>
 
@@ -258,7 +368,7 @@ const BatsmenBowlerCard: React.FC<Props> = ({
                   color="text"
                   style={[styles.thName, { color: theme.text }]}
                 >
-                  {confirm ? 'Bowler Name' : 'Batsmen Name'}
+                  {columnTitle}
                 </ThemeText>
               </View>
 
@@ -280,16 +390,10 @@ const BatsmenBowlerCard: React.FC<Props> = ({
                   style={{ paddingVertical: heightPixel(10), width: '100%' }}
                 >
                   <TouchableOpacity
-                    disabled={confirm ? !canStartInnings : !canConfirmOpeners}
-                    onPress={confirm ? handleFinalConfirm : handleConfirm}
+                    disabled={primaryDisabled}
+                    onPress={handlePrimaryPress}
                     style={{
-                      opacity: confirm
-                        ? canStartInnings
-                          ? 1
-                          : 0.5
-                        : canConfirmOpeners
-                        ? 1
-                        : 0.5,
+                      opacity: primaryDisabled ? 0.5 : 1,
                       backgroundColor: theme.primary,
                       paddingVertical: heightPixel(12),
                       borderRadius: widthPixel(10),
@@ -300,7 +404,7 @@ const BatsmenBowlerCard: React.FC<Props> = ({
                       color="text"
                       style={{ fontFamily: fontFamilies.bold }}
                     >
-                      {confirm ? 'Start Innings' : 'Confirm Openers'}
+                      {primaryText}
                     </ThemeText>
                   </TouchableOpacity>
 
@@ -362,7 +466,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: widthPixel(16),
     paddingTop: heightPixel(10),
   },
-
   tableHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -374,33 +477,10 @@ const styles = StyleSheet.create({
     fontSize: fontPixel(16),
     opacity: 0.8,
   },
-  thRight: {
-    flexDirection: 'row',
-    gap: widthPixel(14),
-  },
-  th: {
-    fontFamily: fontFamilies.semibold ?? fontFamilies.bold,
-    fontSize: fontPixel(12),
-    opacity: 0.8,
-    width: widthPixel(26),
-    textAlign: 'right',
-  },
-
   row: {
     flexDirection: 'row',
   },
   name: {
-    fontFamily: fontFamilies.medium,
-    fontSize: fontPixel(13),
-  },
-  rowRight: {
-    flexDirection: 'row',
-    gap: widthPixel(14),
-    alignItems: 'center',
-  },
-  cell: {
-    width: widthPixel(26),
-    textAlign: 'right',
     fontFamily: fontFamilies.medium,
     fontSize: fontPixel(13),
   },
