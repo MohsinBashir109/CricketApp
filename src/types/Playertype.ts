@@ -66,6 +66,10 @@ export interface MatchSetup {
 
   innings1: Innings | null;
   innings2: Innings | null;
+  isCompleted?: boolean;
+  resultReason?: 'CHASED' | 'DEFENDED' | 'TIE' | 'NO_RESULT';
+  winnerTeam?: 'teamA' | 'teamB' | null;
+  winnerTeamName?: string;
 }
 
 export interface Innings {
@@ -82,7 +86,8 @@ export interface Innings {
   activeModal?: ActiveModal; // which modal UI should show
   outTarget?: OutTarget | null; // who got out and must be replaced
   pendingBowlerChange?: boolean; // wicket happened on last ball of over
-
+  isCompleted?: boolean;
+  winnerReason?: 'ALL_OUT' | 'OVERS_DONE' | 'NO_PLAYERS';
   balls: Ball[];
 }
 

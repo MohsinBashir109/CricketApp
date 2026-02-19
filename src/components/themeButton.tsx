@@ -106,7 +106,7 @@ const styles = StyleSheet.create({
     height: heightPixel(45),
     width: '100%',
     borderRadius: widthPixel(10),
-    alignSelf: 'center',
+    // alignSelf: 'center',
     backgroundColor: colors.light.primary,
     ...globalStyles.shadow,
     elevation: 5,

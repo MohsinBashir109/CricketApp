@@ -47,7 +47,7 @@ const AddPlayersModal = ({
   console.log(playerName, role);
   console.log(selectedPlayers);
 
-  const isTeamFull = selectedPlayers.length >= 11;
+  // const isTeamFull = selectedPlayers.length >= 11;
   const handleAddPlayer = () => {
     if (selectedPlayers.length >= 11) return;
     if (!playerName) return;
@@ -150,14 +150,14 @@ const AddPlayersModal = ({
               />
             ))}
           </View>
-          {!isTeamFull && (
+
+          <View>
             <Button
               title="Add Player"
               onPress={handleAddPlayer}
-              disabled={isTeamFull}
+              // disabled={isTeamFull}
             />
-          )}
-          {isTeamFull && (
+
             <Button
               title="Done"
               onPress={() => {
@@ -166,7 +166,7 @@ const AddPlayersModal = ({
               }}
               // disabled={isTeamFull}
             />
-          )}
+          </View>
 
           <View style={styles.scroll}>
             <PlayersHeader />

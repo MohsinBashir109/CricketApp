@@ -36,6 +36,10 @@ const StartMatchPager = () => {
     tossWinnerName: '',
     innings1: null,
     innings2: null,
+    isCompleted: false,
+    resultReason: 'NO_RESULT',
+    winnerTeam: null,
+    winnerTeamName: '',
   });
 
   console.log('Current page:', page);

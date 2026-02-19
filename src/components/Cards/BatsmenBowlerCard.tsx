@@ -128,19 +128,18 @@ const BatsmenBowlerCard: React.FC<Props> = ({
         return { label: 'Unknown' };
     }
   };
-
+  const availableBatsmen = useMemo(() => {
+    return batsmen.filter(b => b?.isOut !== true);
+  }, [batsmen]);
   // Data list based on mode
   const data: ListItem[] = useMemo(() => {
     if (isNextBow) return bowler;
 
-    if (isNextBat) {
-      // optional: hide players who are already out
-      return batsmen.filter(b => b?.isOut !== true);
-    }
+    if (isNextBat) return availableBatsmen;
 
     // OPENERS
-    return confirmBowlerStep ? bowler : batsmen;
-  }, [isNextBow, isNextBat, confirmBowlerStep, bowler, batsmen]);
+    return confirmBowlerStep ? bowler : availableBatsmen;
+  }, [isNextBow, isNextBat, confirmBowlerStep, bowler, availableBatsmen]);
 
   // OPENERS select batsmen (max 2)
   const toggleSelectBat = (id: string) => {
