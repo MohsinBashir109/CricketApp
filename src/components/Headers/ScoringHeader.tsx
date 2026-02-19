@@ -19,7 +19,12 @@ import { useNavigation } from '@react-navigation/native';
 import { useSelector } from 'react-redux';
 import { useThemeContext } from '../../theme/themeContext';
 
-const ScoringHeader = () => {
+interface Score {
+  innings?: any;
+  tossWinnerName?: string;
+  overs?: string;
+}
+const ScoringHeader = ({ innings, tossWinnerName, overs }: Score) => {
   const navigation = useNavigation<any>();
   const ballsToOvers = (balls: number) =>
     `${Math.floor(balls / 6)}.${balls % 6}`;
@@ -30,22 +35,14 @@ const ScoringHeader = () => {
     Math.floor(balls / 6) + (balls % 6) / 6;
 
   const { isDark } = useThemeContext();
-  const { currentMatch } = useSelector((state: any) => state.match);
-  const tossWinnerKey = currentMatch?.tossWinner;
-  const innings1 = currentMatch?.innings1;
-  console.log('======================>innings1', innings1);
-  const oversBowledText = ballsToOvers(innings1.totalBalls);
-  const oversLimitText = `${currentMatch.overs}`;
-  const oversDecimal = ballsToOversDecimal(innings1.totalBalls);
-  const crr =
-    oversDecimal > 0 ? (innings1.totalRuns / oversDecimal).toFixed(2) : '0.00';
 
-  const tossWinnerName =
-    tossWinnerKey === 'teamA'
-      ? currentMatch?.teamA?.name
-      : tossWinnerKey === 'teamB'
-      ? currentMatch?.teamB?.name
-      : '';
+  console.log('======================>innings1', innings);
+  const oversBowledText = ballsToOvers(innings.totalBalls);
+  const oversLimitText = `${overs}`;
+  const oversDecimal = ballsToOversDecimal(innings.totalBalls);
+  const crr =
+    oversDecimal > 0 ? (innings.totalRuns / oversDecimal).toFixed(2) : '0.00';
+
   const handleBack = () => {
     navigation.goBack();
   };
@@ -77,7 +74,7 @@ const ScoringHeader = () => {
           </View>
           <View>
             <ThemeText color="text" style={styles.text}>
-              T{currentMatch?.overs} Match
+              T{overs} Match
             </ThemeText>
           </View>
           <View>
@@ -92,7 +89,7 @@ const ScoringHeader = () => {
         </View>
         <View style={{ flexDirection: 'row' }}>
           <ThemeText color="text" style={styles.text}>
-            {innings1.battingTeamName}
+            {innings.battingTeamName}
           </ThemeText>
           <View style={{ flex: 1 }} />
           <ThemeText color="text" style={styles.text2}>
@@ -102,9 +99,9 @@ const ScoringHeader = () => {
         <View style={{ flexDirection: 'row' }}>
           <View style={{}}>
             <ThemeText color="text" style={styles.text3}>
-              {innings1.totalRuns}
+              {innings.totalRuns}
               <ThemeText color="text" style={styles.text3}>
-                /{innings1.totalWickets}
+                /{innings.totalWickets}
               </ThemeText>
             </ThemeText>
           </View>
