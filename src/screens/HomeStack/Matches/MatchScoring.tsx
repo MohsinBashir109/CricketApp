@@ -15,6 +15,9 @@ import { fontPixel, heightPixel, widthPixel } from '../../../utils/constants';
 import { fontFamilies } from '../../../utils/fontfamilies';
 import ThemeText from '../../../components/ThemeText';
 import { addStrikerAndBowlerInnings } from '../../../features/match/matchSlice';
+import BatsmenBowlerScorringHeader from '../../../components/Headers/BatsmenScorringHeader';
+import Batsmenrow from '../../../components/Flatlistcomponents/Batsmenrow';
+import Bowlerow from '../../../components/Flatlistcomponents/BowlerRow';
 
 const MatchScoring = () => {
   const { isDark } = useThemeContext();
@@ -89,30 +92,16 @@ const MatchScoring = () => {
         { backgroundColor: colors[isDark ? 'dark' : 'light'].background },
       ]}
     >
-      <ScoringHeader />
-      <View
-        style={{
-          width: '100%',
-          paddingHorizontal: widthPixel(20),
-          flexDirection: 'row',
-        }}
-      >
-        <View style={{ flex: 1 }}>
-          <ThemeText color="text">Batsmen name</ThemeText>
-        </View>
-        <View style={{ flexDirection: 'row' }}>
-          <View style={{ marginHorizontal: widthPixel(40) }}>
-            <ThemeText color="text">R</ThemeText>
-          </View>
-          <View style={{ marginHorizontal: widthPixel(40) }}>
-            <ThemeText color="text">B</ThemeText>
-          </View>
-          <View style={{ marginHorizontal: widthPixel(20) }}>
-            <ThemeText color="text">Sr</ThemeText>
-          </View>
-        </View>
-      </View>
+      <ScoringHeader
+        innings={innings}
+        overs={currentMatch?.overs}
+        tossWinnerName={currentMatch?.tossWinnerName}
+      />
 
+      <BatsmenBowlerScorringHeader title="Batsmen Name" />
+      <Batsmenrow innings={innings} currentMatch={currentMatch} />
+      <BatsmenBowlerScorringHeader title="Bowler Name" />
+      <Bowlerow innings={innings} currentMatch={currentMatch} />
       <BatsmenBowlerCard
         batsmen={battingTeamObj.players || []}
         bowler={bowlingTeamObj.players || []}
@@ -124,8 +113,10 @@ const MatchScoring = () => {
           setBowlerSelected(bowlerSelected);
           setOpenersModal(false);
         }}
+        innings={innings}
+        currentMatch={currentMatch}
       />
-      <ScoreControls
+      {/* <ScoreControls
         onRunPress={runs => {
           // Later: dispatch(addBall({ runsOffBat: runs, extraRuns: 0 }))
           console.log('RUN', runs);
@@ -137,7 +128,7 @@ const MatchScoring = () => {
         onWicketPress={() => console.log('WICKET')}
         onUndoPress={() => console.log('UNDO')}
         onEndOverPress={() => console.log('END OVER')}
-      />
+      /> */}
     </View>
   );
 };

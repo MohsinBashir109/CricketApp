@@ -15,7 +15,7 @@ import ThemeText from '../ThemeText';
 import { colors } from '../../utils/colors';
 import { fontFamilies } from '../../utils/fontfamilies';
 import { useThemeContext } from '../../theme/themeContext';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 
 export type BatsmanRow = {
   id: string;
@@ -42,6 +42,8 @@ export type BowlerRow = {
 type Props = {
   batsmen: BatsmanRow[];
   bowler: BowlerRow[];
+  innings?: any;
+  currentMatch?: any;
   onConfirmOpeners: (payload: {
     striker: BatsmanRow;
     nonStriker: BatsmanRow;
@@ -59,6 +61,8 @@ const BatsmenBowlerCard: React.FC<Props> = ({
   onConfirmOpeners,
   visible,
   onClose,
+  innings,
+  currentMatch,
 }) => {
   const { isDark } = useThemeContext();
   const theme = colors[isDark ? 'dark' : 'light'];
@@ -384,7 +388,6 @@ const styles = StyleSheet.create({
 
   row: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
   },
   name: {
     fontFamily: fontFamilies.medium,
