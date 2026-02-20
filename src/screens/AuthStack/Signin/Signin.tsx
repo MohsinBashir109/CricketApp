@@ -37,7 +37,7 @@ const Signin = () => {
       console.log('signin', res);
       if (res?.ok) {
         dispatch(setuser(res.user));
-        navigation.navigate(routes.home);
+        navigation.navigate(routes.matches);
       }
       setIsloading(false);
     } catch (error) {

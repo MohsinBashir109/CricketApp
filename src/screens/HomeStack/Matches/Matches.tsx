@@ -14,16 +14,38 @@ import ThemeText from '../../../components/ThemeText';
 import { UserHeader } from '../../../components/Headers/UserHeader';
 import { colors } from '../../../utils/colors';
 import { fontFamilies } from '../../../utils/fontfamilies';
-import { live } from '../../../assets/images';
+import { live, matches } from '../../../assets/images';
 import { routes } from '../../../utils/routes';
-import { useNavigation } from '@react-navigation/native';
+import { CommonActions, useNavigation } from '@react-navigation/native';
 import { useSelector } from 'react-redux';
 import { useThemeContext } from '../../../theme/themeContext';
+import Button from '../../../components/themeButton';
 
 const Matches = () => {
   const match = useSelector((state: any) => state.match);
   const navigation = useNavigation();
   const { isDark } = useThemeContext();
+  const { user } = useSelector((state: any) => state.auth);
+
+  console.log('====================================');
+  console.log(match);
+  console.log('====================================');
+  console.log('user in home screen', user);
+  // const handleLogout = async () => {
+  //   const res = await handleSignOut();
+
+  //   if (res?.ok) {
+  //     navigation.dispatch(
+  //       CommonActions.reset({
+  //         index: 0,
+  //         routes: [{ name: routes.auth }], // OR routes.authStack (see note below)
+  //       }),
+  //     );
+  //   }
+  // };
+  const StartMatch = () => {
+    navigation.navigate(routes.startMatch as never);
+  };
   const tossWinnerKey = match?.currentMatch?.tossWinner;
   const currentMatch = match?.currentMatch;
   const tossWinnerName =
@@ -81,6 +103,19 @@ const Matches = () => {
   return (
     <HomeWrapper headerShown={true}>
       <View style={styles.conatainer}>
+        <Button
+          title="Start New Match"
+          onPress={StartMatch}
+          buttonStyle={styles.button}
+          titleStyle={styles.text}
+          leftIcon={matches}
+          leftIconTintColor={colors[isDark ? 'dark' : 'light'].white}
+        />
+        {/* <Button title="Start New Match" onPress={handleLogout}
+        // 
+        
+         /> */}
+
         <View style={styles.innerView}>
           <View style={styles.header}>
             <Image
@@ -108,6 +143,14 @@ const Matches = () => {
 export default Matches;
 
 const styles = StyleSheet.create({
+  button: {
+    elevation: 5,
+    marginTop: heightPixel(50),
+  },
+  textbutton: {
+    fontFamily: fontFamilies.semibold,
+    fontSize: fontPixel(18),
+  },
   conatainer: {
     flex: 1,
     width: '100%',
