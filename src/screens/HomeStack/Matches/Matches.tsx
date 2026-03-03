@@ -20,6 +20,7 @@ import { CommonActions, useNavigation } from '@react-navigation/native';
 import { useSelector } from 'react-redux';
 import { useThemeContext } from '../../../theme/themeContext';
 import Button from '../../../components/themeButton';
+import MatchHistory from '../../../components/Flatlistcomponents/MatchHistory';
 
 const Matches = () => {
   const match = useSelector((state: any) => state.match);
@@ -134,6 +135,9 @@ const Matches = () => {
           <ThemeText style={styles.text} color="text">
             Recent Match
           </ThemeText>
+        </View>
+        <View>
+          <MatchHistory history={match?.history} />
         </View>
       </View>
     </HomeWrapper>

@@ -56,6 +56,7 @@ export interface Ball {
 }
 
 export interface MatchSetup {
+  matchId: string;
   teamA: Team | null;
   teamB: Team | null;
   tossWinner?: 'teamA' | 'teamB' | '';
