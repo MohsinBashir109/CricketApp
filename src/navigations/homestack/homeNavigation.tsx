@@ -15,6 +15,7 @@ export const HomeNavigation = () => {
         headerShown: false,
         // cardStyleInterpolator: CardStyleInterpolators.forFadeFromCenter,
       }}
+      initialRouteName={routes.myTabs}
     >
       <HomeStack.Screen name={routes.myTabs} component={BottomTabs} />
       <HomeStack.Screen name={routes.startMatch} component={Home.Startmatch} />

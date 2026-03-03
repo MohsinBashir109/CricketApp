@@ -25,7 +25,7 @@ const AddPlayers = ({ onSelect, teamsSelected }: AddPlayersProps) => {
   console.log('Selected Teams in AddPlayers:', teamsSelected);
   const { isDark } = useThemeContext();
   const [showAddedPlayersmodal, setShowAddedPlayersModal] = useState(false);
-  const [players, setPlayers] = useState<Player[]>([]);
+  // const [players, setPlayers] = useState<Player[]>([]);
   type TeamKey = 'teamA' | 'teamB';
   const [activeTeamKey, setActiveTeamKey] = useState<TeamKey | null>(null);
 

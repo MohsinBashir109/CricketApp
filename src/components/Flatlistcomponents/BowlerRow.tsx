@@ -1,7 +1,8 @@
-import React, { useMemo } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
+import React, { useMemo } from 'react';
+import { heightPixel, widthPixel } from '../../utils/constants';
+
 import ThemeText from '../ThemeText';
-import { widthPixel } from '../../utils/constants';
 
 interface BowlerRowProps {
   innings?: any;
@@ -117,19 +118,21 @@ const Bowlerow = ({ innings, currentMatch }: BowlerRowProps) => {
   };
 
   return (
-    <FlatList
-      data={bowlersData}
-      keyExtractor={item => String(item.id)}
-      renderItem={renderItem}
-      scrollEnabled={false}
-      ListEmptyComponent={
-        <View
-          style={{ paddingHorizontal: widthPixel(20), paddingVertical: 10 }}
-        >
-          <ThemeText color="text">No bowler selected</ThemeText>
-        </View>
-      }
-    />
+    <View style={{ height: heightPixel(150) }}>
+      <FlatList
+        data={bowlersData}
+        keyExtractor={item => String(item.id)}
+        renderItem={renderItem}
+        scrollEnabled={true}
+        ListEmptyComponent={
+          <View
+            style={{ paddingHorizontal: widthPixel(20), paddingVertical: 10 }}
+          >
+            <ThemeText color="text">No bowler selected</ThemeText>
+          </View>
+        }
+      />
+    </View>
   );
 };
 

@@ -27,6 +27,7 @@ const StartMatchPager = () => {
   const pagerRef = useRef<PagerView>(null);
   const [page, setPage] = useState(0);
   const [match, setMatch] = useState<MatchSetup>({
+    matchId: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
     teamA: { id: 1, name: '', players: [] },
     teamB: { id: 2, name: '', players: [] },
     overs: null,
@@ -36,6 +37,10 @@ const StartMatchPager = () => {
     tossWinnerName: '',
     innings1: null,
     innings2: null,
+    isCompleted: false,
+    resultReason: 'NO_RESULT',
+    winnerTeam: null,
+    winnerTeamName: '',
   });
 
   console.log('Current page:', page);
