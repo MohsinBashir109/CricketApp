@@ -1,7 +1,5 @@
-import BatsmenBowlerCard from '../../../components/Cards/BatsmenBowlerCard';
 import React, { useEffect, useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
 import {
   addStrikerAndBowlerInnings,
   completeMatchIfNeeded,
@@ -15,17 +13,17 @@ import {
 import { fontPixel, heightPixel, widthPixel } from '../../../utils/constants';
 import { useDispatch, useSelector } from 'react-redux';
 
+import BatsmenBowlerCard from '../../../components/Cards/BatsmenBowlerCard';
 import BatsmenBowlerScorringHeader from '../../../components/Headers/BatsmenScorringHeader';
 import Batsmenrow from '../../../components/Flatlistcomponents/Batsmenrow';
 import Bowlerow from '../../../components/Flatlistcomponents/BowlerRow';
-
+import CurrentOver from '../../../components/Cards/CurrentOver';
 import ScoreControls from '../../../components/Flatlistcomponents/ScoreControls';
 import ScoringHeader from '../../../components/Headers/ScoringHeader';
-
 import { colors } from '../../../utils/colors';
 import { fontFamilies } from '../../../utils/fontfamilies';
+import { useNavigation } from '@react-navigation/native';
 import { useThemeContext } from '../../../theme/themeContext';
-import CurrentOver from '../../../components/Cards/CurrentOver';
 
 const MatchScoring = () => {
   const { isDark } = useThemeContext();
@@ -157,6 +155,8 @@ const MatchScoring = () => {
 
       {/* OPENERS */}
       <BatsmenBowlerCard
+        innings={innings}
+        currentMatch={currentMatch}
         mode="OPENERS"
         batsmen={safeBattingTeamObj.players || []}
         bowler={safeBowlingTeamObj.players || []}
@@ -180,6 +180,8 @@ const MatchScoring = () => {
 
       {/* NEXT BATSMAN */}
       <BatsmenBowlerCard
+        innings={innings}
+        currentMatch={currentMatch}
         mode="NEXT_BATSMAN"
         batsmen={safeBattingTeamObj.players || []}
         bowler={safeBowlingTeamObj.players || []}
@@ -192,6 +194,8 @@ const MatchScoring = () => {
 
       {/* NEXT BOWLER */}
       <BatsmenBowlerCard
+        innings={innings}
+        currentMatch={currentMatch}
         mode="NEXT_BOWLER"
         batsmen={safeBattingTeamObj.players || []}
         bowler={safeBowlingTeamObj.players || []}

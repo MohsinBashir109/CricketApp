@@ -446,7 +446,7 @@ const matchSlice = createSlice({
 
       // push to history and clear current match
       state.history.push(match);
-      state.currentMatch = null;
+      // state.currentMatch = null;
     },
 
     undoLastBall(state) {

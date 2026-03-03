@@ -14,6 +14,7 @@ import { fontPixel, heightPixel, widthPixel } from '../../utils/constants';
 import ThemeText from '../ThemeText';
 import { colors } from '../../utils/colors';
 import { fontFamilies } from '../../utils/fontfamilies';
+import { get } from 'react-native/Libraries/NativeComponent/NativeComponentRegistry';
 import { useThemeContext } from '../../theme/themeContext';
 
 export type BatsmanRow = {
@@ -49,7 +50,8 @@ type Props = {
 
   visible: boolean;
   onClose: () => void;
-
+  innings?: any; // only needed for OPENERS mode to determine which players to show as availables
+  currentMatch?: any; // only needed for OPENERS mode to determine which players to show as availables
   // OPENERS
   onConfirmOpeners?: (payload: {
     striker: BatsmanRow;
@@ -75,6 +77,8 @@ const BatsmenBowlerCard: React.FC<Props> = ({
   onConfirmOpeners,
   onConfirmNextBatsman,
   onConfirmNextBowler,
+  innings,
+  currentMatch,
 }) => {
   const { isDark } = useThemeContext();
   const theme = colors[isDark ? 'dark' : 'light'];
@@ -88,8 +92,59 @@ const BatsmenBowlerCard: React.FC<Props> = ({
   const [strikerId, setStrikerId] = useState<string | null>(null);
   const [confirmBowlerStep, setConfirmBowlerStep] = useState(false);
   const [selectedBowlerId, setSelectedBowlerId] = useState<string | null>(null);
+  const getHeaderContent = () => {
+    const inningsText =
+      currentMatch?.currentInnings === 1 ? 'Innings 1' : 'Innings 2';
 
-  // NEXT_BATSMAN state
+    const battingTeamName =
+      currentMatch?.[innings?.battingTeam ?? 'teamA']?.name ?? 'Batting Team';
+
+    const bowlingTeamName =
+      currentMatch?.[innings?.bowlingTeam ?? 'teamA']?.name ?? 'Bowling Team';
+
+    switch (mode) {
+      case 'OPENERS':
+        // OPENERS has 2 internal steps:
+        // 1) pick batsmen
+        // 2) pick opening bowler
+        return {
+          teamName: confirmBowlerStep ? bowlingTeamName : battingTeamName,
+          actionText: confirmBowlerStep
+            ? 'Pick Opening Bowler'
+            : 'Pick Openers',
+          inningsText,
+        };
+
+      case 'NEXT_BATSMAN':
+        return {
+          teamName: battingTeamName,
+          actionText: 'Pick Next Batsman',
+          inningsText,
+        };
+
+      case 'NEXT_BOWLER':
+        return {
+          teamName: bowlingTeamName,
+          actionText: 'Pick Next Bowler',
+          inningsText,
+        };
+
+      default:
+        return {
+          teamName: battingTeamName,
+          actionText: '',
+          inningsText,
+        };
+    }
+  };
+  const headerContent = getHeaderContent();
+  const inningsText =
+    currentMatch?.currentInnings === 1 ? 'Innings 1' : 'Innings 2';
+  const battingTeamName =
+    currentMatch?.[innings?.battingTeam ?? 'teamA']?.name ?? 'Batting Team';
+  const bowlingTeamName =
+    currentMatch?.[innings?.bowlingTeam ?? 'teamA']?.name ?? 'Bowling Team';
+  // NEXT_BATSMAN statea
   const [selectedNextBatId, setSelectedNextBatId] = useState<string | null>(
     null,
   );
@@ -357,7 +412,14 @@ const BatsmenBowlerCard: React.FC<Props> = ({
               ]}
             >
               <ThemeText color="text" style={styles.text}>
-                {titleText}
+                {headerContent?.teamName}{' '}
+                <ThemeText color="text" style={styles.text1}>
+                  ({headerContent?.actionText})
+                </ThemeText>
+              </ThemeText>
+              <View style={{ flex: 1 }} />
+              <ThemeText color="text" style={styles.text}>
+                {inningsText}
               </ThemeText>
             </View>
 
@@ -441,10 +503,16 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: widthPixel(15),
     paddingVertical: heightPixel(15),
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   text: {
     fontFamily: fontFamilies.bold,
     fontSize: fontPixel(14),
+  },
+  text1: {
+    fontFamily: fontFamilies.medium,
+    fontSize: fontPixel(12),
   },
   modalCard: {
     width: '90%',
