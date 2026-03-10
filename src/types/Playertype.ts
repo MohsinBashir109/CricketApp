@@ -88,7 +88,7 @@ export interface Innings {
   outTarget?: OutTarget | null; // who got out and must be replaced
   pendingBowlerChange?: boolean; // wicket happened on last ball of over
   isCompleted?: boolean;
-  winnerReason?: 'ALL_OUT' | 'OVERS_DONE' | 'NO_PLAYERS';
+  winnerReason?: 'ALL_OUT' | 'OVERS_DONE' | 'NO_PLAYERS' | 'TARGET_CHASED';
   balls: Ball[];
 }
 

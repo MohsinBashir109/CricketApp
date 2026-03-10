@@ -1,3 +1,5 @@
+import { MatchSetup, Player, Team } from '../../types/Playertype';
+import React, { useMemo, useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -5,16 +7,18 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import React, { useMemo, useState } from 'react';
-import { MatchSetup, Player, Team } from '../../types/Playertype';
-import { useThemeContext } from '../../theme/themeContext';
+import { fontPixel, heightPixel, widthPixel } from '../../utils/constants';
+
+import AddPlayersModal from '../Modals/AddPlayersModal';
+import AppBanner from '../../ads/AppBanner';
+import { BannerAdSize } from 'react-native-google-mobile-ads';
+import Button from '../themeButton';
+import ThemeInput from '../ThemeInput';
+import ThemeText from '../ThemeText';
+import { adUnits } from '../../ads/adsUnits';
 import { colors } from '../../utils/colors';
 import { fontFamilies } from '../../utils/fontfamilies';
-import ThemeText from '../ThemeText';
-import ThemeInput from '../ThemeInput';
-import Button from '../themeButton';
-import { fontPixel, heightPixel, widthPixel } from '../../utils/constants';
-import AddPlayersModal from '../Modals/AddPlayersModal';
+import { useThemeContext } from '../../theme/themeContext';
 
 interface AddPlayersProps {
   teamsSelected: any;
@@ -79,6 +83,20 @@ const AddPlayers = ({ onSelect, teamsSelected }: AddPlayersProps) => {
           {teamsSelected?.teamB?.name}
         </ThemeText>
       </TouchableOpacity>
+      <View
+        style={{
+          width: '100%',
+          alignItems: 'center',
+          justifyContent: 'center',
+          paddingVertical: heightPixel(8),
+          marginBottom: heightPixel(50),
+        }}
+      >
+        <AppBanner
+          size={BannerAdSize.MEDIUM_RECTANGLE}
+          adUnits={adUnits.banner}
+        />
+      </View>
       <AddPlayersModal
         activeTeam={activeTeam}
         initialPlayers={activeTeam?.players ?? []}

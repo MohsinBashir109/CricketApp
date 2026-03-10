@@ -183,10 +183,32 @@ const BatsmenBowlerCard: React.FC<Props> = ({
         return { label: 'Unknown' };
     }
   };
-  const availableBatsmen = useMemo(() => {
-    return batsmen.filter(b => b?.isOut !== true);
-  }, [batsmen]);
+  const strikerIdOnCrease = innings?.strikerId;
+  const nonStrikerIdOnCrease = innings?.nonStrikerId;
+  const availableBatsmen = batsmen.filter(b => {
+    if (b?.isOut === true) return false;
+
+    // ✅ don't show current striker/non-striker in "Next Batsman" picker
+    if (mode === 'NEXT_BATSMAN') {
+      if (
+        strikerIdOnCrease != null &&
+        String(b.id) === String(strikerIdOnCrease)
+      )
+        return false;
+      if (
+        nonStrikerIdOnCrease != null &&
+        String(b.id) === String(nonStrikerIdOnCrease)
+      )
+        return false;
+    }
+
+    return true;
+  });
+
+  console.log('------------------------>batsmen', batsmen);
+
   // Data list based on mode
+  console.log('------------------------>availableBatsmen', availableBatsmen);
   const data: ListItem[] = useMemo(() => {
     if (isNextBow) return bowler;
 

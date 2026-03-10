@@ -20,6 +20,10 @@ export const HomeNavigation = () => {
       <HomeStack.Screen name={routes.myTabs} component={BottomTabs} />
       <HomeStack.Screen name={routes.startMatch} component={Home.Startmatch} />
       <HomeStack.Screen
+        name={routes.matchsummary}
+        component={Home.MatchSummary}
+      />
+      <HomeStack.Screen
         name={routes.matchscoring}
         component={Home.MatchScoring}
       />

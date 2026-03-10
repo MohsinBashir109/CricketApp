@@ -3,6 +3,8 @@ import { StyleSheet, Text, View } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 
 import AddPlayers from '../Flatlistcomponents/AddPlayers';
+import AppBanner from '../../ads/AppBanner';
+import { BannerAdSize } from 'react-native-google-mobile-ads';
 import Button from '../themeButton';
 import { MatchSetup } from '../../types/Playertype';
 import OverSelection from '../Flatlistcomponents/OverSelection';
@@ -10,6 +12,8 @@ import PagerView from 'react-native-pager-view';
 import SelectTeams from '../Flatlistcomponents/SelectTeams';
 import StartmatchHeader from '../Headers/StartmatchHeader';
 import Toss from '../Flatlistcomponents/Toss';
+import { adUnits } from '../../ads/adsUnits';
+import { heightPixel } from '../../utils/constants';
 import { routes } from '../../utils/routes';
 import { setmatch } from '../../features/match/matchSlice';
 import { useNavigation } from '@react-navigation/native';
@@ -182,9 +186,23 @@ const StartMatchPager = () => {
               title="Start Match"
               onPress={() => {
                 dispatch(setmatch(match));
-                navigation.replace(routes.home);
+                navigation.replace(routes.matchscoring as never);
               }}
             />
+            <View
+              style={{
+                width: '100%',
+                alignItems: 'center',
+                justifyContent: 'center',
+                paddingVertical: heightPixel(8),
+                marginBottom: heightPixel(50),
+              }}
+            >
+              <AppBanner
+                size={BannerAdSize.MEDIUM_RECTANGLE}
+                adUnits={adUnits.banner}
+              />
+            </View>
           </View>
         </View>
       </PagerView>

@@ -1,13 +1,18 @@
 import { StyleSheet, Text, View } from 'react-native';
-import React from 'react';
 import { fontPixel, heightPixel, widthPixel } from '../../utils/constants';
+
+import AppBanner from '../../ads/AppBanner';
+import { BannerAdSize } from 'react-native-google-mobile-ads';
+import Button from '../themeButton';
+import React from 'react';
+import ThemeInput from '../ThemeInput';
+import ThemeText from '../ThemeText';
+import { adUnits } from '../../ads/adsUnits';
 import { colors } from '../../utils/colors';
 import { fontFamilies } from '../../utils/fontfamilies';
-import { useThemeContext } from '../../theme/themeContext';
-import ThemeText from '../ThemeText';
-import ThemeInput from '../ThemeInput';
 import { team } from '../../assets/images';
-import Button from '../themeButton';
+import { useThemeContext } from '../../theme/themeContext';
+
 interface SelectTeamsProps {
   onSelect: (teamsSelected: any) => void;
 }
@@ -55,6 +60,20 @@ const SelectTeams = ({ onSelect }: SelectTeamsProps) => {
           title="Continue"
           onPress={() => onSelect(teams)}
           disabled={!isValid}
+        />
+      </View>
+      <View
+        style={{
+          width: '100%',
+          alignItems: 'center',
+          justifyContent: 'center',
+          paddingVertical: heightPixel(8),
+          marginBottom: heightPixel(50),
+        }}
+      >
+        <AppBanner
+          size={BannerAdSize.MEDIUM_RECTANGLE}
+          adUnits={adUnits.banner}
         />
       </View>
     </View>

@@ -1,3 +1,4 @@
+import { CommonActions, useNavigation } from '@react-navigation/native';
 import {
   Image,
   StyleSheet,
@@ -7,20 +8,21 @@ import {
   View,
 } from 'react-native';
 import { fontPixel, heightPixel, widthPixel } from '../../../utils/constants';
+import { live, matches } from '../../../assets/images';
 
+import AppBanner from '../../../ads/AppBanner';
+import Button from '../../../components/themeButton';
 import HomeWrapper from '../../../wrappers/HomeWrapper';
+import MatchHistory from '../../../components/Flatlistcomponents/MatchHistory';
 import React from 'react';
 import ThemeText from '../../../components/ThemeText';
 import { UserHeader } from '../../../components/Headers/UserHeader';
+import { adUnits } from '../../../ads/adsUnits';
 import { colors } from '../../../utils/colors';
 import { fontFamilies } from '../../../utils/fontfamilies';
-import { live, matches } from '../../../assets/images';
 import { routes } from '../../../utils/routes';
-import { CommonActions, useNavigation } from '@react-navigation/native';
 import { useSelector } from 'react-redux';
 import { useThemeContext } from '../../../theme/themeContext';
-import Button from '../../../components/themeButton';
-import MatchHistory from '../../../components/Flatlistcomponents/MatchHistory';
 
 const Matches = () => {
   const match = useSelector((state: any) => state.match);
@@ -58,6 +60,7 @@ const Matches = () => {
   const openMatch = () => {
     navigation.navigate(routes.matchscoring as never);
   };
+
   const CurrentMatchCard = () => {
     return (
       <TouchableOpacity
@@ -129,16 +132,34 @@ const Matches = () => {
             </ThemeText>
           </View>
 
-          <CurrentMatchCard />
+          {currentMatch !== null ? (
+            <CurrentMatchCard />
+          ) : (
+            <View style={styles.currentmatchnull}>
+              <ThemeText color="text" style={styles.text2}>
+                No active match. Tap “Start Match” to begin.
+              </ThemeText>
+            </View>
+          )}
         </View>
         <View style={{ marginVertical: heightPixel(10) }}>
           <ThemeText style={styles.text} color="text">
             Recent Match
           </ThemeText>
         </View>
-        <View>
-          <MatchHistory history={match?.history} />
-        </View>
+        {/* <View style={{ marginBottom: heightPixel(20) }}> */}
+        <MatchHistory history={match?.history} />
+        {/* </View> */}
+      </View>
+      <View
+        style={{
+          width: '100%',
+          alignItems: 'center',
+          justifyContent: 'center',
+          paddingVertical: heightPixel(8),
+        }}
+      >
+        <AppBanner adUnits={adUnits.banner} />
       </View>
     </HomeWrapper>
   );
@@ -166,12 +187,25 @@ const styles = StyleSheet.create({
     fontFamily: fontFamilies.bold,
     fontSize: fontPixel(18),
   },
+  text2: {
+    fontFamily: fontFamilies.medium,
+    fontSize: fontPixel(15),
+  },
   currentmatchCaed: {
     // padding: widthPixel(10),
     paddingHorizontal: widthPixel(10),
     paddingVertical: heightPixel(10),
     marginTop: heightPixel(10),
     borderRadius: widthPixel(10),
+  },
+  currentmatchnull: {
+    // padding: widthPixel(10),
+    paddingHorizontal: widthPixel(10),
+    paddingVertical: heightPixel(10),
+    marginTop: heightPixel(10),
+    borderRadius: widthPixel(10),
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   header: {
     flexDirection: 'row',
@@ -183,10 +217,7 @@ const styles = StyleSheet.create({
     width: widthPixel(20),
     height: heightPixel(20),
   },
-  text2: {
-    fontFamily: fontFamilies.semibold,
-    fontSize: fontPixel(15),
-  },
+
   versus: {
     fontFamily: fontFamilies.bold,
     fontSize: fontPixel(18),

@@ -1,7 +1,8 @@
 import { CommonActions, useNavigation } from '@react-navigation/native';
 import { Image, Platform, StatusBar, StyleSheet, View } from 'react-native';
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { heightPixel, widthPixel } from '../../../utils/constants';
+import { loadAppOpenAd, showAppOpenAd } from '../../../ads/appOpenManager';
 
 import ThemeText from '../../../components/ThemeText';
 import { auth } from '../../../dbConfig/firebase';
@@ -16,24 +17,46 @@ const Splash = () => {
   const navigation = useNavigation<any>();
   const { isDark } = useThemeContext();
   const dispatch = useDispatch();
+  const hasNavigatedRef = useRef(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    loadAppOpenAd();
+
+    const goNext = (user: any) => {
+      if (hasNavigatedRef.current) return;
+
+      hasNavigatedRef.current = true;
+
+      navigation.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [{ name: user ? routes.home : routes.signIn }],
+        }),
+      );
+    };
     const unsub = onAuthStateChanged(auth, user => {
       console.log('Auth state changed, user:', user);
       dispatch(setuser(user));
-      const timer = setTimeout(() => {
-        navigation.dispatch(
-          CommonActions.reset({
-            index: 0,
-            routes: [{ name: user ? routes.home : routes.signIn }],
-          }),
-        );
+      timerRef.current = setTimeout(() => {
+        const shown = showAppOpenAd({
+          onClosed: () => goNext(user),
+          onError: () => goNext(user),
+        });
+        console.log('====================================shown');
+        console.log(shown);
+        console.log('====================================');
+        if (!shown) {
+          goNext(user);
+        }
       }, 3000);
-
-      return () => clearTimeout(timer);
     });
-
-    return unsub;
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+      unsub();
+    };
   }, [navigation]);
 
   return (

@@ -22,12 +22,15 @@ import ScoreControls from '../../../components/Flatlistcomponents/ScoreControls'
 import ScoringHeader from '../../../components/Headers/ScoringHeader';
 import { colors } from '../../../utils/colors';
 import { fontFamilies } from '../../../utils/fontfamilies';
+import { routes } from '../../../utils/routes';
 import { useNavigation } from '@react-navigation/native';
 import { useThemeContext } from '../../../theme/themeContext';
 
 const MatchScoring = () => {
   const { isDark } = useThemeContext();
-  const { currentMatch } = useSelector((state: any) => state.match);
+  const { currentMatch, lastCompletedMatch } = useSelector(
+    (state: any) => state.match,
+  );
   const dispatch = useDispatch();
   const navigation = useNavigation<any>();
   // ✅ ALWAYS SAFE (can be undefined)
@@ -62,6 +65,9 @@ const MatchScoring = () => {
   // ---------------- EFFECTS (must always run) ----------------
 
   // OPENERS modal auto-open (only when innings running)
+  const isInningsStart = (innings?.balls?.length ?? 0) === 0;
+  const needOpenersAtStart =
+    innings?.strikerId == null || innings?.nonStrikerId == null;
   useEffect(() => {
     // when reducer pushes match to history and clears currentMatch
     if (!currentMatch) {
@@ -74,17 +80,15 @@ const MatchScoring = () => {
     if (!innings) return;
     if (innings.isCompleted) return;
 
-    if (needOpeners && innings.activeModal == null) {
+    if (isInningsStart && needOpenersAtStart && innings.activeModal == null) {
       dispatch(setActiveModal('OPENERS'));
     }
   }, [
     dispatch,
     innings?.isCompleted,
     innings?.activeModal,
-    innings?.strikerId,
-    innings?.nonStrikerId,
-    innings?.bowlerId,
-    needOpeners,
+    isInningsStart,
+    needOpenersAtStart,
   ]);
 
   // Start second innings when first innings completes
@@ -117,6 +121,17 @@ const MatchScoring = () => {
     currentMatch?.innings1?.isCompleted,
     currentMatch?.innings2?.isCompleted,
   ]);
+  useEffect(() => {
+    if (!currentMatch) {
+      navigation.goBack();
+    }
+  }, [currentMatch]);
+
+  useEffect(() => {
+    if (!currentMatch && lastCompletedMatch) {
+      navigation.navigate(routes.matchsummary, { match: lastCompletedMatch });
+    }
+  }, [currentMatch, lastCompletedMatch, navigation]);
 
   if (!isReady) {
     return (
@@ -145,6 +160,7 @@ const MatchScoring = () => {
         innings={safeInnings}
         overs={currentMatch.overs}
         tossWinnerName={currentMatch.tossWinnerName}
+        innings1={currentMatch?.innings1}
       />
 
       <BatsmenBowlerScorringHeader title="Batsmen Name" />

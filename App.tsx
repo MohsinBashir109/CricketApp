@@ -24,11 +24,16 @@ import { PersistGate } from 'redux-persist/integration/react';
 import { Provider } from 'react-redux';
 import { ThemeProvider } from '../CricketApp/src/theme/themeContext';
 import { app } from './src/dbConfig/firebase';
+import { initMobileAds } from './src/ads/initMobileAds';
 
 function App() {
   useEffect(() => {
     console.log('App mounted', app);
-  }, []);
+    const ads = initMobileAds();
+    console.log('====================================ads');
+    console.log(ads);
+    console.log('====================================');
+  });
   LogBox.ignoreAllLogs();
   return (
     <Provider store={store}>

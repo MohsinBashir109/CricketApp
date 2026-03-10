@@ -23,8 +23,9 @@ interface Score {
   innings?: any;
   tossWinnerName?: string;
   overs?: string;
+  innings1?: any;
 }
-const ScoringHeader = ({ innings, tossWinnerName, overs }: Score) => {
+const ScoringHeader = ({ innings, tossWinnerName, overs, innings1 }: Score) => {
   const navigation = useNavigation<any>();
   const ballsToOvers = (balls: number) =>
     `${Math.floor(balls / 6)}.${balls % 6}`;
@@ -36,7 +37,7 @@ const ScoringHeader = ({ innings, tossWinnerName, overs }: Score) => {
 
   const { isDark } = useThemeContext();
 
-  console.log('======================>innings1', innings);
+  console.log('======================>innings1', innings1);
   const oversBowledText = ballsToOvers(innings.totalBalls);
   const oversLimitText = `${overs}`;
   const oversDecimal = ballsToOversDecimal(innings.totalBalls);
@@ -116,6 +117,13 @@ const ScoringHeader = ({ innings, tossWinnerName, overs }: Score) => {
             </ThemeText>
           </View>
         </View>
+        {innings1?.isCompleted && (
+          <View>
+            <ThemeText color="text" style={styles.text5}>
+              Target : {innings1?.totalRuns}
+            </ThemeText>
+          </View>
+        )}
       </View>
     </View>
   );
