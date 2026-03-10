@@ -12,6 +12,6 @@ export const routes = {
   myTabs: 'myTabs',
   startMatch: 'startMatch',
   matchscoring: 'matchScoring',
-
+  matchsummary: 'matchsummary',
   // home screens
 };

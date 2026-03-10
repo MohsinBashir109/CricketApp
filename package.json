@@ -21,6 +21,7 @@
     "@reduxjs/toolkit": "^2.11.2",
     "react": "19.2.0",
     "react-native": "0.83.1",
+    "react-native-google-mobile-ads": "^16.2.1",
     "react-native-image-picker": "^8.2.1",
     "react-native-keyboard-aware-scroll-view": "^0.9.5",
     "react-native-linear-gradient": "^2.8.3",
@@ -28,6 +29,7 @@
     "react-native-pager-view": "^8.0.0",
     "react-native-safe-area-context": "^5.5.2",
     "react-native-screens": "^4.23.0",
+    "react-native-tab-view": "^4.2.2",
     "react-redux": "^9.2.0",
     "redux-persist": "^6.0.0"
   },

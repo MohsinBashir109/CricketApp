@@ -6,20 +6,28 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import React from 'react';
+import { fontPixel, heightPixel, widthPixel } from '../../utils/constants';
+
 import { MatchSetup } from '../../types/Playertype';
+import React from 'react';
 import ThemeText from '../ThemeText';
-import { fontFamilies } from '../../utils/fontfamilies';
-import { fontPixel, widthPixel } from '../../utils/constants';
-import { useThemeContext } from '../../theme/themeContext';
 import { colors } from '../../utils/colors';
+import { fontFamilies } from '../../utils/fontfamilies';
+import { routes } from '../../utils/routes';
+import { useNavigation } from '@react-navigation/native';
+import { useThemeContext } from '../../theme/themeContext';
+
 interface MatchHistory {
-  history: MatchSetup[];
+  history?: MatchSetup[];
 }
 
 const MatchHistory = ({ history }: MatchHistory) => {
   const { isDark } = useThemeContext();
-
+  const navigation = useNavigation();
+  const openSummary = (item: any) => {
+    // @ts-ignore
+    navigation.navigate(routes.matchsummary, { match: item });
+  };
   const getTeamSize = (match: MatchSetup, teamKey: 'teamA' | 'teamB') => {
     const count =
       teamKey === 'teamA'
@@ -89,8 +97,10 @@ const MatchHistory = ({ history }: MatchHistory) => {
             backgroundColor: colors[isDark ? 'dark' : 'light'].background,
             borderColor: colors[isDark ? 'dark' : 'light'].gray4,
             borderWidth: 1,
+            borderRadius: widthPixel(15),
           },
         ]}
+        onPress={() => openSummary(item)}
       >
         <View style={styles.header}>
           <ThemeText color="text" style={styles.headerText}>
@@ -124,17 +134,19 @@ const MatchHistory = ({ history }: MatchHistory) => {
       showsVerticalScrollIndicator={false}
     />
   );
-  ``;
 };
 
 export default MatchHistory;
 
 const styles = StyleSheet.create({
-  conatiner: {},
+  conatiner: {
+    marginBottom: heightPixel(10),
+    paddingHorizontal: widthPixel(15),
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: widthPixel(10),
+    // paddingHorizontal: widthPixel(10),
   },
   headerText: { fontFamily: fontFamilies.semibold, fontSize: fontPixel(15) },
   headerText2: {

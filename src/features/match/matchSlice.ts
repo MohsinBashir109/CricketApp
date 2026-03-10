@@ -9,10 +9,12 @@ import { ballsToOvers, oversToBalls } from '../../utils/constants';
 interface MatchState {
   currentMatch: MatchSetup | null;
   history: MatchSetup[];
+  lastCompletedMatch: MatchSetup | null;
 }
 const initialState: MatchState = {
   currentMatch: null,
   history: [],
+  lastCompletedMatch: null,
 };
 
 const matchSlice = createSlice({
@@ -371,6 +373,16 @@ const matchSlice = createSlice({
           return;
         }
       }
+      if (match.currentInnings === 2 && match.innings1) {
+        const target = (match.innings1.totalRuns ?? 0) + 1;
+        if ((innings.totalRuns ?? 0) >= target) {
+          innings.isCompleted = true;
+          innings.activeModal = null;
+          innings.pendingBowlerChange = false;
+          innings.winnerReason = 'TARGET_CHASED';
+          return;
+        }
+      }
 
       // Strike rotation on odd totals (includes wides/no-balls)
       if (totalRuns % 2 === 1) {
@@ -445,8 +457,9 @@ const matchSlice = createSlice({
       match.resultReason = resultReason;
 
       // push to history and clear current match
-      state.history.push(match);
-      // state.currentMatch = null;
+      state.lastCompletedMatch = match; // for summary screen
+      state.history.push(match); // keep history
+      state.currentMatch = null; // ✅ this will trigger navigation
     },
 
     undoLastBall(state) {

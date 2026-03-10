@@ -2,9 +2,12 @@ import { Image, Modal, Pressable, StyleSheet, View } from 'react-native';
 import React, { useEffect, useState } from 'react';
 import { fontPixel, heightPixel, widthPixel } from '../../utils/constants';
 
+import AppBanner from '../../ads/AppBanner';
+import { BannerAdSize } from 'react-native-google-mobile-ads';
 import Button from '../themeButton';
 import { MatchSetup } from '../../types/Playertype';
 import ThemeText from '../ThemeText';
+import { adUnits } from '../../ads/adsUnits';
 import { colors } from '../../utils/colors';
 import { cross } from '../../assets/images';
 import { fontFamilies } from '../../utils/fontfamilies';
@@ -46,6 +49,20 @@ const Toss = ({ onSelect, match }: TossProps) => {
         title={match?.teamB?.name || 'Team B'}
         onPress={() => handleTossSelection('teamB')}
       />
+      <View
+        style={{
+          width: '100%',
+          alignItems: 'center',
+          justifyContent: 'center',
+          paddingVertical: heightPixel(8),
+          marginBottom: heightPixel(50),
+        }}
+      >
+        <AppBanner
+          size={BannerAdSize.MEDIUM_RECTANGLE}
+          adUnits={adUnits.banner}
+        />
+      </View>
 
       <Modal
         visible={showElectionModal}
