@@ -14,19 +14,19 @@ const PlayersHeader = () => {
   return (
     <View style={[styles.container, { backgroundColor: theme.primary }]}>
       <View style={styles.colSr}>
-        <ThemeText style={styles.text} color="text">
+        <ThemeText style={styles.text} color="white">
           Sr#
         </ThemeText>
       </View>
 
       <View style={styles.colName}>
-        <ThemeText style={styles.text} color="text">
+        <ThemeText style={styles.text} color="white">
           Player Name
         </ThemeText>
       </View>
 
       <View style={styles.colRole}>
-        <ThemeText style={styles.text} color="text">
+        <ThemeText style={styles.text} color="white">
           Role
         </ThemeText>
       </View>

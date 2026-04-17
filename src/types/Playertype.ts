@@ -71,6 +71,8 @@ export interface MatchSetup {
   resultReason?: 'CHASED' | 'DEFENDED' | 'TIE' | 'NO_RESULT';
   winnerTeam?: 'teamA' | 'teamB' | null;
   winnerTeamName?: string;
+  /** When true, scoring actions are blocked (live match paused). */
+  isScoringPaused?: boolean;
 }
 
 export interface Innings {
@@ -84,6 +86,10 @@ export interface Innings {
   strikerId: number | null;
   nonStrikerId: number | null;
   bowlerId: number | null;
+  /** Set when openers are confirmed; used for consistent undo/replay. */
+  openingStrikerId?: number | null;
+  openingNonStrikerId?: number | null;
+  openingBowlerId?: number | null;
   activeModal?: ActiveModal; // which modal UI should show
   outTarget?: OutTarget | null; // who got out and must be replaced
   pendingBowlerChange?: boolean; // wicket happened on last ball of over

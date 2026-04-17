@@ -1,43 +1,38 @@
-import {
-  FlatList,
-  StyleSheet,
-  Text,
-  Touchable,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { fontPixel, heightPixel, widthPixel } from '../../utils/constants';
 
 import { MatchSetup } from '../../types/Playertype';
 import React from 'react';
 import ThemeText from '../ThemeText';
+import MatchCard from '../MatchCard';
 import { colors } from '../../utils/colors';
 import { fontFamilies } from '../../utils/fontfamilies';
 import { routes } from '../../utils/routes';
 import { useNavigation } from '@react-navigation/native';
 import { useThemeContext } from '../../theme/themeContext';
 
-interface MatchHistory {
+interface MatchHistoryProps {
   history?: MatchSetup[];
 }
 
-const MatchHistory = ({ history }: MatchHistory) => {
+const MatchHistory = ({ history }: MatchHistoryProps) => {
   const { isDark } = useThemeContext();
+  const theme = colors[isDark ? 'dark' : 'light'];
   const navigation = useNavigation();
-  const openSummary = (item: any) => {
+
+  const openSummary = (item: MatchSetup) => {
     // @ts-ignore
     navigation.navigate(routes.matchsummary, { match: item });
   };
+
   const getTeamSize = (match: MatchSetup, teamKey: 'teamA' | 'teamB') => {
     const count =
       teamKey === 'teamA'
         ? match.teamA?.players?.length
         : match.teamB?.players?.length;
 
-    // valid: 1..10 (less than 11) — adjust if you want 11 allowed
     if (typeof count === 'number' && count > 0 && count <= 11) return count;
-
-    return null; // invalid / missing
+    return null;
   };
 
   const getIccResultText = (match: MatchSetup) => {
@@ -54,105 +49,141 @@ const MatchHistory = ({ history }: MatchHistory) => {
       case 'CHASED': {
         const battingTeamKey = i2.battingTeam;
         const teamSize = getTeamSize(match, battingTeamKey);
-
-        // If teamSize unknown, don't show wickets remaining number
         if (!teamSize) return `${winner} won (chased)`;
-
-        const maxWickets = Math.max(teamSize - 1, 0); // teamSize=2 => 1 wicket max
+        const maxWickets = Math.max(teamSize - 1, 0);
         const wicketsLost = i2.totalWickets ?? 0;
-
         const wicketsRemaining = Math.max(maxWickets - wicketsLost, 0);
-
         return `${winner} won by ${wicketsRemaining} wicket${
           wicketsRemaining === 1 ? '' : 's'
         }`;
       }
-
       case 'DEFENDED': {
         const runs1 = i1.totalRuns ?? 0;
         const runs2 = i2.totalRuns ?? 0;
-
-        // margin should never be negative on display
         const runsMargin = Math.abs(runs1 - runs2);
-
-        return `${winner} won by ${runsMargin} run${
-          runsMargin === 1 ? '' : 's'
-        }`;
+        return `${winner} won by ${runsMargin} run${runsMargin === 1 ? '' : 's'}`;
       }
-
       case 'TIE':
         return 'Match tied';
-
       default:
         return 'Result not available';
     }
   };
 
-  const renderItem = ({ item }: { item: MatchSetup }) => {
-    return (
-      <TouchableOpacity
-        style={[
-          styles.conatiner,
-          {
-            backgroundColor: colors[isDark ? 'dark' : 'light'].background,
-            borderColor: colors[isDark ? 'dark' : 'light'].gray4,
-            borderWidth: 1,
-            borderRadius: widthPixel(15),
-          },
-        ]}
-        onPress={() => openSummary(item)}
-      >
-        <View style={styles.header}>
-          <ThemeText color="text" style={styles.headerText}>
-            {item?.teamA?.name}
-          </ThemeText>
-          <ThemeText color="text" style={styles.headerText2}>
-            V
-          </ThemeText>
-          <ThemeText color="text" style={styles.headerText3}>
-            {item?.teamB?.name}
-          </ThemeText>
-          <View style={{ flex: 1 }} />
-          <ThemeText color="text" style={styles.headerText3}>
-            Match Summary
+  const renderItem = ({ item }: { item: MatchSetup }) => (
+    <MatchCard
+      teamAName={item?.teamA?.name}
+      teamBName={item?.teamB?.name}
+      onPress={() => openSummary(item)}
+    >
+      <View style={styles.headerRow}>
+        <View
+          style={[
+            styles.statusPill,
+            { backgroundColor: theme.surfaceElevated, borderColor: theme.border },
+          ]}
+        >
+          <ThemeText color="secondaryText" style={styles.statusText}>
+            Completed
           </ThemeText>
         </View>
-        <ThemeText color="text" style={styles.headerText3}>
+        <ThemeText color="desText" style={styles.metaRight}>
+          Tap to view scorecard
+        </ThemeText>
+      </View>
+
+      <View style={[styles.resultPill, { backgroundColor: theme.primaryMuted }]}>
+        <ThemeText color="primary" style={styles.resultText} numberOfLines={2}>
           {getIccResultText(item)}
         </ThemeText>
-      </TouchableOpacity>
-    );
-  };
+      </View>
+    </MatchCard>
+  );
 
-  console.log('_----------------------->', history);
+  if (!history?.length) {
+    return (
+      <View
+        style={[
+          styles.empty,
+          {
+            backgroundColor: theme.surfaceElevated,
+            borderColor: theme.border,
+          },
+        ]}
+      >
+        <ThemeText style={styles.emptyTitle} color="text">
+          No history yet
+        </ThemeText>
+        <ThemeText style={styles.emptyBody} color="secondaryText">
+          Finished matches appear here with full scorecards.
+        </ThemeText>
+      </View>
+    );
+  }
+
   return (
-    <FlatList
-      data={history}
-      renderItem={renderItem}
-      keyExtractor={item => item?.matchId}
-      scrollEnabled={true}
-      showsVerticalScrollIndicator={false}
-    />
+    <View style={styles.list}>
+      {history.map(item => (
+        <View key={item.matchId}>{renderItem({ item })}</View>
+      ))}
+    </View>
   );
 };
 
 export default MatchHistory;
 
 const styles = StyleSheet.create({
-  conatiner: {
-    marginBottom: heightPixel(10),
-    paddingHorizontal: widthPixel(15),
+  list: {
+    width: '100%',
   },
-  header: {
+  headerRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    // paddingHorizontal: widthPixel(10),
   },
-  headerText: { fontFamily: fontFamilies.semibold, fontSize: fontPixel(15) },
-  headerText2: {
+  statusPill: {
+    paddingHorizontal: widthPixel(10),
+    paddingVertical: heightPixel(4),
+    borderRadius: widthPixel(999),
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  statusText: {
+    fontFamily: fontFamilies.medium,
+    fontSize: fontPixel(11),
+  },
+  metaRight: {
+    fontFamily: fontFamilies.medium,
+    fontSize: fontPixel(11),
+  },
+  resultPill: {
+    marginTop: heightPixel(10),
+    paddingHorizontal: widthPixel(12),
+    paddingVertical: heightPixel(10),
+    borderRadius: widthPixel(12),
+  },
+  resultText: {
+    fontFamily: fontFamilies.semibold,
+    fontSize: fontPixel(13),
+    lineHeight: fontPixel(18),
+  },
+  hint: {
+    marginTop: heightPixel(8),
+    fontFamily: fontFamilies.medium,
+    fontSize: fontPixel(12),
+  },
+  empty: {
+    borderRadius: widthPixel(16),
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: widthPixel(18),
+  },
+  emptyTitle: {
     fontFamily: fontFamilies.bold,
-    fontSize: fontPixel(18),
-    marginHorizontal: widthPixel(10),
+    fontSize: fontPixel(16),
   },
-  headerText3: { fontFamily: fontFamilies.semibold, fontSize: fontPixel(15) },
+  emptyBody: {
+    fontFamily: fontFamilies.regular,
+    fontSize: fontPixel(14),
+    marginTop: heightPixel(8),
+    lineHeight: fontPixel(20),
+  },
 });

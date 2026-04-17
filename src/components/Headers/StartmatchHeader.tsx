@@ -1,5 +1,5 @@
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
-import { fontPixel, heightPixel } from '../../utils/constants';
+import { Image, Pressable, StyleSheet, View } from 'react-native';
+import { fontPixel, heightPixel, widthPixel } from '../../utils/constants';
 
 import DashesProgressBar from '../progressBars/DashesProgressBar';
 import React from 'react';
@@ -24,19 +24,26 @@ const StartmatchHeader = ({
   currentStep,
 }: StartmatchHeaderProps) => {
   const { isDark } = useThemeContext();
+  const theme = colors[isDark ? 'dark' : 'light'];
   return (
-    <View>
+    <View style={{ backgroundColor: theme.transparent }}>
       <View style={styles.container}>
         <Pressable onPress={onBack} hitSlop={20}>
           <Image
             source={backarrow}
             style={{ width: 20, height: 20, marginRight: 10 }}
             resizeMode="contain"
-            tintColor={colors[isDark ? 'dark' : 'light'].text}
+            tintColor={theme.text}
           />
         </Pressable>
+
         <View
-          style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
+          style={{
+            flex: 1,
+
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
         >
           <ThemeText color="text" style={styles.text}>
             {title}
@@ -58,6 +65,7 @@ const styles = StyleSheet.create({
     width: '100%',
     justifyContent: 'flex-start',
     alignItems: 'center',
+    paddingHorizontal: widthPixel(14),
   },
   text: {
     fontSize: fontPixel(18),

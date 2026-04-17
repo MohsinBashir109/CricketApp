@@ -5,34 +5,20 @@
  * @format
  */
 
-import {
-  LogBox,
-  StatusBar,
-  StyleSheet,
-  View,
-  useColorScheme,
-} from 'react-native';
-import {
-  SafeAreaProvider,
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
+import { LogBox } from 'react-native';
+import {} from 'react-native-safe-area-context';
 import { persistor, store } from './src/features/store/store';
-import { use, useEffect } from 'react';
+import { useEffect } from 'react';
 
 import { MainNavigator } from './src/navigations/MainNavigation';
 import { PersistGate } from 'redux-persist/integration/react';
 import { Provider } from 'react-redux';
 import { ThemeProvider } from '../CricketApp/src/theme/themeContext';
 import { app } from './src/dbConfig/firebase';
-import { initMobileAds } from './src/ads/initMobileAds';
 
 function App() {
   useEffect(() => {
     console.log('App mounted', app);
-    const ads = initMobileAds();
-    console.log('====================================ads');
-    console.log(ads);
-    console.log('====================================');
   });
   LogBox.ignoreAllLogs();
   return (

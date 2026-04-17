@@ -121,7 +121,7 @@ const InningsScorecard = ({
   if (!match) {
     return (
       <View style={[styles.center, { backgroundColor: theme.background }]}>
-        <ThemeText color="white">No innings data</ThemeText>
+        <ThemeText color="secondaryText">No innings data</ThemeText>
       </View>
     );
   }
@@ -132,9 +132,17 @@ const InningsScorecard = ({
       contentContainerStyle={{ paddingBottom: 18 }}
     >
       {/* HEADER */}
-      <View style={[styles.header, { backgroundColor: theme.background }]}>
+      <View
+        style={[
+          styles.header,
+          {
+            backgroundColor: theme.surface,
+            borderColor: theme.border,
+          },
+        ]}
+      >
         <ThemeText style={styles.headerTitle} color="text">
-          {match.battingTeamName} Innings
+          {match.battingTeamName} innings
         </ThemeText>
 
         <View style={styles.headerRow}>
@@ -143,22 +151,35 @@ const InningsScorecard = ({
           </ThemeText>
 
           <View style={{ alignItems: 'flex-end' }}>
-            <ThemeText style={styles.headerMeta} color="white">
-              Overs: {computed.oversText}
+            <ThemeText style={styles.headerMeta} color="secondaryText">
+              Overs {computed.oversText}
             </ThemeText>
-            <ThemeText style={styles.headerMeta} color="white">
-              RR: {computed.rr}
+            <ThemeText style={styles.headerMeta} color="secondaryText">
+              RR {computed.rr}
             </ThemeText>
           </View>
         </View>
 
         <View style={styles.headerRow2}>
-          <ThemeText style={styles.headerSub} color="white">
-            Bowling: {match.bowlingTeamName}
+          <ThemeText style={styles.headerSub} color="secondaryText">
+            vs {match.bowlingTeamName}
           </ThemeText>
 
-          <View style={[styles.pill, { borderColor: theme.primary }]}>
-            <ThemeText style={styles.pillText} color="primary">
+          <View
+            style={[
+              styles.pill,
+              {
+                borderColor: match.isCompleted ? theme.border : theme.accent,
+                backgroundColor: match.isCompleted
+                  ? theme.surfaceElevated
+                  : theme.primaryMuted,
+              },
+            ]}
+          >
+            <ThemeText
+              style={styles.pillText}
+              color={match.isCompleted ? 'secondaryText' : 'primary'}
+            >
               {match.isCompleted ? 'Completed' : 'Live'}
             </ThemeText>
           </View>
@@ -170,9 +191,9 @@ const InningsScorecard = ({
         style={[
           styles.card,
           {
-            backgroundColor: theme.background,
-            borderWidth: 1,
-            borderColor: colors[isDark ? 'dark' : 'light'].gray4,
+            backgroundColor: theme.surface,
+            borderWidth: StyleSheet.hairlineWidth,
+            borderColor: theme.border,
           },
         ]}
       >
@@ -181,24 +202,30 @@ const InningsScorecard = ({
         </ThemeText>
 
         <View
-          style={[styles.tableHeader, { borderBottomColor: theme.primary }]}
+          style={[
+            styles.tableHeader,
+            {
+              borderBottomColor: theme.border,
+              backgroundColor: theme.primaryMuted,
+            },
+          ]}
         >
-          <ThemeText style={[styles.th, styles.nameCol]} color="white">
+          <ThemeText style={[styles.th, styles.nameCol]} color="primary">
             Name
           </ThemeText>
-          <ThemeText style={[styles.th, styles.numCol]} color="white">
+          <ThemeText style={[styles.th, styles.numCol]} color="primary">
             R
           </ThemeText>
-          <ThemeText style={[styles.th, styles.numCol]} color="white">
+          <ThemeText style={[styles.th, styles.numCol]} color="primary">
             B
           </ThemeText>
-          <ThemeText style={[styles.th, styles.numCol]} color="white">
+          <ThemeText style={[styles.th, styles.numCol]} color="primary">
             4s
           </ThemeText>
-          <ThemeText style={[styles.th, styles.numCol]} color="white">
+          <ThemeText style={[styles.th, styles.numCol]} color="primary">
             6s
           </ThemeText>
-          <ThemeText style={[styles.th, styles.srCol]} color="white">
+          <ThemeText style={[styles.th, styles.srCol]} color="primary">
             SR
           </ThemeText>
         </View>
@@ -206,7 +233,7 @@ const InningsScorecard = ({
         {computed.batters.map((p: any) => (
           <View
             key={p.id}
-            style={[styles.row, { borderBottomColor: theme.primary }]}
+            style={[styles.row, { borderBottomColor: theme.border }]}
           >
             <View style={styles.nameCol}>
               <ThemeText
@@ -216,7 +243,7 @@ const InningsScorecard = ({
               >
                 {p.name}
               </ThemeText>
-              <ThemeText style={styles.playerSub} color="white">
+              <ThemeText style={styles.playerSub} color="secondaryText">
                 {p.isOut ? 'out' : 'not out'}
               </ThemeText>
             </View>
@@ -240,7 +267,7 @@ const InningsScorecard = ({
         ))}
 
         {computed.didNotBat.length > 0 && (
-          <ThemeText style={styles.didNotBat} color="white">
+          <ThemeText style={styles.didNotBat} color="secondaryText">
             Did not bat: {computed.didNotBat.map((p: any) => p.name).join(', ')}
           </ThemeText>
         )}
@@ -251,11 +278,10 @@ const InningsScorecard = ({
         style={[
           styles.card,
           {
-            backgroundColor: theme.background,
+            backgroundColor: theme.surface,
             marginVertical: heightPixel(20),
-
-            borderWidth: 1,
-            borderColor: colors[isDark ? 'dark' : 'light'].gray4,
+            borderWidth: StyleSheet.hairlineWidth,
+            borderColor: theme.border,
           },
         ]}
       >
@@ -264,21 +290,27 @@ const InningsScorecard = ({
         </ThemeText>
 
         <View
-          style={[styles.tableHeader, { borderBottomColor: theme.primary }]}
+          style={[
+            styles.tableHeader,
+            {
+              borderBottomColor: theme.border,
+              backgroundColor: theme.primaryMuted,
+            },
+          ]}
         >
-          <ThemeText style={[styles.th, styles.nameCol]} color="white">
+          <ThemeText style={[styles.th, styles.nameCol]} color="primary">
             Name
           </ThemeText>
-          <ThemeText style={[styles.th, styles.numCol]} color="white">
+          <ThemeText style={[styles.th, styles.numCol]} color="primary">
             O
           </ThemeText>
-          <ThemeText style={[styles.th, styles.numCol]} color="white">
+          <ThemeText style={[styles.th, styles.numCol]} color="primary">
             R
           </ThemeText>
-          <ThemeText style={[styles.th, styles.numCol]} color="white">
+          <ThemeText style={[styles.th, styles.numCol]} color="primary">
             W
           </ThemeText>
-          <ThemeText style={[styles.th, styles.srCol]} color="white">
+          <ThemeText style={[styles.th, styles.srCol]} color="primary">
             Econ
           </ThemeText>
         </View>
@@ -289,24 +321,24 @@ const InningsScorecard = ({
           return (
             <View
               key={p.id}
-              style={[styles.row, { borderBottomColor: theme.primary }]}
-            >
-              <View style={styles.nameCol}>
-                <ThemeText
-                  style={styles.playerName}
-                  color="text"
-                  numberOfLines={1}
-                >
-                  {p.name}
-                </ThemeText>
-                <ThemeText
-                  style={styles.playerSub}
-                  color="white"
-                  numberOfLines={1}
-                >
-                  {p.role}
-                </ThemeText>
-              </View>
+            style={[styles.row, { borderBottomColor: theme.border }]}
+          >
+            <View style={styles.nameCol}>
+              <ThemeText
+                style={styles.playerName}
+                color="text"
+                numberOfLines={1}
+              >
+                {p.name}
+              </ThemeText>
+              <ThemeText
+                style={styles.playerSub}
+                color="secondaryText"
+                numberOfLines={1}
+              >
+                {p.role}
+              </ThemeText>
+            </View>
 
               <ThemeText style={[styles.td, styles.numCol]} color="text">
                 {p.overs ?? '0.0'}
@@ -327,7 +359,16 @@ const InningsScorecard = ({
 
       {/* FALL OF WICKETS */}
       {computed.fow.length > 0 && (
-        <View style={[styles.card, { backgroundColor: theme.background }]}>
+        <View
+          style={[
+            styles.card,
+            {
+              backgroundColor: theme.surface,
+              borderWidth: StyleSheet.hairlineWidth,
+              borderColor: theme.border,
+            },
+          ]}
+        >
           <ThemeText style={styles.cardTitle} color="text">
             Fall of Wickets
           </ThemeText>
@@ -335,9 +376,9 @@ const InningsScorecard = ({
           {computed.fow.map((line: string, idx: number) => (
             <View
               key={`${line}-${idx}`}
-              style={[styles.fowRow, { borderBottomColor: theme.primary }]}
+              style={[styles.fowRow, { borderBottomColor: theme.border }]}
             >
-              <ThemeText style={styles.fowText} color="white">
+              <ThemeText style={styles.fowText} color="secondaryText">
                 {line}
               </ThemeText>
             </View>
@@ -346,8 +387,18 @@ const InningsScorecard = ({
       )}
 
       {/* FOOTER */}
-      <View style={[styles.footer, { borderColor: theme.primary }]}>
-        <ThemeText color="white">Extras: {computed.extras}</ThemeText>
+      <View
+        style={[
+          styles.footer,
+          {
+            borderColor: theme.border,
+            backgroundColor: theme.surfaceElevated,
+          },
+        ]}
+      >
+        <ThemeText color="text" style={styles.extrasFooter}>
+          Extras: {computed.extras}
+        </ThemeText>
       </View>
     </ScrollView>
   );
@@ -388,6 +439,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: widthPixel(14),
     paddingTop: heightPixel(14),
     paddingBottom: heightPixel(12),
+    marginHorizontal: widthPixel(12),
+    marginTop: heightPixel(12),
+    borderRadius: widthPixel(16),
+    borderWidth: StyleSheet.hairlineWidth,
   },
   headerTitle: {
     fontFamily: fontFamilies.bold,
@@ -500,6 +555,10 @@ const styles = StyleSheet.create({
     marginHorizontal: widthPixel(12),
     padding: widthPixel(12),
     borderRadius: widthPixel(12),
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  extrasFooter: {
+    fontFamily: fontFamilies.semibold,
+    fontSize: fontPixel(14),
   },
 });

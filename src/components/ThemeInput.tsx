@@ -29,6 +29,8 @@ type TextInputField = {
   leftIcon?: any;
   rightIcon?: any;
   containerStyleOuter?: any;
+  /** Merged into the main input row (bordered field) — use for auth-stack elevation, etc. */
+  inputWrapperStyle?: ViewStyle;
   underLefttitle?: string;
   isVisibleRightIcon?: boolean;
   onSubmitEditing?: any;
@@ -57,19 +59,17 @@ const ThemeInput = (props: TextInputField) => {
         style={[
           style.mainConatiner,
           {
-            backgroundColor: colors[isDark ? 'dark' : 'light'].background,
-            borderWidth: 1,
-            borderColor: isDark
-              ? colors[isDark ? 'dark' : 'light'].primary
-              : colors[isDark ? 'dark' : 'light'].gray4,
+            backgroundColor: colors[isDark ? 'dark' : 'light'].surface,
+            borderColor: colors[isDark ? 'dark' : 'light'].border,
           },
+          props.inputWrapperStyle,
         ]}
       >
         <Image
           resizeMode="contain"
           style={style.leftIcon}
           source={props.leftIcon}
-          tintColor={colors[isDark ? 'dark' : 'light'].primary}
+          // tintColor={colors[isDark ? 'dark' : 'light'].primary}
         />
         <TextInput
           returnKeyType={props.returnKeyType}
@@ -81,11 +81,13 @@ const ThemeInput = (props: TextInputField) => {
           value={props.value}
           onChangeText={props.onChangeText}
           editable={props.editable}
-          placeholderTextColor={colors[isDark ? 'dark' : 'light'].text}
+          placeholderTextColor={
+            colors[isDark ? 'dark' : 'light'].secondaryText
+          }
           style={[
             style.container,
             props.styleContainer,
-            { color: colors[isDark ? 'dark' : 'light'].desText },
+            { color: colors[isDark ? 'dark' : 'light'].text },
           ]}
           secureTextEntry={props.secureTextEntry}
           keyboardType={props.keyboardType}
@@ -147,20 +149,19 @@ const style = StyleSheet.create({
     fontSize: fontPixel(14),
     marginLeft: widthPixel(5),
     marginBottom: heightPixel(5),
-    elevation: 5,
   },
   mainConatiner: {
     flexDirection: 'row',
     width: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 10,
-    elevation: 5,
-
+    borderRadius: 14,
+    borderWidth: 1,
+    elevation: 2,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
     marginVertical: heightPixel(5),
   },
   container: {

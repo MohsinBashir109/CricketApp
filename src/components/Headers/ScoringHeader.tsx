@@ -4,19 +4,17 @@ import {
   Pressable,
   StatusBar,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
-import { backarrow, pause } from '../../assets/images';
+import { backarrow, pause, play } from '../../assets/images';
 import { fontPixel, heightPixel, widthPixel } from '../../utils/constants';
 
+import LinearGradient from 'react-native-linear-gradient';
 import React from 'react';
 import ThemeText from '../ThemeText';
 import { colors } from '../../utils/colors';
-import { current } from '@reduxjs/toolkit';
 import { fontFamilies } from '../../utils/fontfamilies';
 import { useNavigation } from '@react-navigation/native';
-import { useSelector } from 'react-redux';
 import { useThemeContext } from '../../theme/themeContext';
 
 interface Score {
@@ -24,146 +22,226 @@ interface Score {
   tossWinnerName?: string;
   overs?: string;
   innings1?: any;
+  currentInnings?: number;
+  isPaused?: boolean;
+  onTogglePause?: () => void;
 }
-const ScoringHeader = ({ innings, tossWinnerName, overs, innings1 }: Score) => {
+
+const ballsToOvers = (balls: number) =>
+  `${Math.floor(balls / 6)}.${balls % 6}`;
+
+const ballsToOversDecimal = (balls: number) =>
+  Math.floor(balls / 6) + (balls % 6) / 6;
+
+const ScoringHeader = ({
+  innings,
+  tossWinnerName,
+  overs,
+  innings1,
+  currentInnings,
+  isPaused = false,
+  onTogglePause,
+}: Score) => {
   const navigation = useNavigation<any>();
-  const ballsToOvers = (balls: number) =>
-    `${Math.floor(balls / 6)}.${balls % 6}`;
-
-  // for run rate calculation, use real overs as decimal
-  // e.g. 7 balls = 1 + 1/6 = 1.1667 overs
-  const ballsToOversDecimal = (balls: number) =>
-    Math.floor(balls / 6) + (balls % 6) / 6;
-
   const { isDark } = useThemeContext();
+  const theme = colors[isDark ? 'dark' : 'light'];
 
-  console.log('======================>innings1', innings1);
   const oversBowledText = ballsToOvers(innings.totalBalls);
   const oversLimitText = `${overs}`;
   const oversDecimal = ballsToOversDecimal(innings.totalBalls);
   const crr =
     oversDecimal > 0 ? (innings.totalRuns / oversDecimal).toFixed(2) : '0.00';
 
-  const handleBack = () => {
-    navigation.goBack();
-  };
+  const statusBarStyle =
+    isDark && theme.primary === '#3DDC9C' ? 'dark-content' : 'light-content';
 
   return (
-    <View
-      style={[
-        {
-          backgroundColor: colors[isDark ? 'dark' : 'light'].primary,
-        },
-      ]}
+    <LinearGradient
+      colors={theme.tabGradient}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={styles.gradient}
     >
       <StatusBar
         translucent
-        backgroundColor={'transparent'}
-        barStyle={'dark-content'}
+        backgroundColor="transparent"
+        barStyle={statusBarStyle}
       />
 
-      <View style={styles.innercontainer}>
-        <View style={styles.header}>
-          <View>
-            <Pressable hitSlop={20} onPress={handleBack}>
-              <Image
-                source={backarrow}
-                style={styles.image}
-                tintColor={colors[isDark ? 'dark' : 'light'].white}
-              />
-            </Pressable>
-          </View>
-          <View>
-            <ThemeText color="text" style={styles.text}>
-              T{overs} Match
+      <View
+        style={[
+          styles.innercontainer,
+          {
+            paddingTop:
+              Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) + 8 : 52,
+          },
+        ]}
+      >
+        <View style={styles.toolbar}>
+          <Pressable hitSlop={16} onPress={() => navigation.goBack()}>
+            <Image
+              source={backarrow}
+              style={styles.iconBtn}
+              tintColor={theme.white}
+            />
+          </Pressable>
+          <View style={styles.toolbarCenter}>
+            <View
+              style={[
+                styles.livePill,
+                { backgroundColor: 'rgba(255,255,255,0.22)' },
+              ]}
+            >
+              <ThemeText style={styles.liveText} color="white">
+                {isPaused ? 'PAUSED' : 'LIVE'}
+              </ThemeText>
+            </View>
+            <ThemeText style={styles.formatText} color="white">
+              T{overs}
             </ThemeText>
           </View>
+          <Pressable hitSlop={16} onPress={() => onTogglePause?.()}>
+            <Image
+              source={isPaused ? play : pause}
+              style={styles.iconBtn}
+              tintColor={theme.white}
+            />
+          </Pressable>
+        </View>
+
+        <ThemeText style={styles.battingTeam} color="white" numberOfLines={1}>
+          {innings.battingTeamName}
+        </ThemeText>
+
+        <View style={styles.scoreBlock}>
           <View>
-            <Pressable hitSlop={20}>
-              <Image
-                source={pause}
-                style={styles.image}
-                tintColor={colors[isDark ? 'dark' : 'light'].white}
-              />
-            </Pressable>
-          </View>
-        </View>
-        <View style={{ flexDirection: 'row' }}>
-          <ThemeText color="text" style={styles.text}>
-            {innings.battingTeamName}
-          </ThemeText>
-          <View style={{ flex: 1 }} />
-          <ThemeText color="text" style={styles.text2}>
-            Overs
-          </ThemeText>
-        </View>
-        <View style={{ flexDirection: 'row' }}>
-          <View style={{}}>
-            <ThemeText color="text" style={styles.text3}>
+            <ThemeText style={styles.megaRuns} color="white">
               {innings.totalRuns}
-              <ThemeText color="text" style={styles.text3}>
-                /{innings.totalWickets}
+              <ThemeText style={styles.slashWkts} color="white">
+                {' '}
+                / {innings.totalWickets}
               </ThemeText>
             </ThemeText>
-          </View>
-          <View style={{ flex: 1 }} />
-
-          <View style={{}}>
-            <ThemeText color="text" style={styles.text4}>
-              {oversBowledText}/{oversLimitText}
+            <ThemeText style={styles.inningsChip} color="white">
+              Innings {currentInnings ?? 1}
             </ThemeText>
-            <ThemeText color="text" style={styles.text5}>
-              CRR : {crr}
+          </View>
+          <View style={styles.oversBlock}>
+            <ThemeText style={styles.oversValue} color="white">
+              {oversBowledText}
+              <ThemeText style={styles.oversCap} color="white">
+                /{oversLimitText}
+              </ThemeText>
+            </ThemeText>
+            <ThemeText style={styles.crr} color="white">
+              CRR {crr}
             </ThemeText>
           </View>
         </View>
+
         {innings1?.isCompleted && (
-          <View>
-            <ThemeText color="text" style={styles.text5}>
-              Target : {innings1?.totalRuns}
+          <View style={styles.targetRow}>
+            <ThemeText style={styles.targetText} color="white">
+              Target {innings1?.totalRuns}
             </ThemeText>
           </View>
         )}
       </View>
-    </View>
+    </LinearGradient>
   );
 };
 
 export default ScoringHeader;
 
 const styles = StyleSheet.create({
+  gradient: {
+    width: '100%',
+  },
   innercontainer: {
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight ?? 0 : 34,
-    paddingHorizontal: widthPixel(20),
+    paddingHorizontal: widthPixel(18),
+    paddingBottom: heightPixel(16),
   },
-  text: {
-    fontFamily: fontFamilies.bold,
-    fontSize: fontPixel(18),
-  },
-  header: {
-    paddingTop: heightPixel(10),
+  toolbar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    marginBottom: heightPixel(10),
   },
-  image: {
-    width: widthPixel(20),
-    height: heightPixel(20),
+  iconBtn: {
+    width: widthPixel(22),
+    height: heightPixel(22),
   },
-  text2: {
-    fontFamily: fontFamilies.medium,
-    fontSize: fontPixel(16),
+  toolbarCenter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: widthPixel(10),
   },
-  text3: {
+  livePill: {
+    paddingHorizontal: widthPixel(10),
+    paddingVertical: heightPixel(4),
+    borderRadius: widthPixel(8),
+  },
+  liveText: {
     fontFamily: fontFamilies.bold,
-    fontSize: fontPixel(40),
+    fontSize: fontPixel(11),
+    letterSpacing: 1,
   },
-  text4: {
+  formatText: {
     fontFamily: fontFamilies.semibold,
-    fontSize: fontPixel(24),
+    fontSize: fontPixel(14),
+    opacity: 0.95,
   },
-  text5: {
+  battingTeam: {
     fontFamily: fontFamilies.semibold,
+    fontSize: fontPixel(15),
+    opacity: 0.92,
+    marginBottom: heightPixel(6),
+  },
+  scoreBlock: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+  },
+  megaRuns: {
+    fontFamily: fontFamilies.bold,
+    fontSize: fontPixel(44),
+    letterSpacing: -1,
+  },
+  slashWkts: {
+    fontFamily: fontFamilies.bold,
+    fontSize: fontPixel(26),
+    opacity: 0.9,
+  },
+  inningsChip: {
+    marginTop: heightPixel(6),
+    fontFamily: fontFamilies.medium,
     fontSize: fontPixel(12),
+    opacity: 0.85,
+  },
+  oversBlock: {
+    alignItems: 'flex-end',
+  },
+  oversValue: {
+    fontFamily: fontFamilies.bold,
+    fontSize: fontPixel(26),
+  },
+  oversCap: {
+    fontFamily: fontFamilies.semibold,
+    fontSize: fontPixel(18),
+    opacity: 0.85,
+  },
+  crr: {
+    marginTop: heightPixel(4),
+    fontFamily: fontFamilies.medium,
+    fontSize: fontPixel(12),
+    opacity: 0.9,
+  },
+  targetRow: {
+    marginTop: heightPixel(10),
+  },
+  targetText: {
+    fontFamily: fontFamilies.semibold,
+    fontSize: fontPixel(13),
+    opacity: 0.95,
   },
 });

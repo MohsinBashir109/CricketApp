@@ -1,35 +1,107 @@
-import { StyleSheet, Text, View } from 'react-native';
-import React from 'react';
-import { widthPixel } from '../../utils/constants';
+import { StyleSheet, View } from 'react-native';
+import { widthPixel, fontPixel, heightPixel } from '../../utils/constants';
 import ThemeText from '../ThemeText';
+import { colors } from '../../utils/colors';
+import { fontFamilies } from '../../utils/fontfamilies';
+import { useThemeContext } from '../../theme/themeContext';
 
-const BatsmenBowlerScorringHeader = ({ title }: any) => {
+type Variant = 'batting' | 'bowling';
+
+const BatsmenBowlerScorringHeader = ({
+  title,
+  variant = 'batting',
+}: {
+  title: string;
+  variant?: Variant;
+}) => {
+  const { isDark } = useThemeContext();
+  const theme = colors[isDark ? 'dark' : 'light'];
+
   return (
     <View
-      style={{
-        width: '100%',
-        paddingHorizontal: widthPixel(20),
-        flexDirection: 'row',
-      }}
+      style={[
+        styles.wrap,
+        {
+          backgroundColor: theme.surfaceElevated,
+          borderColor: theme.border,
+        },
+      ]}
     >
-      <View style={{ flex: 1 }}>
-        <ThemeText color="text">{title}</ThemeText>
+      <View style={{ flex: 1.4 }}>
+        <ThemeText style={styles.title} color="secondaryText">
+          {title}
+        </ThemeText>
       </View>
-      <View style={{ flexDirection: 'row' }}>
-        <View style={{ marginHorizontal: widthPixel(40) }}>
-          <ThemeText color="text">R</ThemeText>
+      {variant === 'batting' ? (
+        <View style={styles.cols}>
+          <ThemeText style={styles.col} color="desText">
+            R
+          </ThemeText>
+          <ThemeText style={styles.col} color="desText">
+            B
+          </ThemeText>
+          <ThemeText style={[styles.col, styles.colWide]} color="desText">
+            SR
+          </ThemeText>
         </View>
-        <View style={{ marginHorizontal: widthPixel(40) }}>
-          <ThemeText color="text">B</ThemeText>
+      ) : (
+        <View style={styles.cols}>
+          <ThemeText style={styles.col} color="desText">
+            O
+          </ThemeText>
+          <ThemeText style={styles.col} color="desText">
+            M
+          </ThemeText>
+          <ThemeText style={styles.col} color="desText">
+            R
+          </ThemeText>
+          <ThemeText style={styles.col} color="desText">
+            W
+          </ThemeText>
+          <ThemeText style={[styles.col, styles.colEcon]} color="desText">
+            Econ
+          </ThemeText>
         </View>
-        <View style={{ marginHorizontal: widthPixel(20) }}>
-          <ThemeText color="text">Sr</ThemeText>
-        </View>
-      </View>
+      )}
     </View>
   );
 };
 
 export default BatsmenBowlerScorringHeader;
 
-const styles = StyleSheet.create({});
+const styles = StyleSheet.create({
+  wrap: {
+    width: '100%',
+    paddingHorizontal: widthPixel(14),
+    paddingVertical: heightPixel(10),
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: widthPixel(12),
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  title: {
+    fontFamily: fontFamilies.bold,
+    fontSize: fontPixel(12),
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+  },
+  cols: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    justifyContent: 'flex-end',
+    gap: widthPixel(4),
+  },
+  col: {
+    width: widthPixel(36),
+    textAlign: 'right',
+    fontFamily: fontFamilies.semibold,
+    fontSize: fontPixel(11),
+  },
+  colWide: {
+    width: widthPixel(44),
+  },
+  colEcon: {
+    width: widthPixel(48),
+  },
+});

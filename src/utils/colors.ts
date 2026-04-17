@@ -1,94 +1,108 @@
-import { fontPixel, heightPixel } from './constants';
-
-const tintColorLight = '#0a7ea4';
+/** Cricket scoring app — semantic color tokens (light / dark must share the same keys). */
 
 export const colors = {
   light: {
-    drawerGradient: ['#008080', '#59ACAC'],
-    dark: '#0A2342',
-    primary: '#008080',
-    // primary: '#58E6FF',
+    drawerGradient: ['#0B1D3A', '#12305A'],
 
-    secondary: '#6B7280AB',
-    text: '#001A00',
-    background: '#FFFFFF',
+    dark: '#08111F',
+
+    primary: '#12305A', // main brand blue for buttons
+    primaryMuted: '#EAF1F8', // soft blue background
+    accent: '#D7A63D', // trophy gold accent
+    wicket: '#B4233C', // muted red
+    extras: '#2D6CDF', // bright support blue
+
+    secondary: '#4A607C',
+    text: '#0C1726',
+    secondaryText: '#4A607C',
+    desText: '#6A7A90',
+
+    onPrimary: '#FFFFFF',
+
+    background: '#EEF4FA', // light blue overall background
+    surface: '#FFFFFF',
+    surfaceElevated: '#F8FBFE',
     white: '#FFFFFF',
-    headerColor: '#FFFFFF',
-    tint: tintColorLight,
-    headerColorText: '#008080',
-    icon: '#687076',
-    tabIconDefault: '#687076',
-    tabIconSelected: tintColorLight,
-    gray1: '#9CA3AF',
-    gray2: '#4B5563',
-    gray3: '#D1D5DB',
-    gray4: '#D9D9D9',
-    gray5: '#EFEFEF',
-    gray6: '#f3f4f6',
-    secondaryText: '#6B7280A3',
-    red: '#FF4444',
-    error: '#FF0000',
-    buttonBackGround: '#30A7FB',
-    buttonBackGroundOther: '#D9D9D9',
-    desText: '#666666',
-    fogotText: '#067CCF',
-    orColor: '#6B7280BD',
+
+    headerColor: '#0B1D3A', // dark blue header
+    headerColorText: '#FFFFFF',
+
+    tint: '#12305A',
+    icon: '#3E5572',
+
+    tabIconDefault: '#8A9BB0',
+    tabIconSelected: '#12305A',
+
+    gray1: '#C8D3DF',
+    gray2: '#6E7D90',
+    gray3: '#E3EAF2',
+    gray4: '#D3DDE8',
+    gray5: '#EEF3F8',
+    gray6: '#F7FAFD',
+
+    red: '#C73A3A',
+    error: '#C73A3A',
+    green: '#1F7A4F',
+
+    border: '#DCE5EF',
+
+    buttonBackGround: '#12305A', // blue buttons
+    buttonBackGroundOther: '#EAF1F8', // light blue secondary button
+
+    fogotText: '#12305A',
+    orColor: '#8A9BB0',
+
     transparent: 'transparent',
-    bottomTab: '#74EAFF',
-    green: '#00FF00',
-    tabGradient: ['#008080', '#59ACAC'],
-    drawerbackground: '#008080',
-    settingsBackgroundRows: ['#008080', '#59ACAC'],
-    wRefresh: '#EAFBE7',
+
+    bottomTab: '#FFFFFF',
+    tabGradient: ['#0B1D3A', '#12305A'], // blue tab gradient
+
+    drawerbackground: '#0B1D3A',
+    settingsBackgroundRows: ['#FFFFFF', '#EEF4FA'],
+
+    wRefresh: '#EAF1F8',
   },
   dark: {
-    // ✅ background system
-    drawerGradient: ['#0B0F0E', '#0B0F0E'],
-    background: '#0B0F0E', // near-black (better than pure #000)
-    surface: '#0F1513', // cards/sheets
-    white: '#FFFFFF',
-    drawerbackground: '#0B0F0E',
-    headerColor: '#00A32C',
-    headerColorText: '#FFFFFF',
-    wRefresh: '#EAFBE7',
-    // ✅ neon accent
-    primary: '#00A32C', // neon green
-    green: '#00FF00',
-    settingsBackgroundRows: ['#0B0F0E', '#0B0F0E'],
-    // ✅ text
-    text: '#EAFBE7', // readable on dark
-    secondaryText: '#A7B3AD', // muted text
-    desText: '#A7B3AD',
-
-    // ✅ grays / borders
-    gray1: '#2A3330',
-    gray2: '#1E2623',
-    gray3: '#22302B',
-    gray4: '#2C3A34',
-    gray5: '#141B18',
-    gray6: '#101614',
-
-    // ✅ icons/tabs
-    icon: '#A7B3AD',
-    tabIconDefault: '#7B8A83',
-    tabIconSelected: '#00A32C',
-
-    // ✅ status colors
-    red: '#FF4D4D',
-    error: '#FF4D4D',
-
-    // ✅ buttons
-    buttonBackGround: '#00A32C', // neon
-    buttonBackGroundOther: '#1A231F', // secondary button background
-    fogotText: '#00A32C',
-
-    // optional
-    secondary: '#A7B3AD',
-    transparent: 'transparent',
-    bottomTab: '#0F1513',
+    drawerGradient: ['#0C0F0E', '#0F1814'],
     dark: '#000000',
-    tint: '#00A32C',
-    orColor: '#A7B3AD',
-    tabGradient: ['#00A32C', '#0FFF50'],
+    primary: '#25D366',
+    primaryMuted: '#0F2A22',
+    accent: '#F5B73A',
+    wicket: '#FB7185',
+    extras: '#818CF8',
+    secondary: '#94A3B8',
+    text: '#E8EEEB',
+    secondaryText: '#9AA8A3',
+    desText: '#8FA0B5',
+    onPrimary: '#0C0F0E',
+    background: '#0C0F0E',
+    surface: '#141A18',
+    surfaceElevated: '#1A2220',
+    white: '#FFFFFF',
+    drawerbackground: '#0C0F0E',
+    headerColor: '#0C0F0E',
+    headerColorText: '#E8EEEB',
+    tint: '#3DDC9C',
+    icon: '#94A3B8',
+    tabIconDefault: '#64748B',
+    tabIconSelected: '#3DDC9C',
+    gray1: '#334155',
+    gray2: '#1E293B',
+    gray3: '#243244',
+    gray4: '#2F3D38',
+    gray5: '#0B1210',
+    gray6: '#111827',
+    red: '#F87171',
+    error: '#EF4444',
+    green: '#34D399',
+    border: '#2A3430',
+    buttonBackGround: '#3DDC9C',
+    buttonBackGroundOther: '#1A2220',
+    fogotText: '#3DDC9C',
+    transparent: 'transparent',
+    bottomTab: '#0B1210',
+    tabGradient: ['#2EE6A8', '#1A8A66'],
+    settingsBackgroundRows: ['#111827', '#0F1513'],
+    wRefresh: '#0F2A22',
   },
 };

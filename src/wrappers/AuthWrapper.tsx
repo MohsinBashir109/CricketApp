@@ -12,7 +12,7 @@ import { colors } from '../utils/colors';
 import { fontFamilies } from '../utils/fontfamilies';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeContext } from '../theme/themeContext';
-import { ball, logo, logo2 } from '../assets/images/index';
+import { logo, darkmode, lightmode } from '../assets/images/index';
 
 type props = {
   text?: string;
@@ -23,42 +23,44 @@ type props = {
 const AuthWrapper = ({ children, text, desText }: props) => {
   const insets = useSafeAreaInsets();
   const { isDark } = useThemeContext();
+  const palette = colors[isDark ? 'dark' : 'light'];
   return (
     <ImageBackground
-      source={undefined}
+      source={isDark ? darkmode : lightmode}
+      // resizeMode="contain"
+      // imageStyle={{ opacity: 0.8 }}
       style={[
         styles.background,
         {
           paddingTop: insets.top,
-          backgroundColor: colors[isDark ? 'dark' : 'light'].background,
+          backgroundColor: palette.background,
         },
       ]}
     >
       <StatusBar
         translucent
         backgroundColor={'transparent'}
-        barStyle={'dark-content'}
+        barStyle={isDark ? 'light-content' : 'dark-content'}
       />
       <View style={styles.content}>
         <View style={styles.header}>
-          <Image source={logo2} resizeMode="contain" style={styles.image} />
+          <Image source={logo} resizeMode="contain" style={styles.image} />
           {text && (
             <ThemeText color="text" style={styles.textChildern}>
               {text}
             </ThemeText>
           )}
           {desText && (
-            <ThemeText color="desText" style={styles.desText}>
+            <ThemeText
+              color={isDark ? 'secondaryText' : 'tint'}
+              style={styles.desText}
+            >
               {desText}
             </ThemeText>
           )}
         </View>
-        <View style={styles.formArea}>
-          
-          {children}
-        </View>
+        <View style={styles.formArea}>{children}</View>
       </View>
-     
     </ImageBackground>
   );
 };
@@ -82,8 +84,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: widthPixel(25),
   },
   image: {
-    width: widthPixel(120),
+    width: widthPixel(200),
     height: heightPixel(180),
+    // lift the logo off the auth background (no card/container)
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.18,
+    shadowRadius: 14,
   },
   background: {
     flex: 1,

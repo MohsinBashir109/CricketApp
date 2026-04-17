@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import {
   addStrikerAndBowlerInnings,
   completeMatchIfNeeded,
@@ -7,10 +7,11 @@ import {
   setActiveModal,
   setNextBatsman,
   setNextBowler,
+  setScoringPaused,
   startSecondInnings,
   undoLastBall,
 } from '../../../features/match/matchSlice';
-import { fontPixel, heightPixel, widthPixel } from '../../../utils/constants';
+import { heightPixel, widthPixel } from '../../../utils/constants';
 import { useDispatch, useSelector } from 'react-redux';
 
 import BatsmenBowlerCard from '../../../components/Cards/BatsmenBowlerCard';
@@ -21,19 +22,21 @@ import CurrentOver from '../../../components/Cards/CurrentOver';
 import ScoreControls from '../../../components/Flatlistcomponents/ScoreControls';
 import ScoringHeader from '../../../components/Headers/ScoringHeader';
 import { colors } from '../../../utils/colors';
-import { fontFamilies } from '../../../utils/fontfamilies';
 import { routes } from '../../../utils/routes';
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeContext } from '../../../theme/themeContext';
 
 const MatchScoring = () => {
   const { isDark } = useThemeContext();
+  const theme = colors[isDark ? 'dark' : 'light'];
+  const insets = useSafeAreaInsets();
   const { currentMatch, lastCompletedMatch } = useSelector(
     (state: any) => state.match,
   );
   const dispatch = useDispatch();
   const navigation = useNavigation<any>();
-  // ✅ ALWAYS SAFE (can be undefined)
+
   const innings = useMemo(() => {
     if (!currentMatch) return undefined;
     return currentMatch.currentInnings === 1
@@ -41,7 +44,6 @@ const MatchScoring = () => {
       : currentMatch.innings2;
   }, [currentMatch]);
 
-  // ✅ Derived safe values (never crash)
   const activeModal = innings?.activeModal ?? null;
 
   const battingTeamObj =
@@ -59,23 +61,22 @@ const MatchScoring = () => {
     innings?.nonStrikerId == null ||
     innings?.bowlerId == null;
 
+  const isPaused = currentMatch?.isScoringPaused ?? false;
+  const ballCount = innings?.balls?.length ?? 0;
+
   const isReady =
     !!currentMatch && !!innings && !!currentMatch.teamA && !!currentMatch.teamB;
 
-  // ---------------- EFFECTS (must always run) ----------------
-
-  // OPENERS modal auto-open (only when innings running)
   const isInningsStart = (innings?.balls?.length ?? 0) === 0;
   const needOpenersAtStart =
     innings?.strikerId == null || innings?.nonStrikerId == null;
+
   useEffect(() => {
-    // when reducer pushes match to history and clears currentMatch
     if (!currentMatch) {
       navigation.goBack();
-      // OR: navigation.replace(routes.matchHistory)
-      // OR: navigation.navigate(routes.matchHistory)
     }
   }, [currentMatch, navigation]);
+
   useEffect(() => {
     if (!innings) return;
     if (innings.isCompleted) return;
@@ -91,7 +92,6 @@ const MatchScoring = () => {
     needOpenersAtStart,
   ]);
 
-  // Start second innings when first innings completes
   useEffect(() => {
     if (!currentMatch) return;
     if (currentMatch.currentInnings !== 1) return;
@@ -105,7 +105,6 @@ const MatchScoring = () => {
     currentMatch?.innings1?.isCompleted,
   ]);
 
-  // Complete match when both innings complete
   useEffect(() => {
     if (!currentMatch) return;
 
@@ -121,11 +120,6 @@ const MatchScoring = () => {
     currentMatch?.innings1?.isCompleted,
     currentMatch?.innings2?.isCompleted,
   ]);
-  useEffect(() => {
-    if (!currentMatch) {
-      navigation.goBack();
-    }
-  }, [currentMatch]);
 
   useEffect(() => {
     if (!currentMatch && lastCompletedMatch) {
@@ -135,42 +129,82 @@ const MatchScoring = () => {
 
   if (!isReady) {
     return (
-      <View
-        style={[
-          styles.container,
-          { backgroundColor: colors[isDark ? 'dark' : 'light'].background },
-        ]}
-      />
+      <View style={[styles.container, { backgroundColor: theme.background }]} />
     );
   }
 
-  // safe now because isReady true
   const safeInnings = innings!;
   const safeBattingTeamObj = battingTeamObj!;
   const safeBowlingTeamObj = bowlingTeamObj!;
 
   return (
-    <View
-      style={[
-        styles.container,
-        { backgroundColor: colors[isDark ? 'dark' : 'light'].background },
-      ]}
-    >
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       <ScoringHeader
         innings={safeInnings}
         overs={currentMatch.overs}
-        tossWinnerName={currentMatch.tossWinnerName}
         innings1={currentMatch?.innings1}
+        currentInnings={currentMatch.currentInnings ?? 1}
+        isPaused={isPaused}
+        onTogglePause={() => dispatch(setScoringPaused(!isPaused))}
       />
 
-      <BatsmenBowlerScorringHeader title="Batsmen Name" />
-      <Batsmenrow innings={safeInnings} currentMatch={currentMatch} />
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={[
+          styles.scrollInner,
+          { paddingBottom: heightPixel(12) },
+        ]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        nestedScrollEnabled
+      >
+        <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          <BatsmenBowlerScorringHeader title="Batsmen" variant="batting" />
+          <Batsmenrow innings={safeInnings} currentMatch={currentMatch} />
+        </View>
 
-      <BatsmenBowlerScorringHeader title="Bowler Name" />
-      <Bowlerow innings={safeInnings} currentMatch={currentMatch} />
+        <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          <BatsmenBowlerScorringHeader title="Bowler" variant="bowling" />
+          <Bowlerow innings={safeInnings} currentMatch={currentMatch} />
+        </View>
 
-      {/* OPENERS */}
+        <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          <CurrentOver
+            balls={safeInnings.balls || []}
+            totalBalls={safeInnings.totalBalls || 0}
+          />
+        </View>
+      </ScrollView>
+
+      <View
+        style={[
+          styles.controlsDock,
+          {
+            backgroundColor: theme.surface,
+            borderTopColor: theme.border,
+            paddingBottom: Math.max(insets.bottom, heightPixel(10)),
+          },
+        ]}
+      >
+        <ScoreControls
+          ballEntryDisabled={isPaused || needOpeners}
+          undoDisabled={ballCount === 0}
+          onRunPress={runs => dispatch(recordBall({ runsOffBat: runs }))}
+          onExtraPress={type => {
+            if (type === 'wide' || type === 'noball') {
+              dispatch(recordBall({ extra: type, extraRuns: 1 }));
+            } else {
+              dispatch(recordBall({ extra: type, extraRuns: 1 }));
+            }
+          }}
+          onWicketPress={() => dispatch(recordBall({ wicket: true }))}
+          onUndoPress={() => dispatch(undoLastBall())}
+          onEndOverPress={() => {}}
+        />
+      </View>
+
       <BatsmenBowlerCard
+        presentation="modal"
         innings={innings}
         currentMatch={currentMatch}
         mode="OPENERS"
@@ -178,7 +212,6 @@ const MatchScoring = () => {
         bowler={safeBowlingTeamObj.players || []}
         visible={activeModal === 'OPENERS'}
         onClose={() => {
-          // if still missing required picks, don't close
           if (needOpeners) return;
           dispatch(setActiveModal(null));
         }}
@@ -194,8 +227,8 @@ const MatchScoring = () => {
         }}
       />
 
-      {/* NEXT BATSMAN */}
       <BatsmenBowlerCard
+        presentation="modal"
         innings={innings}
         currentMatch={currentMatch}
         mode="NEXT_BATSMAN"
@@ -208,8 +241,8 @@ const MatchScoring = () => {
         }}
       />
 
-      {/* NEXT BOWLER */}
       <BatsmenBowlerCard
+        presentation="modal"
         innings={innings}
         currentMatch={currentMatch}
         mode="NEXT_BOWLER"
@@ -220,26 +253,6 @@ const MatchScoring = () => {
         onConfirmNextBowler={b => {
           dispatch(setNextBowler({ bowlerId: Number(b.id) }));
         }}
-      />
-
-      <CurrentOver
-        balls={safeInnings.balls || []}
-        totalBalls={safeInnings.totalBalls || 0}
-      />
-
-      <ScoreControls
-        onRunPress={runs => dispatch(recordBall({ runsOffBat: runs }))}
-        onExtraPress={type => {
-          // wide/noball not legal deliveries
-          if (type === 'wide' || type === 'noball') {
-            dispatch(recordBall({ extra: type, extraRuns: 1 }));
-          } else {
-            dispatch(recordBall({ extra: type, extraRuns: 1 }));
-          }
-        }}
-        onWicketPress={() => dispatch(recordBall({ wicket: true }))}
-        onUndoPress={() => dispatch(undoLastBall())}
-        onEndOverPress={() => console.log('END OVER')}
       />
     </View>
   );
@@ -252,22 +265,21 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
   },
-  topRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    paddingVertical: heightPixel(10),
+  scroll: {
+    flex: 1,
   },
-  rowRight: {
-    flexDirection: 'row',
-    gap: widthPixel(14),
-    alignItems: 'center',
-    width: '100%',
+  scrollInner: {
+    paddingHorizontal: widthPixel(12),
+    paddingTop: heightPixel(12),
   },
-  cell: {
-    width: widthPixel(26),
-    textAlign: 'right',
-    fontFamily: fontFamilies.medium,
-    fontSize: fontPixel(13),
+  card: {
+    borderRadius: widthPixel(16),
+    borderWidth: StyleSheet.hairlineWidth,
+    marginBottom: heightPixel(12),
+    overflow: 'hidden',
+  },
+  controlsDock: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingTop: heightPixel(6),
   },
 });

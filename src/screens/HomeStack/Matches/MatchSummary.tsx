@@ -1,34 +1,40 @@
 import Innings1Route, { Innings2Route } from '../../../components/Scenes';
 import {
+  Image,
   Platform,
   Pressable,
   StatusBar,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
 import React, { useState } from 'react';
 import { SceneMap, TabView } from 'react-native-tab-view';
-import { fontPixel, widthPixel } from '../../../utils/constants';
+import { fontPixel, heightPixel, widthPixel } from '../../../utils/constants';
 
-import HomeWrapper from '../../../wrappers/HomeWrapper';
 import ThemeText from '../../../components/ThemeText';
+import { backarrow } from '../../../assets/images';
 import { colors } from '../../../utils/colors';
 import { fontFamilies } from '../../../utils/fontfamilies';
 import { useThemeContext } from '../../../theme/themeContext';
+import { useNavigation } from '@react-navigation/native';
 import { useWindowDimensions } from 'react-native';
 
-const MatchSummary = ({ route, navigation }: any) => {
+const MatchSummary = ({ route }: any) => {
   const { isDark } = useThemeContext();
+  const theme = colors[isDark ? 'dark' : 'light'];
   const layout = useWindowDimensions();
+  const navigation = useNavigation();
+
+  const { match } = route.params;
 
   const [index, setIndex] = useState(0);
   const [routes] = useState([
     { key: 'innings1', title: 'Innings 1' },
     { key: 'innings2', title: 'Innings 2' },
   ]);
-  const renderScene = ({ route }: any) => {
-    switch (route.key) {
+
+  const renderScene = ({ route: r }: any) => {
+    switch (r.key) {
       case 'innings1':
         return <Innings1Route match={match?.innings1} fullMatch={match} />;
       case 'innings2':
@@ -38,35 +44,34 @@ const MatchSummary = ({ route, navigation }: any) => {
     }
   };
 
-  const { match } = route.params;
-  console.log('--------------------ccccccc', match);
-
   const CustomTabBar = ({ navigationState, jumpTo }: any) => {
     return (
-      <View style={{ flexDirection: 'row' }}>
+      <View
+        style={[
+          styles.tabBar,
+          {
+            backgroundColor: theme.surface,
+            borderColor: theme.border,
+          },
+        ]}
+      >
         {navigationState.routes.map((r: any, i: number) => {
           const active = navigationState.index === i;
           return (
             <Pressable
               key={r.key}
               onPress={() => jumpTo(r.key)}
-              style={{
-                flex: 1,
-                paddingVertical: 10,
-                borderRadius: 10,
-                alignItems: 'center',
-                backgroundColor: active
-                  ? colors[isDark ? 'dark' : 'light'].background
-                  : colors[isDark ? 'dark' : 'light'].background,
-                borderBottomColor: active
-                  ? colors[isDark ? 'dark' : 'light'].primary
-                  : colors[isDark ? 'dark' : 'light'].background,
-                borderBottomWidth: 1,
-              }}
+              style={[
+                styles.tabItem,
+                active && {
+                  backgroundColor: theme.primaryMuted,
+                  borderColor: theme.primary,
+                },
+              ]}
             >
               <ThemeText
-                style={styles.text}
-                color={active ? 'primary' : 'white'}
+                style={styles.tabLabel}
+                color={active ? 'primary' : 'secondaryText'}
               >
                 {r.title}
               </ThemeText>
@@ -76,17 +81,45 @@ const MatchSummary = ({ route, navigation }: any) => {
       </View>
     );
   };
+
   return (
-    // <HomeWrapper>
-    <View
-      style={{
-        flex: 1,
-        width: '100%',
-        backgroundColor: colors[isDark ? 'dark' : 'light'].background,
-        paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 34,
-        paddingHorizontal: widthPixel(10),
-      }}
-    >
+    <View style={[styles.root, { backgroundColor: theme.background }]}>
+      <StatusBar
+        translucent
+        backgroundColor="transparent"
+        barStyle={isDark ? 'light-content' : 'dark-content'}
+      />
+      <View
+        style={[
+          styles.topBar,
+          {
+            paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) + 8 : 52,
+            backgroundColor: theme.surface,
+            borderBottomColor: theme.border,
+          },
+        ]}
+      >
+        <Pressable hitSlop={16} onPress={() => navigation.goBack()}>
+          <Image
+            source={backarrow}
+            style={styles.backIcon}
+            tintColor={theme.text}
+          />
+        </Pressable>
+        <View style={styles.topTitles}>
+          <ThemeText style={styles.screenTitle} color="text" numberOfLines={1}>
+            Match summary
+          </ThemeText>
+          <ThemeText
+            style={styles.screenSub}
+            color="secondaryText"
+            numberOfLines={1}
+          >
+            {match?.teamA?.name} vs {match?.teamB?.name}
+          </ThemeText>
+        </View>
+      </View>
+
       <TabView
         navigationState={{ index, routes }}
         renderScene={renderScene}
@@ -95,15 +128,59 @@ const MatchSummary = ({ route, navigation }: any) => {
         initialLayout={{ width: layout.width }}
       />
     </View>
-    // </HomeWrapper>
   );
 };
 
 export default MatchSummary;
 
 const styles = StyleSheet.create({
-  text: {
+  root: {
+    flex: 1,
+    width: '100%',
+  },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: widthPixel(16),
+    paddingBottom: heightPixel(12),
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    gap: widthPixel(12),
+  },
+  backIcon: {
+    width: widthPixel(22),
+    height: heightPixel(22),
+  },
+  topTitles: {
+    flex: 1,
+  },
+  screenTitle: {
+    fontFamily: fontFamilies.bold,
+    fontSize: fontPixel(18),
+  },
+  screenSub: {
+    fontFamily: fontFamilies.medium,
+    fontSize: fontPixel(13),
+    marginTop: heightPixel(2),
+  },
+  tabBar: {
+    flexDirection: 'row',
+    marginHorizontal: widthPixel(12),
+    marginTop: heightPixel(12),
+    borderRadius: widthPixel(14),
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: widthPixel(4),
+    gap: widthPixel(6),
+  },
+  tabItem: {
+    flex: 1,
+    paddingVertical: heightPixel(10),
+    borderRadius: widthPixel(12),
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  tabLabel: {
     fontFamily: fontFamilies.semibold,
-    fontSize: fontPixel(15),
+    fontSize: fontPixel(14),
   },
 });

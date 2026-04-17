@@ -1,49 +1,42 @@
-import {
-  Image,
-  ImageBackground,
-  StatusBar,
-  StyleSheet,
-  View,
-} from 'react-native';
+import { ImageBackground, StatusBar, StyleSheet } from 'react-native';
 import { fontPixel, heightPixel, widthPixel } from '../utils/constants';
 
-import ThemeText from '../components/ThemeText';
 import { colors } from '../utils/colors';
 import { fontFamilies } from '../utils/fontfamilies';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeContext } from '../theme/themeContext';
 import { UserHeader } from '../components/Headers/UserHeader';
+import { darkmode, lightmode } from '../assets/images';
 
 type props = {
   text?: string;
   children: React.ReactNode;
   desText?: string;
-  headerShown ?: boolean;
+  headerShown?: boolean;
 };
 
-const HomeWrapper = ({ children, text, desText, headerShown }: props) => {
+const HomeWrapper = ({ children, headerShown }: props) => {
   const insets = useSafeAreaInsets();
   const { isDark } = useThemeContext();
   return (
     <ImageBackground
-      source={undefined}
+      source={isDark ? darkmode : lightmode}
       style={[
         styles.background,
         {
           paddingTop: insets.top,
           backgroundColor: colors[isDark ? 'dark' : 'light'].background,
+          opacity: 0.9,
         },
       ]}
     >
       <StatusBar
         translucent
-        backgroundColor={'transparent'}
-        barStyle={'dark-content'}
+        backgroundColor="transparent"
+        barStyle={isDark ? 'light-content' : 'dark-content'}
       />
       {headerShown && <UserHeader />}
 
-     
-      
       {children}
     </ImageBackground>
   );
@@ -59,9 +52,9 @@ const styles = StyleSheet.create({
   },
   background: {
     flex: 1,
-    paddingHorizontal: widthPixel(25),
+    paddingHorizontal: widthPixel(16),
     justifyContent: 'flex-start',
-    alignItems: 'center',
+    alignItems: 'stretch',
   },
   text: {
     fontSize: fontPixel(24),
