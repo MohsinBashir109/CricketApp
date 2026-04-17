@@ -57,6 +57,9 @@ export interface Ball {
 
 export interface MatchSetup {
   matchId: string;
+  /** Optional linkage when match is scored inside a tournament fixture. */
+  tournamentId?: string;
+  fixtureId?: string;
   teamA: Team | null;
   teamB: Team | null;
   tossWinner?: 'teamA' | 'teamB' | '';

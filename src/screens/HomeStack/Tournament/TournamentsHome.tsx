@@ -17,12 +17,9 @@ const TournamentsHome = ({ navigation }: any) => {
   const { isDark } = useThemeContext();
   const themeColors = colors[isDark ? 'dark' : 'light'];
 
-  const summary = useMemo(
-    () => [
-      { label: 'Saved Teams', value: String(teams.length) },
-      { label: 'Tournaments', value: String(tournaments.length) },
-    ],
-    [teams.length, tournaments.length],
+  const activeCount = useMemo(
+    () => tournaments.filter(t => t.status !== 'completed').length,
+    [tournaments],
   );
 
   return (
@@ -48,27 +45,6 @@ const TournamentsHome = ({ navigation }: any) => {
             the structure before you start scheduling fixtures.
           </ThemeText>
 
-          <View style={styles.summaryRow}>
-            {summary.map(item => (
-              <View
-                key={item.label}
-                style={[
-                  styles.summaryCard,
-                  {
-                    backgroundColor: themeColors.primaryMuted,
-                  },
-                ]}
-              >
-                <ThemeText color="primary" style={styles.summaryValue}>
-                  {item.value}
-                </ThemeText>
-                <ThemeText color="secondaryText" style={styles.summaryLabel}>
-                  {item.label}
-                </ThemeText>
-              </View>
-            ))}
-          </View>
-
           <Button
             title="Create Tournament"
             onPress={() => navigation.navigate(routes.createTournament)}
@@ -81,73 +57,52 @@ const TournamentsHome = ({ navigation }: any) => {
           ) : null}
         </View>
 
-        <View style={styles.sectionHeader}>
-          <ThemeText color="text" style={styles.sectionTitle}>
-            Saved Tournaments
+        <View
+          style={[
+            styles.historyCard,
+            {
+              backgroundColor: themeColors.surface,
+              borderColor: themeColors.border,
+            },
+          ]}
+        >
+          <ThemeText color="text" style={styles.cardTitle}>
+            Tournament history
           </ThemeText>
+          <ThemeText color="secondaryText" style={styles.historyText}>
+            View your saved tournaments and open their details anytime.
+          </ThemeText>
+          <Button
+            title="View tournament history"
+            onPress={() => navigation.navigate(routes.matchHistory, { initialTab: 'tournament' })}
+            buttonStyle={styles.historyCta}
+          />
         </View>
 
-        {tournaments.length === 0 ? (
-          <View
-            style={[
-              styles.emptyCard,
-              {
-                backgroundColor: themeColors.surface,
-                borderColor: themeColors.border,
-              },
-            ]}
-          >
-            <ThemeText color="text" style={styles.emptyTitle}>
-              No tournaments yet
-            </ThemeText>
-            <ThemeText color="secondaryText" style={styles.emptyText}>
-              Start with a tournament name, select teams, choose open or
-              group-based structure, and save the setup.
+        <View
+          style={[
+            styles.historyCard,
+            {
+              backgroundColor: themeColors.surface,
+              borderColor: themeColors.border,
+            },
+          ]}
+        >
+          <View style={styles.cardTitleRow}>
+            <ThemeText color="text" style={styles.cardTitle}>
+              Active tournaments
             </ThemeText>
           </View>
-        ) : (
-          tournaments.map(tournament => (
-            <Pressable
-              key={tournament.id}
-              onPress={() =>
-                navigation.navigate(routes.tournamentDetails, {
-                  tournamentId: tournament.id,
-                })
-              }
-              style={[
-                styles.tournamentCard,
-                {
-                  backgroundColor: themeColors.surface,
-                  borderColor: themeColors.border,
-                },
-              ]}
-            >
-              <View style={styles.tournamentHeader}>
-                <ThemeText color="text" style={styles.tournamentName}>
-                  {tournament.name}
-                </ThemeText>
-                <View
-                  style={[
-                    styles.badge,
-                    { backgroundColor: themeColors.primaryMuted },
-                  ]}
-                >
-                  <ThemeText color="primary" style={styles.badgeText}>
-                    {tournament.status.toUpperCase()}
-                  </ThemeText>
-                </View>
-              </View>
-              <ThemeText color="secondaryText" style={styles.tournamentMeta}>
-                {tournament.formatType === 'groupBased'
-                  ? `${tournament.groupCount} groups`
-                  : 'Open tournament'}
-              </ThemeText>
-              <ThemeText color="secondaryText" style={styles.tournamentMeta}>
-                {tournament.teamCount} teams • {tournament.competitionType}
-              </ThemeText>
-            </Pressable>
-          ))
-        )}
+          <ThemeText color="secondaryText" style={styles.historyText}>
+            Continue tournaments that are not completed yet.
+          </ThemeText>
+          <Button
+            title="View active tournaments"
+            onPress={() => navigation.navigate(routes.uncompletedTournaments)}
+            buttonStyle={styles.historyCta}
+            disabled={activeCount === 0}
+          />
+        </View>
       </ScrollView>
     </HomeWrapper>
   );
@@ -172,35 +127,33 @@ const styles = StyleSheet.create({
     fontSize: fontPixel(14),
     lineHeight: fontPixel(21),
   },
-  summaryRow: {
-    flexDirection: 'row',
-    gap: widthPixel(12),
-    marginVertical: heightPixel(18),
-  },
-  summaryCard: {
-    flex: 1,
-    borderRadius: widthPixel(16),
-    padding: widthPixel(14),
-  },
-  summaryValue: {
-    fontSize: fontPixel(22),
-    fontFamily: fontFamilies.bold,
-  },
-  summaryLabel: {
-    marginTop: heightPixel(4),
-    fontSize: fontPixel(12),
-  },
   helperText: {
     marginTop: heightPixel(8),
     fontSize: fontPixel(12),
   },
-  sectionHeader: {
+  historyCard: {
+    borderWidth: 1,
+    borderRadius: widthPixel(18),
+    padding: widthPixel(18),
     marginTop: heightPixel(24),
-    marginBottom: heightPixel(12),
   },
-  sectionTitle: {
+  cardTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: widthPixel(12),
+  },
+  cardTitle: {
     fontSize: fontPixel(18),
     fontFamily: fontFamilies.bold,
+  },
+  historyText: {
+    marginTop: heightPixel(8),
+    fontSize: fontPixel(14),
+    lineHeight: fontPixel(21),
+  },
+  historyCta: {
+    marginTop: heightPixel(12),
   },
   emptyCard: {
     borderWidth: 1,

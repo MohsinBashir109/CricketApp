@@ -1,6 +1,7 @@
-import React from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import React, { useState } from 'react';
+import { Platform, Pressable, StatusBar, StyleSheet, View } from 'react-native';
 import { useSelector } from 'react-redux';
+import { TabView } from 'react-native-tab-view';
 import ThemeText from '../../../components/ThemeText';
 import {
   selectTournamentById,
@@ -13,8 +14,13 @@ import { fontFamilies } from '../../../utils/fontfamilies';
 import { fontPixel, heightPixel, widthPixel } from '../../../utils/constants';
 import HomeWrapper from '../../../wrappers/HomeWrapper';
 import { RootState } from '../../../features/store/rootReducer';
+import TournamentFixturesTab from './tabs/TournamentFixturesTab';
+import TournamentOverviewTab from './tabs/TournamentOverviewTab';
+import TournamentPointsTab from './tabs/TournamentPointsTab';
+import TournamentStatsTab from './tabs/TournamentStatsTab';
+import TournamentTeamsTab from './tabs/TournamentTeamsTab';
 
-const TournamentDetailsScreen = ({ route }: any) => {
+const TournamentDetailsScreen = ({ route, navigation }: any) => {
   const tournamentId = route?.params?.tournamentId as string;
   const tournament = useSelector((state: RootState) =>
     selectTournamentById(state, tournamentId),
@@ -43,18 +49,90 @@ const TournamentDetailsScreen = ({ route }: any) => {
     );
   }
 
+  const [index, setIndex] = useState(0);
+  const [routes] = useState([
+    { key: 'overview', title: 'Overview' },
+    { key: 'teams', title: 'Teams' },
+    { key: 'fixtures', title: 'Fixtures' },
+    { key: 'points', title: 'Points' },
+    { key: 'stats', title: 'Stats' },
+  ]);
+
+  const renderScene = ({ route: r }: any) => {
+    switch (r.key) {
+      case 'overview':
+        return (
+          <TournamentOverviewTab
+            tournamentId={tournamentId}
+            onOpenFixtures={() => setIndex(2)}
+          />
+        );
+      case 'teams':
+        return <TournamentTeamsTab tournamentId={tournamentId} />;
+      case 'fixtures':
+        return <TournamentFixturesTab tournamentId={tournamentId} navigation={navigation} />;
+      case 'points':
+        return <TournamentPointsTab tournamentId={tournamentId} />;
+      case 'stats':
+        return <TournamentStatsTab tournamentId={tournamentId} />;
+      default:
+        return null;
+    }
+  };
+
+  const CustomTabBar = ({ navigationState, jumpTo }: any) => (
+    <View
+      style={[
+        styles.tabBar,
+        { backgroundColor: themeColors.surface, borderColor: themeColors.border },
+      ]}
+    >
+      {navigationState.routes.map((r: any, i: number) => {
+        const active = navigationState.index === i;
+        return (
+          <Pressable
+            key={r.key}
+            onPress={() => jumpTo(r.key)}
+            style={[
+              styles.tabItem,
+              active && {
+                backgroundColor: themeColors.primaryMuted,
+                borderColor: themeColors.primary,
+              },
+            ]}
+          >
+            <ThemeText
+              style={styles.tabLabel}
+              color={active ? 'primary' : 'secondaryText'}
+              numberOfLines={1}
+            >
+              {r.title}
+            </ThemeText>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+
   return (
     <HomeWrapper>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.content}
-      >
+      <View style={styles.container}>
+        <StatusBar
+          translucent
+          backgroundColor="transparent"
+          barStyle={isDark ? 'light-content' : 'dark-content'}
+        />
+
         <View
           style={[
             styles.heroCard,
             {
               backgroundColor: themeColors.surface,
               borderColor: themeColors.border,
+              paddingTop:
+                Platform.OS === 'android'
+                  ? (StatusBar.currentHeight ?? 0) + heightPixel(12)
+                  : heightPixel(16),
             },
           ]}
         >
@@ -64,151 +142,42 @@ const TournamentDetailsScreen = ({ route }: any) => {
           <ThemeText color="secondaryText" style={styles.subtitle}>
             {tournament.competitionType} •{' '}
             {tournament.formatType === 'groupBased'
-              ? 'Group-Based Tournament'
-              : 'Open Tournament'}
+              ? `${groups.length} groups`
+              : 'Open'}
           </ThemeText>
 
           <View style={styles.badgeRow}>
-            <View
-              style={[
-                styles.badge,
-                { backgroundColor: themeColors.primaryMuted },
-              ]}
-            >
+            <View style={[styles.badge, { backgroundColor: themeColors.primaryMuted }]}>
               <ThemeText color="primary" style={styles.badgeText}>
                 {tournament.status.toUpperCase()}
               </ThemeText>
             </View>
-            <View
-              style={[
-                styles.badge,
-                { backgroundColor: themeColors.primaryMuted },
-              ]}
-            >
+            <View style={[styles.badge, { backgroundColor: themeColors.primaryMuted }]}>
               <ThemeText color="primary" style={styles.badgeText}>
-                {tournament.teamCount} TEAMS
+                {teams.length} TEAMS
               </ThemeText>
             </View>
           </View>
+
+          <CustomTabBar navigationState={{ index, routes }} jumpTo={(k: string) => {
+            const idx = routes.findIndex(r => r.key === k);
+            if (idx >= 0) setIndex(idx);
+          }} />
         </View>
 
-        <View
-          style={[
-            styles.sectionCard,
-            {
-              backgroundColor: themeColors.surface,
-              borderColor: themeColors.border,
-            },
-          ]}
-        >
-          <ThemeText color="text" style={styles.sectionTitle}>
-            Selected Teams
-          </ThemeText>
-          {teams.map(team => (
-            <View
-              key={team.id}
-              style={[styles.row, { borderBottomColor: themeColors.border }]}
-            >
-              <ThemeText color="text" style={styles.rowTitle}>
-                {team.name}
-              </ThemeText>
-              <ThemeText color="secondaryText" style={styles.rowMeta}>
-                {team.players.length} players
-              </ThemeText>
-            </View>
-          ))}
-        </View>
-
-        {tournament.formatType === 'groupBased' ? (
-          <View
-            style={[
-              styles.sectionCard,
-              {
-                backgroundColor: themeColors.surface,
-                borderColor: themeColors.border,
-              },
-            ]}
-          >
-            <ThemeText color="text" style={styles.sectionTitle}>
-              Groups
-            </ThemeText>
-            {groups.map(group => (
-              <View
-                key={group.id}
-                style={[
-                  styles.groupCard,
-                  {
-                    backgroundColor: themeColors.surfaceElevated,
-                    borderColor: themeColors.border,
-                  },
-                ]}
-              >
-                <ThemeText color="text" style={styles.rowTitle}>
-                  {group.name}
-                </ThemeText>
-                {group.teamIds.map(teamId => {
-                  const team = teams.find(item => item.id === teamId);
-                  return (
-                    <ThemeText key={teamId} color="secondaryText" style={styles.rowMeta}>
-                      {team?.name ?? 'Unknown team'}
-                    </ThemeText>
-                  );
-                })}
-              </View>
-            ))}
-          </View>
-        ) : (
-          <View
-            style={[
-              styles.sectionCard,
-              {
-                backgroundColor: themeColors.surface,
-                borderColor: themeColors.border,
-              },
-            ]}
-          >
-            <ThemeText color="text" style={styles.sectionTitle}>
-              Open Tournament Pool
-            </ThemeText>
-            <ThemeText color="secondaryText" style={styles.subtitle}>
-              All selected teams compete in a single tournament structure without
-              groups.
-            </ThemeText>
-          </View>
-        )}
-
-        <View
-          style={[
-            styles.sectionCard,
-            {
-              backgroundColor: themeColors.surface,
-              borderColor: themeColors.border,
-            },
-          ]}
-        >
-          <ThemeText color="text" style={styles.sectionTitle}>
-            Tournament Metadata
-          </ThemeText>
-          <ThemeText color="secondaryText" style={styles.rowMeta}>
-            Created: {new Date(tournament.createdAt).toLocaleString()}
-          </ThemeText>
-          <ThemeText color="secondaryText" style={styles.rowMeta}>
-            Updated: {new Date(tournament.updatedAt).toLocaleString()}
-          </ThemeText>
-          <ThemeText color="secondaryText" style={styles.rowMeta}>
-            Winner: {tournament.winnerTeamId ? tournament.winnerTeamId : 'TBD'}
-          </ThemeText>
-        </View>
-      </ScrollView>
+        <TabView
+          navigationState={{ index, routes }}
+          renderScene={renderScene}
+          onIndexChange={setIndex}
+          renderTabBar={() => null}
+        />
+      </View>
     </HomeWrapper>
   );
 };
 
 const styles = StyleSheet.create({
-  content: {
-    paddingTop: heightPixel(18),
-    paddingBottom: heightPixel(36),
-  },
+  container: { flex: 1, width: '100%' },
   missingState: {
     flex: 1,
     alignItems: 'center',
@@ -244,35 +213,25 @@ const styles = StyleSheet.create({
     fontSize: fontPixel(11),
     fontFamily: fontFamilies.bold,
   },
-  sectionCard: {
+  tabBar: {
+    flexDirection: 'row',
+    marginTop: heightPixel(16),
+    borderRadius: widthPixel(14),
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: widthPixel(4),
+    gap: widthPixel(6),
+  },
+  tabItem: {
+    flex: 1,
+    paddingVertical: heightPixel(10),
+    borderRadius: widthPixel(12),
+    alignItems: 'center',
     borderWidth: 1,
-    borderRadius: widthPixel(20),
-    padding: widthPixel(16),
-    marginBottom: heightPixel(14),
+    borderColor: 'transparent',
   },
-  sectionTitle: {
-    fontSize: fontPixel(18),
-    fontFamily: fontFamilies.bold,
-    marginBottom: heightPixel(8),
-  },
-  row: {
-    paddingVertical: heightPixel(12),
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  rowTitle: {
-    fontSize: fontPixel(15),
+  tabLabel: {
     fontFamily: fontFamilies.semibold,
-  },
-  rowMeta: {
-    marginTop: heightPixel(4),
-    fontSize: fontPixel(13),
-    lineHeight: fontPixel(19),
-  },
-  groupCard: {
-    borderWidth: 1,
-    borderRadius: widthPixel(16),
-    padding: widthPixel(14),
-    marginTop: heightPixel(10),
+    fontSize: fontPixel(12),
   },
 });
 

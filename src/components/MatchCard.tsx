@@ -11,9 +11,10 @@ type MatchCardProps = {
   teamBName?: string;
   onPress?: () => void;
   children?: React.ReactNode;
+  matchTypeLabel?: string | null;
 };
 
-const MatchCard = ({ teamAName, teamBName, onPress, children }: MatchCardProps) => {
+const MatchCard = ({ teamAName, teamBName, onPress, children, matchTypeLabel }: MatchCardProps) => {
   const { isDark } = useThemeContext();
   const theme = colors[isDark ? 'dark' : 'light'];
 
@@ -42,6 +43,14 @@ const MatchCard = ({ teamAName, teamBName, onPress, children }: MatchCardProps) 
         </ThemeText>
       </View>
 
+      {matchTypeLabel ? (
+        <View style={[styles.typePill, { backgroundColor: theme.primaryMuted }]}>
+          <ThemeText color="primary" style={styles.typePillText} numberOfLines={1}>
+            {matchTypeLabel}
+          </ThemeText>
+        </View>
+      ) : null}
+
       {children ? <View style={styles.body}>{children}</View> : null}
     </Pressable>
   );
@@ -61,12 +70,14 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 6,
+    position: 'relative',
   },
   cardTop: {
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
     gap: widthPixel(8),
+    paddingRight: widthPixel(120),
   },
   team: {
     fontFamily: fontFamilies.bold,
@@ -79,6 +90,18 @@ const styles = StyleSheet.create({
   },
   body: {
     marginTop: heightPixel(10),
+  },
+  typePill: {
+    position: 'absolute',
+    top: heightPixel(12),
+    right: widthPixel(12),
+    paddingHorizontal: widthPixel(10),
+    paddingVertical: heightPixel(6),
+    borderRadius: widthPixel(999),
+  },
+  typePillText: {
+    fontFamily: fontFamilies.semibold,
+    fontSize: fontPixel(11),
   },
 });
 

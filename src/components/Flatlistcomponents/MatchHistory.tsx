@@ -10,6 +10,8 @@ import { fontFamilies } from '../../utils/fontfamilies';
 import { routes } from '../../utils/routes';
 import { useNavigation } from '@react-navigation/native';
 import { useThemeContext } from '../../theme/themeContext';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../features/store/rootReducer';
 
 interface MatchHistoryProps {
   history?: MatchSetup[];
@@ -19,6 +21,7 @@ const MatchHistory = ({ history }: MatchHistoryProps) => {
   const { isDark } = useThemeContext();
   const theme = colors[isDark ? 'dark' : 'light'];
   const navigation = useNavigation();
+  const tournamentsById = useSelector((s: RootState) => s.tournament.tournamentsById);
 
   const openSummary = (item: MatchSetup) => {
     // @ts-ignore
@@ -75,6 +78,11 @@ const MatchHistory = ({ history }: MatchHistoryProps) => {
       teamAName={item?.teamA?.name}
       teamBName={item?.teamB?.name}
       onPress={() => openSummary(item)}
+      matchTypeLabel={
+        item?.tournamentId
+          ? tournamentsById?.[item.tournamentId]?.name ?? 'Tournament'
+          : 'Simple match'
+      }
     >
       <View style={styles.headerRow}>
         <View

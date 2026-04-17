@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Image,
   Platform,
@@ -21,9 +21,11 @@ import { useThemeContext } from '../../../theme/themeContext';
 import { useWindowDimensions } from 'react-native';
 import { selectAllTournaments } from '../../../features/tournament/tournamentSelectors';
 import { routes } from '../../../utils/routes';
+import { useRoute } from '@react-navigation/native';
 
 const MatchHistoryScreen = () => {
   const navigation = useNavigation();
+  const route = useRoute<any>();
   const match = useSelector((state: any) => state.match);
   const tournaments = useSelector(selectAllTournaments);
   const { isDark } = useThemeContext();
@@ -35,6 +37,12 @@ const MatchHistoryScreen = () => {
     { key: 'single', title: 'Single matches' },
     { key: 'tournament', title: 'Tournament' },
   ]);
+
+  useEffect(() => {
+    const initialTab = route?.params?.initialTab;
+    if (initialTab === 'tournament') setIndex(1);
+    else if (initialTab === 'single') setIndex(0);
+  }, [route?.params?.initialTab]);
 
   const CustomTabBar = ({ navigationState, jumpTo }: any) => {
     return (
@@ -88,7 +96,7 @@ const MatchHistoryScreen = () => {
       showsVerticalScrollIndicator={false}
       contentContainerStyle={styles.content}
     >
-      {tournaments.length === 0 ? (
+      {tournaments.filter(t => t.status === 'completed').length === 0 ? (
         <View
           style={[
             styles.emptyCard,
@@ -99,14 +107,16 @@ const MatchHistoryScreen = () => {
           ]}
         >
           <ThemeText color="text" style={styles.emptyTitle}>
-            No tournaments yet
+            No completed tournaments
           </ThemeText>
           <ThemeText color="secondaryText" style={styles.emptyText}>
-            Create a tournament to see it here.
+            Completed tournaments will appear here after all matches finish.
           </ThemeText>
         </View>
       ) : (
-        tournaments.map(tournament => (
+        tournaments
+          .filter(tournament => tournament.status === 'completed')
+          .map(tournament => (
           <Pressable
             key={tournament.id}
             // @ts-ignore
@@ -179,12 +189,8 @@ const MatchHistoryScreen = () => {
           },
         ]}
       >
-        <Pressable hitSlop={16} onPress={() => navigation.goBack()}>
-          <Image
-            source={backarrow}
-            style={styles.backIcon}
-            tintColor={theme.text}
-          />
+        <Pressable hitSlop={16} onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <Image source={backarrow} style={styles.backIcon} tintColor={theme.text} />
         </Pressable>
         <View style={styles.topTitles}>
           <ThemeText style={styles.screenTitle} color="text">
@@ -220,7 +226,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: widthPixel(16),
     paddingBottom: heightPixel(12),
     borderBottomWidth: StyleSheet.hairlineWidth,
-    gap: widthPixel(12),
+    justifyContent: 'center',
+  },
+  backBtn: {
+    position: 'absolute',
+    left: widthPixel(16),
   },
   backIcon: {
     width: widthPixel(22),
@@ -228,15 +238,18 @@ const styles = StyleSheet.create({
   },
   topTitles: {
     flex: 1,
+    alignItems: 'center',
   },
   screenTitle: {
     fontFamily: fontFamilies.bold,
     fontSize: fontPixel(18),
+    textAlign: 'center',
   },
   screenSub: {
     marginTop: heightPixel(2),
     fontFamily: fontFamilies.medium,
     fontSize: fontPixel(13),
+    textAlign: 'center',
   },
   content: {
     paddingTop: heightPixel(16),

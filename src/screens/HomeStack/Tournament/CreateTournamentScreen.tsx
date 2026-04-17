@@ -72,6 +72,7 @@ const CreateTournamentScreen = ({ navigation }: any) => {
   const [name, setName] = useState('');
   const [competitionType, setCompetitionType] =
     useState<TournamentCompetitionType>('league');
+  const [roundRobinLegs, setRoundRobinLegs] = useState<1 | 2>(1);
   const [teamCountInput, setTeamCountInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
@@ -295,6 +296,10 @@ const CreateTournamentScreen = ({ navigation }: any) => {
         groupCount: formatType === 'groupBased' ? groupCount : null,
         seed: formatType === 'groupBased' ? groupSeed : null,
         groups: formatType === 'groupBased' ? groupsPreview : [],
+        settings: {
+          roundRobinLegs: competitionType === 'cup' ? 1 : roundRobinLegs,
+          knockoutEnabled: competitionType === 'cup',
+        },
       }),
     );
 
@@ -380,6 +385,55 @@ const CreateTournamentScreen = ({ navigation }: any) => {
               );
             })}
           </View>
+
+          {competitionType !== 'cup' ? (
+            <>
+              <ThemeText color="text" style={styles.label}>
+                League Rounds
+              </ThemeText>
+              <View style={styles.optionWrap}>
+                {([
+                  { label: 'Play once', value: 1 as const },
+                  { label: 'Play twice', value: 2 as const },
+                ] as const).map(option => {
+                  const selected = roundRobinLegs === option.value;
+                  return (
+                    <Pressable
+                      key={option.value}
+                      onPress={() => setRoundRobinLegs(option.value)}
+                      style={[
+                        styles.choiceChip,
+                        {
+                          borderColor: selected
+                            ? themeColors.primary
+                            : themeColors.border,
+                          backgroundColor: selected
+                            ? themeColors.primaryMuted
+                            : themeColors.surface,
+                        },
+                      ]}
+                    >
+                      <ThemeText
+                        color={selected ? 'primary' : 'text'}
+                        style={styles.choiceText}
+                      >
+                        {option.label}
+                      </ThemeText>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              <ThemeText color="secondaryText" style={styles.helperText}>
+                {roundRobinLegs === 2
+                  ? 'Each team plays every opponent twice (double round robin).'
+                  : 'Each team plays every opponent once (single round robin).'}
+              </ThemeText>
+            </>
+          ) : (
+            <ThemeText color="secondaryText" style={styles.helperText}>
+              Cup tournaments default to knockout fixtures.
+            </ThemeText>
+          )}
 
           <ThemeText color="text" style={styles.label}>
             Number Of Teams

@@ -13,6 +13,7 @@ import {
 } from '../../../features/match/matchSlice';
 import { heightPixel, widthPixel } from '../../../utils/constants';
 import { useDispatch, useSelector } from 'react-redux';
+import { completeFixture } from '../../../features/tournament/tournamentSlice';
 
 import BatsmenBowlerCard from '../../../components/Cards/BatsmenBowlerCard';
 import BatsmenBowlerScorringHeader from '../../../components/Headers/BatsmenScorringHeader';
@@ -123,6 +124,28 @@ const MatchScoring = () => {
 
   useEffect(() => {
     if (!currentMatch && lastCompletedMatch) {
+      if (lastCompletedMatch.tournamentId && lastCompletedMatch.fixtureId) {
+        const winnerName = lastCompletedMatch.winnerTeamName ?? '';
+        const resultSummary =
+          lastCompletedMatch.resultReason === 'TIE'
+            ? 'Match tied'
+            : lastCompletedMatch.resultReason === 'NO_RESULT'
+            ? 'No result'
+            : winnerName
+            ? `${winnerName} won`
+            : 'Result saved';
+        dispatch(
+          completeFixture({
+            tournamentId: lastCompletedMatch.tournamentId,
+            fixtureId: lastCompletedMatch.fixtureId,
+            status:
+              lastCompletedMatch.resultReason === 'NO_RESULT'
+                ? 'no_result'
+                : 'completed',
+            resultSummary,
+          }),
+        );
+      }
       navigation.navigate(routes.matchsummary, { match: lastCompletedMatch });
     }
   }, [currentMatch, lastCompletedMatch, navigation]);

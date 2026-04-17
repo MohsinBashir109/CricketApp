@@ -13,14 +13,14 @@ import { fontFamilies } from '../../../utils/fontfamilies';
 import { routes } from '../../../utils/routes';
 import { useSelector } from 'react-redux';
 import { useThemeContext } from '../../../theme/themeContext';
-import { selectActiveTeams } from '../../../features/tournament/tournamentSelectors';
+import { RootState } from '../../../features/store/rootReducer';
 
 const ballsToOvers = (balls: number) =>
   `${Math.floor((balls || 0) / 6)}.${(balls || 0) % 6}`;
 
 const Matches = () => {
   const match = useSelector((state: any) => state.match);
-  const activeTeams = useSelector(selectActiveTeams);
+  const tournamentsById = useSelector((s: RootState) => s.tournament.tournamentsById);
   const navigation = useNavigation();
   const { isDark } = useThemeContext();
   const theme = colors[isDark ? 'dark' : 'light'];
@@ -39,20 +39,18 @@ const Matches = () => {
 
   const tossWinnerKey = match?.currentMatch?.tossWinner;
   const currentMatch = match?.currentMatch;
+  const tournamentName =
+    currentMatch?.tournamentId ? tournamentsById?.[currentMatch.tournamentId]?.name : null;
   const tossWinnerName =
     tossWinnerKey === 'teamA'
       ? currentMatch?.teamA?.name
       : tossWinnerKey === 'teamB'
-        ? currentMatch?.teamB?.name
-        : '';
+      ? currentMatch?.teamB?.name
+      : '';
   const innings =
     currentMatch?.currentInnings === 2
       ? currentMatch?.innings2
       : currentMatch?.innings1;
-
-  const completedMatchesCount = Array.isArray(match?.history)
-    ? match.history.length
-    : 0;
 
   return (
     <HomeWrapper headerShown={true}>
@@ -75,20 +73,12 @@ const Matches = () => {
               teamAName={currentMatch?.teamA?.name}
               teamBName={currentMatch?.teamB?.name}
               onPress={openLiveMatch}
+              matchTypeLabel={
+                tournamentName ?? (currentMatch?.tournamentId ? 'Tournament' : 'Simple match')
+              }
             >
               <View style={styles.liveMetaRow}>
-                <View style={styles.liveBadge}>
-                  <View style={[styles.liveDot, { backgroundColor: theme.accent }]} />
-                  <ThemeText color="primary" style={styles.liveBadgeText}>
-                    Live now
-                  </ThemeText>
-                </View>
-                {innings && (
-                  <ThemeText style={styles.oversMetaSmall} color="desText">
-                    {ballsToOvers(innings.totalBalls)} / T
-                    {currentMatch?.overs} overs
-                  </ThemeText>
-                )}
+                {/* kept row for spacing; overs moved beside score */}
               </View>
 
               {innings && (
@@ -100,19 +90,37 @@ const Matches = () => {
                       / {innings.totalWickets}
                     </ThemeText>
                   </ThemeText>
+                  <ThemeText
+                    style={[styles.oversMetaSmall, styles.oversRight]}
+                    color="desText"
+                  >
+                    {ballsToOvers(innings.totalBalls)} / T{currentMatch?.overs}{' '}
+                    overs
+                  </ThemeText>
                 </View>
               )}
 
-              <ThemeText style={styles.tossLine} color="desText" numberOfLines={2}>
-                {tossWinnerName
-                  ? `${tossWinnerName} won the toss and chose to ${currentMatch?.electedTo}.`
-                  : 'Tap to continue scoring.'}
-              </ThemeText>
-
-              <View style={[styles.continuePill, { backgroundColor: theme.primaryMuted }]}>
-                <ThemeText style={styles.continueText} color="primary">
-                  Continue scoring →
+              <View style={styles.tossRow}>
+                <ThemeText
+                  style={styles.tossLine}
+                  color="desText"
+                  numberOfLines={2}
+                >
+                  {tossWinnerName
+                    ? `${tossWinnerName} won the toss and chose to ${currentMatch?.electedTo}.`
+                    : 'Tap to continue scoring.'}
                 </ThemeText>
+
+                <View
+                  style={[
+                    styles.continuePillInline,
+                    { backgroundColor: theme.primaryMuted },
+                  ]}
+                >
+                  <ThemeText style={styles.continueText} color="primary">
+                    Continue →
+                  </ThemeText>
+                </View>
               </View>
             </MatchCard>
           ) : (
@@ -153,39 +161,6 @@ const Matches = () => {
             from one place.
           </ThemeText>
 
-          <View style={styles.summaryRow}>
-            <View
-              style={[
-                styles.summaryCard,
-                {
-                  backgroundColor: theme.primaryMuted,
-                },
-              ]}
-            >
-              <ThemeText color="primary" style={styles.summaryValue}>
-                {activeTeams.length}
-              </ThemeText>
-              <ThemeText color="secondaryText" style={styles.summaryLabel}>
-                Saved teams
-              </ThemeText>
-            </View>
-            <View
-              style={[
-                styles.summaryCard,
-                {
-                  backgroundColor: theme.primaryMuted,
-                },
-              ]}
-            >
-              <ThemeText color="primary" style={styles.summaryValue}>
-                {completedMatchesCount}
-              </ThemeText>
-              <ThemeText color="secondaryText" style={styles.summaryLabel}>
-                Completed matches
-              </ThemeText>
-            </View>
-          </View>
-
           <Button
             title="Start new match"
             onPress={StartMatch}
@@ -210,11 +185,6 @@ const Matches = () => {
               <ThemeText style={styles.sectionTitle} color="text">
                 Recent matches
               </ThemeText>
-              <View style={[styles.recentCountPill, { backgroundColor: theme.primaryMuted }]}>
-                <ThemeText style={styles.recentCountText} color="primary">
-                  {completedMatchesCount}
-                </ThemeText>
-              </View>
             </View>
 
             <ThemeText style={styles.recentSubText} color="secondaryText">
@@ -259,24 +229,6 @@ const styles = StyleSheet.create({
     fontFamily: fontFamilies.regular,
     fontSize: fontPixel(14),
     lineHeight: fontPixel(21),
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    gap: widthPixel(12),
-    marginVertical: heightPixel(18),
-  },
-  summaryCard: {
-    flex: 1,
-    borderRadius: widthPixel(16),
-    padding: widthPixel(14),
-  },
-  summaryValue: {
-    fontSize: fontPixel(22),
-    fontFamily: fontFamilies.bold,
-  },
-  summaryLabel: {
-    marginTop: heightPixel(4),
-    fontSize: fontPixel(12),
   },
   primaryCta: {
     marginTop: heightPixel(16),
@@ -327,7 +279,7 @@ const styles = StyleSheet.create({
     fontSize: fontPixel(11),
   },
   scoreRow: {
-    marginTop: heightPixel(12),
+    // marginTop: heightPixel(2),
     flexDirection: 'row',
     alignItems: 'baseline',
     justifyContent: 'space-between',
@@ -349,14 +301,30 @@ const styles = StyleSheet.create({
     fontFamily: fontFamilies.medium,
     fontSize: fontPixel(11),
   },
+  oversRight: {
+    textAlign: 'right',
+  },
+  tossRow: {
+    marginTop: heightPixel(10),
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: widthPixel(10),
+  },
   tossLine: {
+    flex: 1,
     fontFamily: fontFamilies.regular,
     fontSize: fontPixel(13),
-    marginTop: heightPixel(10),
     lineHeight: fontPixel(18),
   },
   continuePill: {
     marginTop: heightPixel(14),
+    alignSelf: 'flex-start',
+    paddingHorizontal: widthPixel(14),
+    paddingVertical: heightPixel(10),
+    borderRadius: widthPixel(12),
+  },
+  continuePillInline: {
     alignSelf: 'flex-start',
     paddingHorizontal: widthPixel(14),
     paddingVertical: heightPixel(10),
@@ -391,18 +359,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     gap: widthPixel(12),
-  },
-  recentCountPill: {
-    minWidth: widthPixel(44),
-    paddingHorizontal: widthPixel(12),
-    paddingVertical: heightPixel(8),
-    borderRadius: widthPixel(999),
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  recentCountText: {
-    fontFamily: fontFamilies.bold,
-    fontSize: fontPixel(14),
   },
   recentSubText: {
     marginTop: heightPixel(8),

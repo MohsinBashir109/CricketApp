@@ -7,7 +7,9 @@ import Startmatch from './StartMatch/StartMatch';
 import AddPlayersToTeamRoute from './AddPlayers/AddPlayersToTeamRoute';
 import CreateTournamentScreen from './Tournament/CreateTournamentScreen';
 import TournamentDetailsScreen from './Tournament/TournamentDetailsScreen';
+import TournamentMatchDetailScreen from './Tournament/TournamentMatchDetailScreen';
 import TournamentsHome from './Tournament/TournamentsHome';
+import UncompletedTournamentsScreen from './Tournament/UncompletedTournamentsScreen';
 
 export {
   Profile,
@@ -20,4 +22,6 @@ export {
   TournamentsHome,
   CreateTournamentScreen,
   TournamentDetailsScreen,
+  TournamentMatchDetailScreen,
+  UncompletedTournamentsScreen,
 };

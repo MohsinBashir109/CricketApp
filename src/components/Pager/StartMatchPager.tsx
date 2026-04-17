@@ -69,6 +69,76 @@ const StartMatchPager = () => {
   });
 
   useEffect(() => {
+    const preset = route.params?.presetMatch;
+    if (!preset) return;
+
+    // presetMatch is used when starting scoring from a tournament fixture
+    const presetTeamA = preset.teamA;
+    const presetTeamB = preset.teamB;
+    const presetOvers = preset.overs ?? null;
+    const presetMatchId = preset.matchId;
+
+    if (!presetMatchId || !presetTeamA || !presetTeamB) return;
+
+    setMatch(prev => ({
+      ...prev,
+      matchId: presetMatchId,
+      tournamentId: preset.tournamentId,
+      fixtureId: preset.fixtureId,
+      overs: presetOvers,
+      teamA: {
+        id: 1,
+        name: presetTeamA.name,
+        // map saved team players to scoring Player model
+        players: presetTeamA.players.map((p: any) => ({
+          id: 0, // will be remapped by withGloballyUniquePlayerIds()
+          name: p.name,
+          role: p.role,
+          runs: 0,
+          balls: 0,
+          fours: 0,
+          sixes: 0,
+          isOut: false,
+          overs: 0,
+          maidens: 0,
+          conceded: 0,
+          wickets: 0,
+          wides: 0,
+          noBalls: 0,
+        })),
+      },
+      teamB: {
+        id: 2,
+        name: presetTeamB.name,
+        players: presetTeamB.players.map((p: any) => ({
+          id: 0,
+          name: p.name,
+          role: p.role,
+          runs: 0,
+          balls: 0,
+          fours: 0,
+          sixes: 0,
+          isOut: false,
+          overs: 0,
+          maidens: 0,
+          conceded: 0,
+          wickets: 0,
+          wides: 0,
+          noBalls: 0,
+        })),
+      },
+    }));
+
+    // If overs are preset, skip overs + naming pages
+    requestAnimationFrame(() => {
+      pagerRef.current?.setPage(2);
+      const a = presetTeamA.players?.length ?? 0;
+      const b = presetTeamB.players?.length ?? 0;
+      if (a > 0 && b > 0) setShowTossPanel(true);
+    });
+  }, [route.params?.presetMatch]);
+
+  useEffect(() => {
     const payload = route.params?.squadForTeam;
     if (!payload?.teamKey || !Array.isArray(payload.players)) return;
 
