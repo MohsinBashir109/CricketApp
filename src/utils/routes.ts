@@ -9,9 +9,14 @@ export const routes = {
   home: 'home',
   profile: 'profile',
   matches: 'matches',
+  tournaments: 'tournaments',
   myTabs: 'myTabs',
   startMatch: 'startMatch',
+  addPlayersToTeam: 'addPlayersToTeam',
   matchscoring: 'matchScoring',
   matchsummary: 'matchsummary',
+  matchHistory: 'matchHistory',
+  createTournament: 'createTournament',
+  tournamentDetails: 'tournamentDetails',
   // home screens
 };

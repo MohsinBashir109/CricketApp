@@ -1,112 +1,201 @@
-import { MatchSetup, Player, Team } from '../../types/Playertype';
-import React, { useMemo, useState } from 'react';
-import {
-  StyleSheet,
-  Text,
-  Touchable,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { MatchSetup, Team } from '../../types/Playertype';
+import React, { useMemo } from 'react';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { fontPixel, heightPixel, widthPixel } from '../../utils/constants';
 
-import AddPlayersModal from '../Modals/AddPlayersModal';
-import AppBanner from '../../ads/AppBanner';
-import { BannerAdSize } from 'react-native-google-mobile-ads';
-import Button from '../themeButton';
-import ThemeInput from '../ThemeInput';
+import Toss from './Toss';
 import ThemeText from '../ThemeText';
-import { adUnits } from '../../ads/adsUnits';
 import { colors } from '../../utils/colors';
 import { fontFamilies } from '../../utils/fontfamilies';
+import { routes } from '../../utils/routes';
+import { useNavigation } from '@react-navigation/native';
 import { useThemeContext } from '../../theme/themeContext';
 
 interface AddPlayersProps {
-  teamsSelected: any;
-  onSelect: (teamAPlayers: Player[], teamBplayers: Player[]) => void;
+  teamsSelected: MatchSetup;
+  showTossPanel?: boolean;
+  onOpenToss?: () => void;
+  onCloseToss?: () => void;
+  onSelectToss?: (tossWinner: 'teamA' | 'teamB', electedTo: 'bat' | 'bowl') => void;
 }
 
-const AddPlayers = ({ onSelect, teamsSelected }: AddPlayersProps) => {
-  console.log('Selected Teams in AddPlayers:', teamsSelected);
+type TeamKey = 'teamA' | 'teamB';
+
+const initialsFromName = (name: string) => {
+  const t = (name ?? '').trim();
+  if (!t) return '?';
+  const parts = t.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return t.slice(0, 2).toUpperCase();
+};
+
+const AddPlayers = ({
+  teamsSelected,
+  showTossPanel = false,
+  onOpenToss,
+  onCloseToss,
+  onSelectToss,
+}: AddPlayersProps) => {
+  const navigation = useNavigation<any>();
   const { isDark } = useThemeContext();
-  const [showAddedPlayersmodal, setShowAddedPlayersModal] = useState(false);
-  // const [players, setPlayers] = useState<Player[]>([]);
-  type TeamKey = 'teamA' | 'teamB';
-  const [activeTeamKey, setActiveTeamKey] = useState<TeamKey | null>(null);
+  const theme = colors[isDark ? 'dark' : 'light'];
 
-  const activeTeam: Team | null = useMemo(() => {
-    if (!activeTeamKey) return null;
-    return teamsSelected?.[activeTeamKey] ?? null;
-  }, [activeTeamKey, teamsSelected]);
+  const teamA: Team | null = useMemo(() => teamsSelected?.teamA ?? null, [teamsSelected]);
+  const teamB: Team | null = useMemo(() => teamsSelected?.teamB ?? null, [teamsSelected]);
+
+  const teamAName = teamA?.name || 'Team A';
+  const teamBName = teamB?.name || 'Team B';
+  const teamACount = teamA?.players?.length ?? 0;
+  const teamBCount = teamB?.players?.length ?? 0;
+  const canOpenToss = teamACount > 0 && teamBCount > 0;
+
   const openForTeam = (key: TeamKey) => {
-    setActiveTeamKey(key);
-    setShowAddedPlayersModal(true);
+    const team: Team | null =
+      key === 'teamA' ? teamsSelected?.teamA ?? null : teamsSelected?.teamB ?? null;
+    navigation.navigate(routes.addPlayersToTeam, {
+      teamKey: key,
+      teamDisplayName:
+        team?.name || (key === 'teamA' ? 'Team A' : 'Team B'),
+      initialPlayers: team?.players ?? [],
+    });
   };
-  console.log('_______________________>', activeTeam, teamsSelected);
-  const handleSubmitPlayers = (players: Player[]) => {
-    // If you want to update the object, that should happen in the parent (because teamsSelected is a prop).
-    // Here we just call onSelect with updated arrays.
-
-    const teamAPlayers =
-      activeTeamKey === 'teamA' ? players : teamsSelected?.teamA?.players ?? [];
-
-    const teamBPlayers =
-      activeTeamKey === 'teamB' ? players : teamsSelected?.teamB?.players ?? [];
-
-    onSelect(teamAPlayers, teamBPlayers);
-  };
-  const teamAHasPlayers = (teamsSelected?.teamA?.players?.length ?? 0) > 0;
-  const teamBHasPlayers = (teamsSelected?.teamB?.players?.length ?? 0) > 0;
-  console.log('a', teamsSelected?.teamA?.players);
-  console.log('b', teamBHasPlayers);
 
   return (
-    <View style={{ flex: 1, width: '100%' }}>
-      <TouchableOpacity
-        style={[
-          styles.button,
-          { backgroundColor: colors[isDark ? 'dark' : 'light'].primary },
-        ]}
-        onPress={() => openForTeam('teamA')}
-      >
-        <ThemeText color="text" style={styles.teamButton}>
-          {teamsSelected?.teamA?.name}
+    <View style={{ flex: 1, width: '100%', marginTop: heightPixel(20) }}>
+      <View style={styles.headerBlock}>
+        <ThemeText color="text" style={styles.title}>
+          Build team lineups
         </ThemeText>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={[
-          styles.button,
-          { backgroundColor: colors[isDark ? 'dark' : 'light'].primary },
-        ]}
-        onPress={() => openForTeam('teamB')}
-      >
-        <ThemeText color="text" style={styles.teamButton}>
-          {teamsSelected?.teamB?.name}
+        <ThemeText color="secondaryText" style={styles.subtitle}>
+          Add players for both teams to continue.
         </ThemeText>
-      </TouchableOpacity>
-      <View
-        style={{
-          width: '100%',
-          alignItems: 'center',
-          justifyContent: 'center',
-          paddingVertical: heightPixel(8),
-          marginBottom: heightPixel(50),
-        }}
-      >
-        <AppBanner
-          size={BannerAdSize.MEDIUM_RECTANGLE}
-          adUnits={adUnits.banner}
-        />
       </View>
-      <AddPlayersModal
-        activeTeam={activeTeam}
-        initialPlayers={activeTeam?.players ?? []}
-        onSubmit={handleSubmitPlayers}
-        isVisible={showAddedPlayersmodal}
-        onClose={() => {
-          setShowAddedPlayersModal(false);
-          setActiveTeamKey(null);
-        }}
-      />
+
+      <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+        <ThemeText color="secondaryText" style={styles.cardLabel}>
+          Teams
+        </ThemeText>
+
+        <TouchableOpacity
+          style={[styles.teamCard, { backgroundColor: theme.surface, borderColor: theme.border }]}
+          activeOpacity={0.9}
+          onPress={() => openForTeam('teamA')}
+        >
+          <View style={[styles.badge, { backgroundColor: theme.primary }]}>
+            <ThemeText color="white" style={styles.badgeText}>
+              {initialsFromName(teamAName)}
+            </ThemeText>
+          </View>
+
+          <View style={styles.teamMeta}>
+            <ThemeText color="text" style={styles.teamName} numberOfLines={1}>
+              {teamAName}
+            </ThemeText>
+            <ThemeText color="secondaryText" style={styles.teamHint}>
+              {teamACount > 0 ? `${teamACount} players added` : 'No players yet'}
+            </ThemeText>
+          </View>
+
+          <View style={styles.teamRight}>
+            <View
+              style={[
+                styles.pill,
+                {
+                  backgroundColor:
+                    teamACount > 0 ? theme.primaryMuted : theme.background,
+                  borderColor: theme.border,
+                },
+              ]}
+            >
+              <ThemeText
+                color={teamACount > 0 ? 'primary' : 'secondaryText'}
+                style={styles.pillText}
+              >
+                {teamACount > 0 ? 'Edit' : 'Add'}
+              </ThemeText>
+            </View>
+            <ThemeText color="secondaryText" style={styles.chev}>
+              ›
+            </ThemeText>
+          </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.teamCard, { backgroundColor: theme.surface, borderColor: theme.border }]}
+          activeOpacity={0.9}
+          onPress={() => openForTeam('teamB')}
+        >
+          <View style={[styles.badge, { backgroundColor: theme.primary }]}>
+            <ThemeText color="white" style={styles.badgeText}>
+              {initialsFromName(teamBName)}
+            </ThemeText>
+          </View>
+
+          <View style={styles.teamMeta}>
+            <ThemeText color="text" style={styles.teamName} numberOfLines={1}>
+              {teamBName}
+            </ThemeText>
+            <ThemeText color="secondaryText" style={styles.teamHint}>
+              {teamBCount > 0 ? `${teamBCount} players added` : 'No players yet'}
+            </ThemeText>
+          </View>
+
+          <View style={styles.teamRight}>
+            <View
+              style={[
+                styles.pill,
+                {
+                  backgroundColor:
+                    teamBCount > 0 ? theme.primaryMuted : theme.background,
+                  borderColor: theme.border,
+                },
+              ]}
+            >
+              <ThemeText
+                color={teamBCount > 0 ? 'primary' : 'secondaryText'}
+                style={styles.pillText}
+              >
+                {teamBCount > 0 ? 'Edit' : 'Add'}
+              </ThemeText>
+            </View>
+            <ThemeText color="secondaryText" style={styles.chev}>
+              ›
+            </ThemeText>
+          </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.tossButton,
+            {
+              backgroundColor: canOpenToss ? theme.primary : theme.gray1,
+            },
+          ]}
+          activeOpacity={canOpenToss ? 0.9 : 1}
+          disabled={!canOpenToss}
+          onPress={onOpenToss}
+        >
+          <ThemeText color="white" style={styles.tossButtonText}>
+            Continue to Toss
+          </ThemeText>
+        </TouchableOpacity>
+      </View>
+
+      {showTossPanel ? (
+        <View
+          style={[
+            styles.tossPanel,
+            { backgroundColor: theme.surface, borderColor: theme.border },
+          ]}
+        >
+          <Toss
+            compact
+            match={teamsSelected}
+            onSelect={onSelectToss}
+            onClose={onCloseToss}
+          />
+        </View>
+      ) : null}
     </View>
   );
 };
@@ -114,15 +203,112 @@ const AddPlayers = ({ onSelect, teamsSelected }: AddPlayersProps) => {
 export default AddPlayers;
 
 const styles = StyleSheet.create({
-  teamButton: {
-    fontSize: fontPixel(18),
-    fontFamily: fontFamilies.bold,
+  headerBlock: {
+    paddingHorizontal: widthPixel(10),
+    marginBottom: heightPixel(14),
   },
-  button: {
+  title: {
+    fontFamily: fontFamilies.bold,
+    fontSize: fontPixel(22),
+    letterSpacing: -0.2,
+  },
+  subtitle: {
+    fontFamily: fontFamilies.regular,
+    fontSize: fontPixel(14),
+    marginTop: heightPixel(6),
+    lineHeight: fontPixel(20),
+  },
+  card: {
+    width: '100%',
+    borderRadius: widthPixel(18),
+    padding: widthPixel(14),
+    borderWidth: StyleSheet.hairlineWidth,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+  },
+  cardLabel: {
+    fontFamily: fontFamilies.semibold,
+    fontSize: fontPixel(11),
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginBottom: heightPixel(10),
+  },
+  teamCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: widthPixel(16),
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingVertical: heightPixel(14),
+    paddingHorizontal: widthPixel(14),
+    marginBottom: heightPixel(10),
+  },
+  badge: {
+    width: widthPixel(44),
+    height: widthPixel(44),
+    borderRadius: widthPixel(14),
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: heightPixel(10),
-    borderRadius: widthPixel(10),
-    paddingVertical: heightPixel(20),
+  },
+  badgeText: {
+    fontFamily: fontFamilies.bold,
+    fontSize: fontPixel(14),
+    letterSpacing: 0.6,
+  },
+  teamMeta: {
+    flex: 1,
+    marginLeft: widthPixel(12),
+    minWidth: 0,
+  },
+  teamName: {
+    fontFamily: fontFamilies.bold,
+    fontSize: fontPixel(16),
+  },
+  teamHint: {
+    fontFamily: fontFamilies.regular,
+    fontSize: fontPixel(13),
+    marginTop: heightPixel(4),
+  },
+  teamRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  pill: {
+    borderRadius: widthPixel(999),
+    paddingVertical: heightPixel(8),
+    paddingHorizontal: widthPixel(12),
+    borderWidth: StyleSheet.hairlineWidth,
+    marginRight: widthPixel(10),
+  },
+  pillText: {
+    fontFamily: fontFamilies.semibold,
+    fontSize: fontPixel(12),
+  },
+  chev: {
+    fontSize: fontPixel(20),
+    marginTop: -heightPixel(2),
+  },
+  tossButton: {
+    marginTop: heightPixel(6),
+    borderRadius: widthPixel(14),
+    paddingVertical: heightPixel(16),
+    alignItems: 'center',
+  },
+  tossButtonText: {
+    fontFamily: fontFamilies.bold,
+    fontSize: fontPixel(16),
+  },
+  tossPanel: {
+    marginTop: heightPixel(16),
+    borderRadius: widthPixel(18),
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: widthPixel(14),
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
   },
 });

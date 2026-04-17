@@ -1,32 +1,61 @@
 import {
+  Dimensions,
   FlatList,
   Image,
-  Modal,
   Pressable,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
 import React, { useState } from 'react';
-import { ball, cross } from '../../assets/images';
+import {
+  ball,
+  cricket,
+  lightning,
+  setting,
+  throphy,
+} from '../../assets/images';
 import { fontPixel, heightPixel, widthPixel } from '../../utils/constants';
 
-import AppBanner from '../../ads/AppBanner';
-import { BannerAdSize } from 'react-native-google-mobile-ads';
 import Button from '../themeButton';
-import { Dimensions } from 'react-native';
 import ThemeInput from '../ThemeInput';
 import ThemeText from '../ThemeText';
-import { adUnits } from '../../ads/adsUnits';
 import { colors } from '../../utils/colors';
 import { fontFamilies } from '../../utils/fontfamilies';
 import { useThemeContext } from '../../theme/themeContext';
 
 const DATA = [
-  { id: '1', title: '10 overs', overs: 10 },
-  { id: '2', title: '20 overs', overs: 20 },
-  { id: '3', title: '50 overs ', overs: 50 },
-  { id: '9999', title: 'Custom overs', overs: 0 },
+  {
+    id: '1',
+    title: '10 overs',
+    overs: 10,
+    icon: lightning,
+    des: 'Fast and fun ',
+    button: 'Quick Play',
+  },
+  {
+    id: '2',
+    title: '20 overs',
+    overs: 20,
+    icon: throphy,
+    des: 'Balanced match format',
+    button: 'Most Popular',
+  },
+  {
+    id: '3',
+    title: '50 overs ',
+    overs: 50,
+    icon: cricket,
+    des: 'Full match experience',
+    button: 'Classic',
+  },
+  {
+    id: '9999',
+    title: 'Custom overs',
+    overs: 0,
+    icon: setting,
+    des: 'Set your own match length',
+    button: 'Flexible',
+  },
 ];
 
 interface OverSelectionProps {
@@ -35,50 +64,100 @@ interface OverSelectionProps {
 
 const OverSelection = ({ onSelect }: OverSelectionProps) => {
   const { isDark } = useThemeContext();
-  const numColumns = 2; // Number of columns you want
+  const numColumns = 2;
   const screenWidth = Dimensions.get('window').width - widthPixel(80);
-  // Total screen width minus some padding
   const [customOvers, SetcustomOvers] = useState('');
-  const [customOversModal, SetcustomOversModal] = useState(false);
+  const [showCustomPanel, setShowCustomPanel] = useState(false);
   const tileSize = screenWidth / numColumns;
+  const theme = colors[isDark ? 'dark' : 'light'];
+
   const handleConfirmCustomOvers = () => {
     const oversNum = Number(customOvers);
-
-    if (!Number.isFinite(oversNum) || oversNum <= 0) return; // (optional: show toast)
-    console.log('--------------->overssdfdsfdsf', oversNum);
-
+    if (!Number.isFinite(oversNum) || oversNum <= 0) return;
     onSelect(oversNum);
-    SetcustomOversModal(false);
+    setShowCustomPanel(false);
+    SetcustomOvers('');
   };
+
   const handleSelectOvers = (item: any) => {
     if (String(item?.id) === '9999') {
-      SetcustomOversModal(true);
+      setShowCustomPanel(true);
       return;
     }
     onSelect(item.overs);
   };
+
   const isValidOvers = Number(customOvers) > 0;
+
   const renderItem = ({ item }: any) => (
     <Pressable
       style={{
         width: tileSize,
         height: tileSize,
-        borderRadius: widthPixel(10),
-        backgroundColor: colors[isDark ? 'dark' : 'light'].primary,
+        borderRadius: widthPixel(16),
+        backgroundColor: theme.surface,
+        borderWidth: 2,
+        borderColor: theme.primaryMuted,
         justifyContent: 'center',
         alignItems: 'center',
         overflow: 'hidden',
         margin: widthPixel(5),
+        elevation: 3,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.07,
+        shadowRadius: 8,
       }}
       onPress={() => handleSelectOvers(item)}
     >
-      <ThemeText color="text" style={styles.text}>
-        {item.title}
-      </ThemeText>
+      <View style={{ justifyContent: 'center', alignItems: 'center' }}>
+        <Image
+          source={item?.icon}
+          style={{
+            width: widthPixel(36),
+            height: heightPixel(36),
+            resizeMode: 'contain',
+          }}
+        />
+      </View>
+      <View style={{ justifyContent: 'center', alignItems: 'center' }}>
+        <ThemeText color="text" style={styles.text}>
+          {item.title}
+        </ThemeText>
+        <ThemeText color="secondaryText" style={styles.textDes}>
+          {item?.des}
+        </ThemeText>
+        <View
+          style={{
+            backgroundColor: theme.primaryMuted,
+            width: widthPixel(100),
+            justifyContent: 'center',
+            alignItems: 'center',
+            borderRadius: widthPixel(12),
+            paddingVertical: heightPixel(6),
+            paddingHorizontal: widthPixel(6),
+            marginVertical: heightPixel(6),
+          }}
+        >
+          <ThemeText numberOfLines={1} color="primary" style={styles.textDes1}>
+            {item?.button}
+          </ThemeText>
+        </View>
+      </View>
     </Pressable>
   );
+
   return (
-    <View>
+    <View style={{ marginTop: heightPixel(20) }}>
+      <View>
+        <ThemeText color="text" style={styles.mainText}>
+          Pick the number of overs to set the pace of your game.
+        </ThemeText>
+        <ThemeText color="text" style={styles.mainTextDes}>
+          Quick match, standard game, or full-length battle choose what fits
+          best.
+        </ThemeText>
+      </View>
       <FlatList
         data={DATA}
         renderItem={renderItem}
@@ -89,95 +168,48 @@ const OverSelection = ({ onSelect }: OverSelectionProps) => {
           paddingVertical: heightPixel(20),
         }}
       />
-      <View
-        style={{
-          width: '100%',
-          alignItems: 'center',
-          justifyContent: 'center',
-          paddingVertical: heightPixel(8),
-          marginBottom: heightPixel(50),
-        }}
-      >
-        <AppBanner
-          size={BannerAdSize.MEDIUM_RECTANGLE}
-          adUnits={adUnits.banner}
-        />
-      </View>
-      <Modal
-        visible={customOversModal}
-        onRequestClose={() => SetcustomOversModal(false)}
-        transparent
-      >
-        <Pressable
-          style={{
-            flex: 1,
-            justifyContent: 'center',
-            alignItems: 'center',
-            backgroundColor: 'rgba(0,0,0,0.5)',
-            overflow: 'hidden',
-          }}
-          onPress={() => {
-            SetcustomOversModal(false);
-            SetcustomOvers('');
-          }}
+
+      {showCustomPanel && (
+        <View
+          style={[
+            styles.customPanel,
+            {
+              backgroundColor: theme.surface,
+              borderColor: theme.border,
+            },
+          ]}
         >
-          <View
-            style={[
-              styles.Modal,
-              {
-                backgroundColor: colors[isDark ? 'dark' : 'light'].background,
-                borderWidth: widthPixel(1),
-                borderColor: colors[isDark ? 'dark' : 'light'].primary,
-              },
-            ]}
+          <ThemeText color="text" style={styles.customTitle}>
+            Custom overs
+          </ThemeText>
+          <ThemeText color="secondaryText" style={styles.customHint}>
+            Enter how many overs for this match (e.g. 12).
+          </ThemeText>
+          <ThemeInput
+            placeholder="Number of overs"
+            value={String(customOvers)}
+            onChangeText={(t: string) => SetcustomOvers(t)}
+            keyboardType="number-pad"
+            leftIcon={ball}
+          />
+          <Button
+            onPress={handleConfirmCustomOvers}
+            title="Use this length"
+            disabled={!isValidOvers}
+          />
+          <Pressable
+            onPress={() => {
+              setShowCustomPanel(false);
+              SetcustomOvers('');
+            }}
+            style={styles.cancelCustom}
           >
-            <View
-              style={[
-                styles.headerModal,
-                {
-                  backgroundColor: colors[isDark ? 'dark' : 'light'].primary,
-                },
-              ]}
-            >
-              <ThemeText color="text" style={styles.text}>
-                Match Overs
-              </ThemeText>
-              <View style={{ flex: 1 }} />
-              <Pressable
-                onPress={() => {
-                  SetcustomOversModal(false);
-                  SetcustomOvers('');
-                }}
-              >
-                <Image
-                  source={cross}
-                  tintColor={colors[isDark ? 'dark' : 'light'].white}
-                  style={styles.image}
-                />
-              </Pressable>
-            </View>
-            <View
-              style={{
-                paddingHorizontal: widthPixel(20),
-                marginVertical: heightPixel(20),
-              }}
-            >
-              <ThemeInput
-                placeholder="Enter number of overs (e.g., 10)"
-                value={String(customOvers)}
-                onChangeText={(t: string) => SetcustomOvers(t)}
-                keyboardType="number-pad"
-                leftIcon={ball}
-              />
-              <Button
-                onPress={handleConfirmCustomOvers}
-                title="Confirm"
-                disabled={!isValidOvers}
-              />
-            </View>
-          </View>
-        </Pressable>
-      </Modal>
+            <ThemeText color="primary" style={styles.cancelCustomText}>
+              Cancel
+            </ThemeText>
+          </Pressable>
+        </View>
+      )}
     </View>
   );
 };
@@ -185,24 +217,55 @@ const OverSelection = ({ onSelect }: OverSelectionProps) => {
 export default OverSelection;
 
 const styles = StyleSheet.create({
+  mainText: {
+    marginTop: heightPixel(10),
+    fontFamily: fontFamilies.bold,
+    fontSize: fontPixel(18),
+    textAlign: 'justify',
+  },
+  mainTextDes: {
+    fontFamily: fontFamilies.regular,
+    fontSize: fontPixel(14),
+    textAlign: 'justify',
+  },
   text: {
     fontFamily: fontFamilies.semibold,
     fontSize: fontPixel(16),
   },
-  Modal: {
-    width: '90%',
-    // paddingHorizontal: widthPixel(20),
-    borderRadius: widthPixel(10),
-    overflow: 'hidden',
+  textDes: {
+    fontFamily: fontFamilies.regular,
+    fontSize: fontPixel(12),
+    textAlign: 'center',
   },
-  headerModal: {
-    flexDirection: 'row',
-    paddingHorizontal: widthPixel(15),
-    paddingVertical: heightPixel(15),
+  textDes1: {
+    fontFamily: fontFamilies.medium,
+    fontSize: fontPixel(12),
   },
-  image: {
-    width: widthPixel(20),
-    height: heightPixel(20),
-    resizeMode: 'contain',
+  customPanel: {
+    marginHorizontal: widthPixel(4),
+    marginBottom: heightPixel(24),
+    padding: widthPixel(16),
+    borderRadius: widthPixel(16),
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  customTitle: {
+    fontFamily: fontFamilies.bold,
+    fontSize: fontPixel(17),
+    marginBottom: heightPixel(6),
+  },
+  customHint: {
+    fontFamily: fontFamilies.regular,
+    fontSize: fontPixel(13),
+    marginBottom: heightPixel(12),
+    lineHeight: fontPixel(18),
+  },
+  cancelCustom: {
+    alignSelf: 'center',
+    marginTop: heightPixel(10),
+    paddingVertical: heightPixel(8),
+  },
+  cancelCustomText: {
+    fontFamily: fontFamilies.semibold,
+    fontSize: fontPixel(14),
   },
 });

@@ -1,15 +1,15 @@
 import {
   ActivityIndicator,
+  Platform,
   StyleSheet,
   TouchableOpacity,
   View,
 } from 'react-native';
-import React, { Activity, useState } from 'react';
+import React, { useState } from 'react';
 import { lock, mail, visibility } from '../../../assets/images';
 
 import AuthWrapper from '../../../wrappers/AuthWrapper';
 import Button from '../../../components/themeButton';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import ThemeInput from '../../../components/ThemeInput';
 import ThemeText from '../../../components/ThemeText';
 import { handleSignIn } from '../../../services/authServices';
@@ -18,15 +18,17 @@ import { routes } from '../../../utils/routes';
 import { setuser } from '../../../features/auth/authSlice';
 import { useDispatch } from 'react-redux';
 import { useNavigation } from '@react-navigation/native';
+import { useThemeContext } from '../../../theme/themeContext';
 
 const Signin = () => {
   const navigation = useNavigation<any>();
+  const { isDark } = useThemeContext();
   const dispatch = useDispatch();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isloading, setIsloading] = useState(false);
 
-  const Signin = async () => {
+  const onSignInPress = async () => {
     if (!email || !password) {
       return;
     }
@@ -37,7 +39,8 @@ const Signin = () => {
       console.log('signin', res);
       if (res?.ok) {
         dispatch(setuser(res.user));
-        navigation.navigate(routes.home);
+
+        navigation.replace(routes.home);
       }
       setIsloading(false);
     } catch (error) {
@@ -73,6 +76,10 @@ const Signin = () => {
           onChangeText={setEmail}
           keyboardType="email-address"
           leftIcon={mail}
+          inputWrapperStyle={[
+            authFieldLift.base,
+            isDark ? authFieldLift.shadowDark : authFieldLift.shadowLight,
+          ]}
         />
 
         <View style={{ height: heightPixel(12) }} />
@@ -84,6 +91,10 @@ const Signin = () => {
           secureTextEntry
           leftIcon={lock}
           rightIcon={visibility}
+          inputWrapperStyle={[
+            authFieldLift.base,
+            isDark ? authFieldLift.shadowDark : authFieldLift.shadowLight,
+          ]}
         />
 
         <TouchableOpacity
@@ -98,7 +109,14 @@ const Signin = () => {
 
         <View style={{ height: heightPixel(18) }} />
 
-        <Button title="Sign In" onPress={Signin} />
+        <Button
+          title="Sign In"
+          onPress={onSignInPress}
+          buttonStyle={[
+            authCtaLift.base,
+            isDark ? authCtaLift.shadowDark : authCtaLift.shadowLight,
+          ]}
+        />
 
         <View style={styles.bottomRow}>
           <ThemeText color="secondary">Don&apos;t have an account? </ThemeText>
@@ -118,6 +136,28 @@ const Signin = () => {
 };
 
 export default Signin;
+
+const authFieldLift = StyleSheet.create({
+  base: {
+    elevation: Platform.OS === 'android' ? 8 : 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 10,
+  },
+  shadowLight: { shadowOpacity: 0.12 },
+  shadowDark: { shadowOpacity: 0.3 },
+});
+
+const authCtaLift = StyleSheet.create({
+  base: {
+    elevation: Platform.OS === 'android' ? 10 : 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 5 },
+    shadowRadius: 12,
+  },
+  shadowLight: { shadowOpacity: 0.2 },
+  shadowDark: { shadowOpacity: 0.35 },
+});
 
 const styles = StyleSheet.create({
   scroll: {

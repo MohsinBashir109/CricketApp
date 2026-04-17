@@ -1,8 +1,11 @@
-import { FlatList, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import React, { useMemo } from 'react';
-import { heightPixel, widthPixel } from '../../utils/constants';
+import { fontPixel, heightPixel, widthPixel } from '../../utils/constants';
 
 import ThemeText from '../ThemeText';
+import { colors } from '../../utils/colors';
+import { fontFamilies } from '../../utils/fontfamilies';
+import { useThemeContext } from '../../theme/themeContext';
 
 interface BatsmenRowProps {
   innings?: any;
@@ -14,8 +17,6 @@ const calcStrikeRate = (runs?: number, balls?: number) => {
   return (((runs ?? 0) / balls) * 100).toFixed(2);
 };
 
-// Build scorecard-style out text using your fields.
-// (You can customize this later)
 const getOutText = (
   player: any,
   currentMatch: any,
@@ -36,37 +37,27 @@ const getOutText = (
 
   const type = (player?.outType ?? '').trim().toLowerCase();
 
-  // Some common formats:
-  // caught: c Fielder b Bowler
   if (type === 'caught' || type === 'c') {
     return `c ${fielder?.name ?? 'fielder'} b ${bowler?.name ?? 'bowler'}`;
   }
-
-  // bowled: b Bowler
   if (type === 'bowled' || type === 'b') {
     return `b ${bowler?.name ?? 'bowler'}`;
   }
-
-  // lbw: lbw b Bowler
   if (type === 'lbw') {
     return `lbw b ${bowler?.name ?? 'bowler'}`;
   }
-
-  // run out: run out (Fielder)
   if (type === 'run out' || type === 'runout') {
     return `run out (${fielder?.name ?? 'fielder'})`;
   }
-
-  // stumped: st Fielder b Bowler (usually keeper as fielder)
   if (type === 'stumped' || type === 'st') {
     return `st ${fielder?.name ?? 'keeper'} b ${bowler?.name ?? 'bowler'}`;
   }
-
-  // fallback
   return (player?.outType ?? 'out').toString();
 };
 
 const Batsmenrow = ({ innings, currentMatch }: BatsmenRowProps) => {
+  const { isDark } = useThemeContext();
+  const theme = colors[isDark ? 'dark' : 'light'];
   const battingKey = innings?.battingTeam as 'teamA' | 'teamB' | undefined;
 
   const strikerId: number | null | undefined = innings?.strikerId;
@@ -76,7 +67,6 @@ const Batsmenrow = ({ innings, currentMatch }: BatsmenRowProps) => {
     return battingKey ? currentMatch?.[battingKey]?.players ?? [] : [];
   }, [battingKey, currentMatch]);
 
-  //  Data for FlatList: current batsmen + anyone who batted + anyone who is out
   const batsmenData = useMemo(() => {
     const list = battingPlayers
       .filter((p: any) => {
@@ -94,60 +84,61 @@ const Batsmenrow = ({ innings, currentMatch }: BatsmenRowProps) => {
     return list;
   }, [battingPlayers, strikerId, nonStrikerId]);
 
-  const renderItem = ({ item }: { item: any }) => {
-    const isStriker = item.id === strikerId;
-
+  if (batsmenData.length === 0) {
     return (
-      <View style={styles.row}>
-        <View style={styles.left}>
-          <ThemeText color="text" numberOfLines={1}>
-            {item?.name ?? '—'}
-            {isStriker ? ' *' : ''}
-          </ThemeText>
-
-          <ThemeText color="text" style={styles.outText} numberOfLines={1}>
-            {getOutText(item, currentMatch, innings, battingKey)}
-          </ThemeText>
-        </View>
-
-        <View style={styles.right}>
-          <View style={styles.colR}>
-            <ThemeText color="text">{item?.runs ?? 0}</ThemeText>
-          </View>
-
-          <View style={styles.colB}>
-            <ThemeText color="text">{item?.balls ?? 0}</ThemeText>
-          </View>
-
-          <View style={styles.colSR}>
-            <ThemeText color="text">
-              {calcStrikeRate(item?.runs, item?.balls)}
-            </ThemeText>
-          </View>
-        </View>
+      <View style={styles.empty}>
+        <ThemeText color="secondaryText">No batsmen yet</ThemeText>
       </View>
     );
-  };
+  }
 
   return (
-    <View style={{ height: heightPixel(150) }}>
-      <FlatList
-        data={batsmenData}
-        keyExtractor={item => String(item.id)}
-        renderItem={renderItem}
-        scrollEnabled={true}
-        contentContainerStyle={{ flexGrow: 0 }}
-        ListEmptyComponent={
+    <View style={styles.list}>
+      {batsmenData.map((item: any) => {
+        const isStriker = item.id === strikerId;
+        return (
           <View
-            style={{
-              paddingHorizontal: widthPixel(20),
-              paddingVertical: 10,
-            }}
+            key={String(item.id)}
+            style={[
+              styles.row,
+              isStriker && {
+                backgroundColor: theme.primaryMuted,
+                borderRadius: widthPixel(12),
+              },
+            ]}
           >
-            <ThemeText color="text">No batsmen yet</ThemeText>
+            <View style={styles.left}>
+              <ThemeText color="text" numberOfLines={1} style={styles.name}>
+                {item?.name ?? '—'}
+                {isStriker ? (
+                  <ThemeText color="primary" style={styles.strikerMark}>
+                    {' '}
+                    *
+                  </ThemeText>
+                ) : null}
+              </ThemeText>
+              <ThemeText
+                color="secondaryText"
+                style={styles.outText}
+                numberOfLines={1}
+              >
+                {getOutText(item, currentMatch, innings, battingKey)}
+              </ThemeText>
+            </View>
+            <View style={styles.right}>
+              <ThemeText style={styles.num} color="text">
+                {item?.runs ?? 0}
+              </ThemeText>
+              <ThemeText style={styles.num} color="text">
+                {item?.balls ?? 0}
+              </ThemeText>
+              <ThemeText style={styles.sr} color="desText">
+                {calcStrikeRate(item?.runs, item?.balls)}
+              </ThemeText>
+            </View>
           </View>
-        }
-      />
+        );
+      })}
     </View>
   );
 };
@@ -155,20 +146,46 @@ const Batsmenrow = ({ innings, currentMatch }: BatsmenRowProps) => {
 export default Batsmenrow;
 
 const styles = StyleSheet.create({
+  list: {
+    paddingHorizontal: widthPixel(12),
+    paddingBottom: heightPixel(10),
+  },
   row: {
     width: '100%',
-    paddingHorizontal: widthPixel(20),
     flexDirection: 'row',
-    paddingVertical: widthPixel(10),
+    paddingVertical: heightPixel(12),
+    paddingHorizontal: widthPixel(8),
     alignItems: 'center',
   },
-  left: { flex: 1, paddingRight: widthPixel(10) },
+  left: { flex: 1, paddingRight: widthPixel(8) },
   right: { flexDirection: 'row', alignItems: 'center' },
-
-  // Match your spacing style
-  colR: { width: widthPixel(50), alignItems: 'flex-end' },
-  colB: { width: widthPixel(50), alignItems: 'flex-end' },
-  colSR: { width: widthPixel(60), alignItems: 'flex-end' },
-
-  outText: { opacity: 0.7, fontSize: 12, marginTop: 2 },
+  name: {
+    fontFamily: fontFamilies.semibold,
+    fontSize: fontPixel(15),
+  },
+  strikerMark: {
+    fontFamily: fontFamilies.bold,
+    fontSize: fontPixel(15),
+  },
+  outText: {
+    fontSize: fontPixel(12),
+    marginTop: heightPixel(3),
+    fontFamily: fontFamilies.regular,
+  },
+  num: {
+    width: widthPixel(40),
+    textAlign: 'right',
+    fontFamily: fontFamilies.bold,
+    fontSize: fontPixel(15),
+  },
+  sr: {
+    width: widthPixel(52),
+    textAlign: 'right',
+    fontFamily: fontFamilies.medium,
+    fontSize: fontPixel(13),
+  },
+  empty: {
+    paddingHorizontal: widthPixel(14),
+    paddingVertical: heightPixel(16),
+  },
 });

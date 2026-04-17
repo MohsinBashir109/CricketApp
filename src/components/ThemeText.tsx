@@ -8,17 +8,24 @@ interface ThemeTextProps extends TextProps {
   color: keyof typeof colors.light | keyof typeof colors.dark;
 }
 
+const resolveColor = (
+  palette: typeof colors.light | typeof colors.dark,
+  key: keyof typeof colors.light,
+) => {
+  const v = palette[key as keyof typeof palette];
+  return Array.isArray(v) ? v[0] : v;
+};
+
 const ThemeText = ({ children, style, color, ...props }: ThemeTextProps) => {
   const { isDark } = useThemeContext() as ThemeContextType;
+  const palette = isDark ? colors.dark : colors.light;
   return (
     <Text
       style={[
         { fontFamily: fontFamilies.regular },
         style,
         {
-          color: isDark
-            ? colors.dark[color as keyof typeof colors.dark]
-            : colors.light[color as keyof typeof colors.light],
+          color: resolveColor(palette, color),
         },
       ]}
       {...props}

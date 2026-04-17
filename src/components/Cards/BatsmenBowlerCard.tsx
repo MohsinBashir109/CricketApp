@@ -5,6 +5,7 @@ import {
   Modal,
   StyleSheet,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -14,7 +15,6 @@ import { fontPixel, heightPixel, widthPixel } from '../../utils/constants';
 import ThemeText from '../ThemeText';
 import { colors } from '../../utils/colors';
 import { fontFamilies } from '../../utils/fontfamilies';
-import { get } from 'react-native/Libraries/NativeComponent/NativeComponentRegistry';
 import { useThemeContext } from '../../theme/themeContext';
 
 export type BatsmanRow = {
@@ -49,6 +49,8 @@ type Props = {
   bowler: BowlerRow[];
 
   visible: boolean;
+  /** `inline` = part of the scroll view (no dimmed popup). `modal` = centered overlay. */
+  presentation?: 'modal' | 'inline';
   onClose: () => void;
   innings?: any; // only needed for OPENERS mode to determine which players to show as availables
   currentMatch?: any; // only needed for OPENERS mode to determine which players to show as availables
@@ -68,10 +70,13 @@ type Props = {
 
 type ListItem = BatsmanRow | BowlerRow;
 
+const rowId = (x: ListItem | { id?: unknown }) => String((x as any)?.id ?? '');
+
 const BatsmenBowlerCard: React.FC<Props> = ({
   batsmen,
   bowler,
   visible,
+  presentation = 'modal',
   onClose,
   mode,
   onConfirmOpeners,
@@ -82,6 +87,8 @@ const BatsmenBowlerCard: React.FC<Props> = ({
 }) => {
   const { isDark } = useThemeContext();
   const theme = colors[isDark ? 'dark' : 'light'];
+  const isInline = presentation === 'inline';
+  const { height: screenHeight } = useWindowDimensions();
 
   const isOpeners = mode === 'OPENERS';
   const isNextBat = mode === 'NEXT_BATSMAN';
@@ -188,16 +195,15 @@ const BatsmenBowlerCard: React.FC<Props> = ({
   const availableBatsmen = batsmen.filter(b => {
     if (b?.isOut === true) return false;
 
-    // ✅ don't show current striker/non-striker in "Next Batsman" picker
     if (mode === 'NEXT_BATSMAN') {
       if (
         strikerIdOnCrease != null &&
-        String(b.id) === String(strikerIdOnCrease)
+        rowId(b) === String(strikerIdOnCrease)
       )
         return false;
       if (
         nonStrikerIdOnCrease != null &&
-        String(b.id) === String(nonStrikerIdOnCrease)
+        rowId(b) === String(nonStrikerIdOnCrease)
       )
         return false;
     }
@@ -205,10 +211,6 @@ const BatsmenBowlerCard: React.FC<Props> = ({
     return true;
   });
 
-  console.log('------------------------>batsmen', batsmen);
-
-  // Data list based on mode
-  console.log('------------------------>availableBatsmen', availableBatsmen);
   const data: ListItem[] = useMemo(() => {
     if (isNextBow) return bowler;
 
@@ -284,7 +286,7 @@ const BatsmenBowlerCard: React.FC<Props> = ({
   const handlePrimaryPress = () => {
     if (isNextBat) {
       if (!selectedNextBatId) return;
-      const picked = batsmen.find(b => b.id === selectedNextBatId);
+      const picked = batsmen.find(b => rowId(b) === selectedNextBatId);
       if (!picked) return;
 
       onConfirmNextBatsman?.(picked);
@@ -294,7 +296,7 @@ const BatsmenBowlerCard: React.FC<Props> = ({
 
     if (isNextBow) {
       if (!selectedNextBowlerId) return;
-      const picked = bowler.find(b => b.id === selectedNextBowlerId);
+      const picked = bowler.find(b => rowId(b) === selectedNextBowlerId);
       if (!picked) return;
 
       onConfirmNextBowler?.(picked);
@@ -313,10 +315,10 @@ const BatsmenBowlerCard: React.FC<Props> = ({
     // final confirm openers + bowler
     if (!strikerId || selectedIds.length !== 2 || !selectedBowlerId) return;
 
-    const striker = batsmen.find(b => b.id === strikerId);
-    const nonStrikerId = selectedIds.find(id => id !== strikerId);
-    const nonStriker = batsmen.find(b => b.id === nonStrikerId);
-    const bowlerSelected = bowler.find(b => b.id === selectedBowlerId);
+    const striker = batsmen.find(b => rowId(b) === strikerId);
+    const nonStrikerIdVal = selectedIds.find(id => id !== strikerId);
+    const nonStriker = batsmen.find(b => rowId(b) === nonStrikerIdVal);
+    const bowlerSelected = bowler.find(b => rowId(b) === selectedBowlerId);
 
     if (!striker || !nonStriker || !bowlerSelected) return;
 
@@ -330,34 +332,35 @@ const BatsmenBowlerCard: React.FC<Props> = ({
 
   const renderItem = (item: ListItem) => {
     // Determine selection state for each mode
+    const idKey = rowId(item);
     const isSelected = isNextBat
-      ? selectedNextBatId === item.id
+      ? selectedNextBatId === idKey
       : isNextBow
-      ? selectedNextBowlerId === item.id
+      ? selectedNextBowlerId === idKey
       : confirmBowlerStep
-      ? selectedBowlerId === item.id
-      : selectedIds.includes(item.id);
+      ? selectedBowlerId === idKey
+      : selectedIds.includes(idKey);
 
-    const { icon } = getRoleMeta((item as any)?.role);
+    const { icon, label: roleLabel } = getRoleMeta((item as any)?.role);
 
     return (
       <TouchableOpacity
         onPress={() => {
           if (isNextBat) {
-            setSelectedNextBatId(item.id);
+            setSelectedNextBatId(idKey);
             return;
           }
 
           if (isNextBow) {
-            toggleSelectNextBowler(item.id);
+            toggleSelectNextBowler(idKey);
             return;
           }
 
           // OPENERS
           if (confirmBowlerStep) {
-            toggleSelectBowlerForOpeners(item.id);
+            toggleSelectBowlerForOpeners(idKey);
           } else {
-            toggleSelectBat(item.id);
+            toggleSelectBat(idKey);
           }
         }}
         style={[
@@ -366,45 +369,70 @@ const BatsmenBowlerCard: React.FC<Props> = ({
             borderWidth: 1,
             borderColor: isSelected ? theme.green : theme.gray4,
             backgroundColor: isSelected ? `${theme.primary}20` : 'transparent',
-            paddingHorizontal: widthPixel(20),
-            paddingVertical: heightPixel(14),
+            paddingHorizontal: widthPixel(14),
+            paddingVertical: heightPixel(12),
             marginBottom: heightPixel(10),
-            borderRadius: widthPixel(10),
+            borderRadius: widthPixel(12),
             alignItems: 'center',
           },
         ]}
       >
-        <ThemeText color="text" style={[styles.name, { color: theme.text }]}>
-          {item.name}
-        </ThemeText>
+        <View style={styles.rowLeft}>
+          <ThemeText color="text" style={[styles.name, { color: theme.text }]}>
+            {item.name}
+          </ThemeText>
 
-        {/* OPENERS only: show striker/non-striker labels */}
-        {isOpeners &&
-          !confirmBowlerStep &&
-          selectedIds.includes(item.id) &&
-          !isNextBat && (
-            <ThemeText
-              color="text"
-              style={{
-                marginLeft: widthPixel(8),
-                fontSize: fontPixel(11),
-                opacity: 0.8,
-              }}
-            >
-              {strikerId === item.id ? '(Striker)' : '(Non-striker)'}
-            </ThemeText>
-          )}
+          <View style={styles.rowMeta}>
+            {!!roleLabel && (
+              <ThemeText
+                color="secondaryText"
+                style={[styles.roleText, { color: theme.text, opacity: 0.7 }]}
+              >
+                {roleLabel}
+              </ThemeText>
+            )}
+
+            {/* OPENERS only: show striker/non-striker labels */}
+            {isOpeners &&
+              !confirmBowlerStep &&
+              selectedIds.includes(idKey) &&
+              !isNextBat && (
+                <ThemeText
+                  color="secondaryText"
+                  style={[
+                    styles.roleText,
+                    { color: theme.text, opacity: 0.85 },
+                  ]}
+                >
+                  {strikerId === idKey ? '• Striker' : '• Non-striker'}
+                </ThemeText>
+              )}
+          </View>
+        </View>
 
         <View style={{ flex: 1 }} />
 
-        <ThemeText color="text" style={{ marginRight: widthPixel(8) }}>
-          {isSelected ? 'Selected' : 'Select'}
-        </ThemeText>
+        <View
+          style={[
+            styles.selectPill,
+            {
+              backgroundColor: isSelected ? theme.primary : 'transparent',
+              borderColor: isSelected ? theme.primary : theme.border,
+            },
+          ]}
+        >
+          <ThemeText
+            color={isSelected ? 'white' : 'text'}
+            style={[styles.selectPillText, { color: isSelected ? '#fff' : theme.text }]}
+          >
+            {isSelected ? 'Selected' : 'Select'}
+          </ThemeText>
+        </View>
 
         {icon && (
           <Image
             source={icon}
-            style={{ width: widthPixel(20), height: heightPixel(20) }}
+            style={styles.roleIcon}
             resizeMode="contain"
           />
         )}
@@ -412,107 +440,175 @@ const BatsmenBowlerCard: React.FC<Props> = ({
     );
   };
 
+  const cardBody = (
+    <View
+      style={[
+        styles.modalCard,
+        isInline && styles.modalCardInline,
+        {
+          backgroundColor: theme.surface,
+          borderColor: theme.border,
+          borderWidth: StyleSheet.hairlineWidth,
+          borderRadius: widthPixel(16),
+        },
+      ]}
+    >
+      <View
+        style={[
+          styles.header,
+          { backgroundColor: theme.primary, borderColor: theme.gray4 },
+        ]}
+      >
+        <View style={{ flex: 1 }}>
+          <ThemeText color="white" style={styles.text}>
+            {headerContent?.teamName}
+          </ThemeText>
+          {!!headerContent?.actionText && (
+            <ThemeText color="white" style={styles.text1}>
+              {headerContent?.actionText}
+            </ThemeText>
+          )}
+        </View>
+
+        <View style={styles.headerRight}>
+          <ThemeText color="white" style={styles.inningsPillText}>
+            {inningsText}
+          </ThemeText>
+          <TouchableOpacity
+            onPress={handleClose}
+            accessibilityRole="button"
+            style={styles.closeBtn}
+            hitSlop={{
+              top: heightPixel(10),
+              bottom: heightPixel(10),
+              left: widthPixel(10),
+              right: widthPixel(10),
+            }}
+          >
+            <ThemeText color="white" style={styles.closeBtnText}>
+              X
+            </ThemeText>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <View
+        style={[
+          isInline ? styles.flatInlineOnly : styles.flat,
+          // Give the modal more height so the list isn't cramped.
+          isInline && {
+            maxHeight: Math.max(
+              heightPixel(320),
+              Math.min(screenHeight * 0.68, heightPixel(620)),
+            ),
+          },
+          !isInline && {
+            height: Math.max(
+              heightPixel(420),
+              Math.min(screenHeight * 0.7, heightPixel(680)),
+            ),
+          },
+        ]}
+      >
+        <View style={styles.tableHeader}>
+          <ThemeText
+            color="text"
+            style={[styles.thName, { color: theme.text }]}
+          >
+            {columnTitle}
+          </ThemeText>
+        </View>
+
+        <View
+          style={{
+            flex: 1,
+            marginTop: heightPixel(10),
+            marginBottom: heightPixel(10),
+          }}
+        >
+          {data.length === 0 ? (
+            <ThemeText
+              color="secondaryText"
+              style={{
+                fontFamily: fontFamilies.medium,
+                fontSize: fontPixel(13),
+                paddingVertical: heightPixel(16),
+                textAlign: 'center',
+              }}
+            >
+              {isNextBow || (isOpeners && confirmBowlerStep)
+                ? `No players found for ${bowlingTeamName}. Add players to that team before starting the match.`
+                : isNextBat
+                ? `No available batsmen for ${battingTeamName}.`
+                : `No players found for ${battingTeamName}. Add players to that team before starting the match.`}
+            </ThemeText>
+          ) : (
+            <FlatList
+              data={data}
+              keyExtractor={item => rowId(item)}
+              renderItem={({ item }) => renderItem(item)}
+              showsVerticalScrollIndicator={false}
+              nestedScrollEnabled
+              contentContainerStyle={{ paddingBottom: heightPixel(6) }}
+            />
+          )}
+
+          <View style={{ paddingVertical: heightPixel(10), width: '100%' }}>
+            <TouchableOpacity
+              disabled={primaryDisabled}
+              onPress={handlePrimaryPress}
+              style={{
+                opacity: primaryDisabled ? 0.5 : 1,
+                backgroundColor: theme.primary,
+                paddingVertical: heightPixel(12),
+                borderRadius: widthPixel(12),
+                alignItems: 'center',
+              }}
+            >
+              <ThemeText
+                color="onPrimary"
+                style={{ fontFamily: fontFamilies.bold }}
+              >
+                {primaryText}
+              </ThemeText>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={handleClose}
+              style={{
+                marginTop: heightPixel(8),
+                paddingVertical: heightPixel(10),
+                borderRadius: widthPixel(12),
+                alignItems: 'center',
+                borderWidth: 1,
+                borderColor: theme.border,
+              }}
+            >
+              <ThemeText
+                color="text"
+                style={{ fontFamily: fontFamilies.medium }}
+              >
+                Cancel
+              </ThemeText>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+
+  if (isInline) {
+    if (!visible) return null;
+    return <View style={styles.inlineOuter}>{cardBody}</View>;
+  }
+
+  if (!visible) return null;
+
   return (
     <View style={styles.container}>
       <Modal visible={visible} transparent presentationStyle="overFullScreen">
         <View style={styles.containermodal}>
-          <View
-            style={[
-              styles.modalCard,
-              {
-                backgroundColor: theme.background,
-                borderColor: theme.gray4,
-                borderWidth: 1,
-                borderRadius: widthPixel(12),
-              },
-            ]}
-          >
-            <View
-              style={[
-                styles.header,
-                { backgroundColor: theme.primary, borderColor: theme.gray4 },
-              ]}
-            >
-              <ThemeText color="text" style={styles.text}>
-                {headerContent?.teamName}{' '}
-                <ThemeText color="text" style={styles.text1}>
-                  ({headerContent?.actionText})
-                </ThemeText>
-              </ThemeText>
-              <View style={{ flex: 1 }} />
-              <ThemeText color="text" style={styles.text}>
-                {inningsText}
-              </ThemeText>
-            </View>
-
-            <View style={styles.flat}>
-              <View style={styles.tableHeader}>
-                <ThemeText
-                  color="text"
-                  style={[styles.thName, { color: theme.text }]}
-                >
-                  {columnTitle}
-                </ThemeText>
-              </View>
-
-              <View
-                style={{
-                  flex: 1,
-                  marginTop: heightPixel(10),
-                  marginBottom: heightPixel(10),
-                }}
-              >
-                <FlatList
-                  data={data}
-                  keyExtractor={item => item.id}
-                  renderItem={({ item }) => renderItem(item)}
-                  showsVerticalScrollIndicator={false}
-                />
-
-                <View
-                  style={{ paddingVertical: heightPixel(10), width: '100%' }}
-                >
-                  <TouchableOpacity
-                    disabled={primaryDisabled}
-                    onPress={handlePrimaryPress}
-                    style={{
-                      opacity: primaryDisabled ? 0.5 : 1,
-                      backgroundColor: theme.primary,
-                      paddingVertical: heightPixel(12),
-                      borderRadius: widthPixel(10),
-                      alignItems: 'center',
-                    }}
-                  >
-                    <ThemeText
-                      color="text"
-                      style={{ fontFamily: fontFamilies.bold }}
-                    >
-                      {primaryText}
-                    </ThemeText>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    onPress={handleClose}
-                    style={{
-                      marginTop: heightPixel(8),
-                      paddingVertical: heightPixel(10),
-                      borderRadius: widthPixel(10),
-                      alignItems: 'center',
-                      borderWidth: 1,
-                      borderColor: theme.gray4,
-                    }}
-                  >
-                    <ThemeText
-                      color="text"
-                      style={{ fontFamily: fontFamilies.medium }}
-                    >
-                      Cancel
-                    </ThemeText>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </View>
-          </View>
+          {cardBody}
         </View>
       </Modal>
     </View>
@@ -528,6 +624,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: widthPixel(10),
+  },
+  closeBtn: {
+    width: widthPixel(30),
+    height: widthPixel(30),
+    borderRadius: widthPixel(15),
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  closeBtnText: {
+    fontFamily: fontFamilies.bold,
+    fontSize: fontPixel(12),
+  },
+  inningsPillText: {
+    fontFamily: fontFamilies.semibold,
+    fontSize: fontPixel(12),
+    opacity: 0.95,
+  },
   text: {
     fontFamily: fontFamilies.bold,
     fontSize: fontPixel(14),
@@ -535,11 +654,25 @@ const styles = StyleSheet.create({
   text1: {
     fontFamily: fontFamilies.medium,
     fontSize: fontPixel(12),
+    opacity: 0.95,
   },
   modalCard: {
     width: '90%',
     overflow: 'hidden',
     justifyContent: 'center',
+  },
+  modalCardInline: {
+    width: '100%',
+  },
+  inlineOuter: {
+    width: '100%',
+    marginBottom: heightPixel(12),
+  },
+  flatInlineOnly: {
+    marginTop: heightPixel(10),
+    maxHeight: heightPixel(520),
+    minHeight: heightPixel(240),
+    paddingHorizontal: widthPixel(15),
   },
   containermodal: {
     flex: 1,
@@ -569,13 +702,41 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
   },
+  rowLeft: {
+    flexShrink: 1,
+  },
+  rowMeta: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: widthPixel(6),
+    marginTop: heightPixel(2),
+  },
   name: {
     fontFamily: fontFamilies.medium,
     fontSize: fontPixel(13),
   },
+  roleText: {
+    fontFamily: fontFamilies.medium,
+    fontSize: fontPixel(11),
+  },
+  selectPill: {
+    borderWidth: 1,
+    paddingHorizontal: widthPixel(10),
+    paddingVertical: heightPixel(6),
+    borderRadius: widthPixel(999),
+    marginRight: widthPixel(10),
+  },
+  selectPillText: {
+    fontFamily: fontFamilies.semibold,
+    fontSize: fontPixel(12),
+  },
+  roleIcon: {
+    width: widthPixel(18),
+    height: heightPixel(18),
+  },
   flat: {
     marginTop: heightPixel(10),
-    height: heightPixel(360),
+    height: heightPixel(520),
     paddingHorizontal: widthPixel(15),
   },
 });

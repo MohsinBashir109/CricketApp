@@ -16,9 +16,11 @@ type Props = {
   onWicketPress?: () => void;
   onUndoPress?: () => void;
   onEndOverPress?: () => void;
+  /** Blocks runs and extras (e.g. match paused or openers not set). */
+  ballEntryDisabled?: boolean;
+  /** Disables undo when there is nothing to undo. */
+  undoDisabled?: boolean;
 };
-
-const runButtons: Run[] = [0, 1, 2, 3, 4, 6];
 
 const ScoreControls: React.FC<Props> = ({
   onRunPress,
@@ -26,133 +28,143 @@ const ScoreControls: React.FC<Props> = ({
   onWicketPress,
   onUndoPress,
   onEndOverPress,
+  ballEntryDisabled = false,
+  undoDisabled = false,
 }) => {
   const { isDark } = useThemeContext();
   const theme = colors[isDark ? 'dark' : 'light'];
+  const lockEntry = ballEntryDisabled;
 
   return (
     <View style={styles.container}>
-      {/* Run buttons */}
-      <View style={styles.runRow}>
-        {runButtons.map(r => (
+      <View
+        style={[lockEntry && { opacity: 0.45 }]}
+        pointerEvents={lockEntry ? 'none' : 'auto'}
+      >
+      <View style={styles.runRows}>
+        <View style={styles.runRow}>
+          {([0, 1, 2] as const).map(r => (
+            <Pressable
+              key={r}
+              onPress={() => onRunPress?.(r)}
+              style={({ pressed }) => [
+                styles.runBtn,
+                {
+                  backgroundColor: theme.surfaceElevated,
+                  borderColor: theme.border,
+                  opacity: pressed ? 0.85 : 1,
+                },
+              ]}
+            >
+              <ThemeText style={styles.runText} color="text">
+                {r}
+              </ThemeText>
+            </Pressable>
+          ))}
+        </View>
+        <View style={styles.runRow}>
+          {([3, 4, 6] as const).map(r => (
+            <Pressable
+              key={r}
+              onPress={() => onRunPress?.(r)}
+              style={({ pressed }) => [
+                styles.runBtn,
+                {
+                  backgroundColor: theme.surfaceElevated,
+                  borderColor: theme.border,
+                  opacity: pressed ? 0.85 : 1,
+                },
+              ]}
+            >
+              <ThemeText style={styles.runText} color="text">
+                {r}
+              </ThemeText>
+            </Pressable>
+          ))}
+        </View>
+      </View>
+
+      <ThemeText style={styles.extrasLabel} color="secondaryText">
+        Extras
+      </ThemeText>
+      <View style={styles.extrasRow}>
+        {(
+          [
+            ['wide', 'Wd'],
+            ['noball', 'Nb'],
+            ['bye', 'Bye'],
+            ['legbye', 'Lb'],
+          ] as const
+        ).map(([type, label]) => (
           <Pressable
-            key={r}
-            onPress={() => onRunPress?.(r)}
-            style={[
-              styles.runBtn,
+            key={type}
+            onPress={() => onExtraPress?.(type)}
+            style={({ pressed }) => [
+              styles.extraChip,
               {
-                borderColor: theme.gray4 ?? theme.white,
-                backgroundColor: 'transparent',
+                backgroundColor: theme.primaryMuted,
+                borderColor: theme.extras,
+                opacity: pressed ? 0.88 : 1,
               },
-              r === 4 && styles.runBtnActive, // similar highlight like screenshot
             ]}
           >
-            <ThemeText
-              color="text"
-              style={[styles.runText, { color: theme.text }]}
-            >
-              {r}
+            <ThemeText style={styles.extraText} color="extras">
+              {label}
             </ThemeText>
           </Pressable>
         ))}
       </View>
-
-      {/* Extras */}
-      <View style={styles.extrasRow}>
-        <Pressable
-          onPress={() => onExtraPress?.('wide')}
-          style={[styles.extraBtn, { borderColor: theme.gray4 ?? theme.white }]}
-        >
-          <ThemeText
-            color="text"
-            style={[styles.extraText, { color: theme.text }]}
-          >
-            Wide
-          </ThemeText>
-        </Pressable>
-
-        <Pressable
-          onPress={() => onExtraPress?.('noball')}
-          style={[styles.extraBtn, { borderColor: theme.gray4 ?? theme.white }]}
-        >
-          <ThemeText
-            color="text"
-            style={[styles.extraText, { color: theme.text }]}
-          >
-            No Ball
-          </ThemeText>
-        </Pressable>
-
-        <Pressable
-          onPress={() => onExtraPress?.('bye')}
-          style={[styles.extraBtn, { borderColor: theme.gray4 ?? theme.white }]}
-        >
-          <ThemeText
-            color="text"
-            style={[styles.extraText, { color: theme.text }]}
-          >
-            Bye
-          </ThemeText>
-        </Pressable>
-
-        <Pressable
-          onPress={() => onExtraPress?.('legbye')}
-          style={[styles.extraBtn, { borderColor: theme.gray4 ?? theme.white }]}
-        >
-          <ThemeText
-            color="text"
-            style={[styles.extraText, { color: theme.text }]}
-          >
-            Leg Bye
-          </ThemeText>
-        </Pressable>
       </View>
 
-      {/* Bottom actions */}
       <View style={styles.bottomRow}>
         <Pressable
           onPress={onWicketPress}
-          style={[
-            styles.actionBtn,
+          disabled={lockEntry}
+          style={({ pressed }) => [
             styles.wicketBtn,
-            { borderColor: '#ff4d4d' },
+            {
+              borderColor: theme.wicket,
+              backgroundColor: theme.surface,
+              opacity: lockEntry ? 0.35 : pressed ? 0.9 : 1,
+            },
           ]}
         >
-          <ThemeText
-            color="text"
-            style={[styles.actionText, { color: '#ff4d4d' }]}
-          >
+          <ThemeText style={styles.wicketText} color="wicket">
             Wicket
           </ThemeText>
         </Pressable>
 
         <Pressable
           onPress={onUndoPress}
-          style={[
-            styles.actionBtn,
-            { borderColor: theme.gray4 ?? theme.white },
+          disabled={undoDisabled}
+          style={({ pressed }) => [
+            styles.secondaryBtn,
+            {
+              borderColor: theme.border,
+              backgroundColor: theme.surfaceElevated,
+              opacity: undoDisabled ? 0.35 : pressed ? 0.9 : 1,
+            },
           ]}
         >
-          <ThemeText
-            color="text"
-            style={[styles.actionText, { color: theme.text }]}
-          >
+          <ThemeText style={styles.secondaryText} color="text">
             Undo
           </ThemeText>
         </Pressable>
 
         <Pressable
           onPress={onEndOverPress}
-          style={[
-            styles.actionBtn,
-            { borderColor: theme.gray4 ?? theme.white },
+          disabled={lockEntry}
+          style={({ pressed }) => [
+            styles.secondaryBtn,
+            {
+              borderColor: theme.border,
+              backgroundColor: theme.surfaceElevated,
+              opacity: lockEntry ? 0.35 : pressed ? 0.9 : 1,
+            },
           ]}
         >
-          <ThemeText
-            color="text"
-            style={[styles.actionText, { color: theme.text }]}
-          >
-            End Over
+          <ThemeText style={styles.secondaryText} color="text">
+            Next ov.
           </ThemeText>
         </Pressable>
       </View>
@@ -165,68 +177,79 @@ export default ScoreControls;
 const styles = StyleSheet.create({
   container: {
     width: '100%',
-    paddingHorizontal: widthPixel(16),
-    paddingBottom: heightPixel(16),
+    paddingHorizontal: widthPixel(12),
+    paddingTop: heightPixel(4),
   },
-
+  runRows: {
+    gap: heightPixel(10),
+  },
   runRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: heightPixel(10),
+    gap: widthPixel(10),
   },
   runBtn: {
-    width: widthPixel(46),
-    height: widthPixel(46),
-    borderRadius: widthPixel(10),
-    borderWidth: 1,
+    flex: 1,
+    minHeight: heightPixel(52),
+    borderRadius: widthPixel(14),
+    borderWidth: StyleSheet.hairlineWidth,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  runBtnActive: {
-    // subtle emphasis like screenshot; adjust later if you want
-    transform: [{ scale: 1.02 }],
-  },
   runText: {
     fontFamily: fontFamilies.bold,
-    fontSize: fontPixel(16),
+    fontSize: fontPixel(22),
   },
-
+  extrasLabel: {
+    marginTop: heightPixel(14),
+    marginBottom: heightPixel(6),
+    fontFamily: fontFamilies.semibold,
+    fontSize: fontPixel(11),
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+  },
   extrasRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: heightPixel(12),
+    flexWrap: 'wrap',
+    gap: widthPixel(8),
   },
-  extraBtn: {
-    flex: 1,
-    marginHorizontal: widthPixel(4),
+  extraChip: {
     paddingVertical: heightPixel(10),
-    borderRadius: widthPixel(10),
+    paddingHorizontal: widthPixel(14),
+    borderRadius: widthPixel(12),
     borderWidth: 1,
-    alignItems: 'center',
   },
   extraText: {
-    fontFamily: fontFamilies.medium,
-    fontSize: fontPixel(12),
+    fontFamily: fontFamilies.bold,
+    fontSize: fontPixel(13),
   },
-
   bottomRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    gap: widthPixel(8),
     marginTop: heightPixel(14),
   },
-  actionBtn: {
-    flex: 1,
-    marginHorizontal: widthPixel(4),
-    paddingVertical: heightPixel(12),
-    borderRadius: widthPixel(10),
-    borderWidth: 1,
-    alignItems: 'center',
-  },
   wicketBtn: {
-    borderWidth: 1.5,
+    flex: 1.2,
+    minHeight: heightPixel(48),
+    borderRadius: widthPixel(14),
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  actionText: {
-    fontFamily: fontFamilies.semibold ?? fontFamilies.bold,
-    fontSize: fontPixel(13),
+  wicketText: {
+    fontFamily: fontFamilies.bold,
+    fontSize: fontPixel(15),
+  },
+  secondaryBtn: {
+    flex: 1,
+    minHeight: heightPixel(48),
+    borderRadius: widthPixel(14),
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  secondaryText: {
+    fontFamily: fontFamilies.semibold,
+    fontSize: fontPixel(14),
   },
 });

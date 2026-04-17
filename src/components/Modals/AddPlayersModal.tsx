@@ -1,12 +1,18 @@
-import { FlatList, Image, Pressable, StyleSheet, View } from 'react-native';
-import { MatchSetup, Player, PlayerRole, Team } from '../../types/Playertype';
+import {
+  FlatList,
+  Image,
+  Modal,
+  Pressable,
+  StyleSheet,
+  View,
+} from 'react-native';
+import { Player, PlayerRole, Team } from '../../types/Playertype';
 import React, { useEffect, useState } from 'react';
-import { cross, players } from '../../assets/images';
+import { cross, teamSlect } from '../../assets/images';
 import { fontPixel, heightPixel, widthPixel } from '../../utils/constants';
 
 import AddPlayerCheckBox from '../Checkbox/AddPlayerCheckBox';
 import Button from '../themeButton';
-import Modal from 'react-native-modal';
 import PlayerAddedRow from '../Flatlistcomponents/PlayerAddedRow';
 import PlayersHeader from '../Headers/PlayersHeader';
 import ThemeInput from '../ThemeInput';
@@ -44,10 +50,6 @@ const AddPlayersModal = ({
     if (isVisible) setSelectedPlayers(initialPlayers ?? []);
   }, [isVisible, initialPlayers]);
   const [playerName, setPlayerName] = useState('');
-  console.log(playerName, role);
-  console.log(selectedPlayers);
-
-  // const isTeamFull = selectedPlayers.length >= 11;
   const handleAddPlayer = () => {
     if (selectedPlayers.length >= 11) return;
     if (!playerName) return;
@@ -83,7 +85,12 @@ const AddPlayersModal = ({
     setRole(undefined);
   };
   return (
-    <Modal isVisible={isVisible}>
+    <Modal
+      visible={isVisible}
+      animationType="slide"
+      presentationStyle="fullScreen"
+      onRequestClose={onClose}
+    >
       <View
         style={[
           styles.container,
@@ -97,20 +104,54 @@ const AddPlayersModal = ({
           ]}
         >
           {activeTeam?.id === 1 && (
-            <ThemeText
-              color="text"
-              style={{ fontSize: 18, fontWeight: 'bold' }}
-            >
-              Add Players to your team {activeTeam?.name}
-            </ThemeText>
+            <View style={{ flexDirection: 'row', gap: widthPixel(5) }}>
+              <ThemeText color="white" style={{ fontSize: 18, fontWeight: 'bold' }}>
+                Adding players for
+              </ThemeText>
+              <View
+                style={{
+                  backgroundColor: colors[isDark ? 'dark' : 'light'].white,
+                  borderRadius: widthPixel(10),
+                  paddingHorizontal: widthPixel(10),
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                }}
+              >
+                <ThemeText
+                  color="primary"
+                  style={{ fontSize: 18, fontWeight: 'bold' }}
+                >
+                  {activeTeam?.name}
+                </ThemeText>
+              </View>
+            </View>
           )}
+
           {activeTeam?.id === 2 && (
-            <ThemeText
-              color="text"
-              style={{ fontSize: 18, fontWeight: 'bold' }}
-            >
-              Add Players to your team{activeTeam?.name}
-            </ThemeText>
+            <View style={{ flexDirection: 'row' }}>
+              <ThemeText
+                color="white"
+                style={{ fontSize: 18, fontWeight: 'bold' }}
+              >
+                Adding players for
+              </ThemeText>
+              <View
+                style={{
+                  backgroundColor: colors[isDark ? 'dark' : 'light'].white,
+                  borderRadius: widthPixel(10),
+                  paddingHorizontal: widthPixel(10),
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                }}
+              >
+                <ThemeText
+                  color="primary"
+                  style={{ fontSize: 18, fontWeight: 'bold' }}
+                >
+                  {activeTeam?.name}
+                </ThemeText>
+              </View>
+            </View>
           )}
 
           <View style={{ flex: 1 }} />
@@ -122,16 +163,26 @@ const AddPlayersModal = ({
             />
           </Pressable>
         </View>
+        <View
+          style={{
+            marginTop: heightPixel(20),
+            paddingHorizontal: widthPixel(10),
+          }}
+        >
+          <ThemeText color="text" style={styles.label}>
+            Enter player names and assign a role to build your team lineup.
+          </ThemeText>
+        </View>
         <View style={styles.innerViewModal}>
           <ThemeInput
             placeholder="Enter the player name "
-            leftIcon={players}
+            leftIcon={teamSlect}
             value={playerName}
             onChangeText={setPlayerName}
           />
-          <View>
+          <View style={{ marginTop: heightPixel(10) }}>
             <ThemeText color="text" style={styles.label}>
-              Player Role
+              Select player role
             </ThemeText>
           </View>
           <View

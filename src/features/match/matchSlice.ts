@@ -1,20 +1,23 @@
-import {
-  MatchSetup,
-  Player,
-  SetOpenersAndBowlerPayload,
-} from '../../types/Playertype';
-import { PayloadAction, createSlice } from '@reduxjs/toolkit';
+import { MatchSetup, SetOpenersAndBowlerPayload } from '../../types/Playertype';
+import { PayloadAction, createSlice, current } from '@reduxjs/toolkit';
 import { ballsToOvers, oversToBalls } from '../../utils/constants';
+
+function cloneMatchForUndo(match: MatchSetup): MatchSetup {
+  return JSON.parse(JSON.stringify(match)) as MatchSetup;
+}
 
 interface MatchState {
   currentMatch: MatchSetup | null;
   history: MatchSetup[];
   lastCompletedMatch: MatchSetup | null;
+  /** One snapshot per ball recorded (for undo). Not part of MatchSetup. */
+  preBallSnapshots: MatchSetup[];
 }
 const initialState: MatchState = {
   currentMatch: null,
   history: [],
   lastCompletedMatch: null,
+  preBallSnapshots: [],
 };
 
 const matchSlice = createSlice({
@@ -22,13 +25,21 @@ const matchSlice = createSlice({
   initialState,
   reducers: {
     setmatch(state, action: PayloadAction<MatchSetup>) {
+      state.preBallSnapshots = [];
       state.currentMatch = {
         ...action.payload,
         isCompleted: false,
         winnerTeam: null,
         winnerTeamName: '',
         resultReason: undefined,
+        isScoringPaused: action.payload.isScoringPaused ?? false,
       };
+    },
+
+    setScoringPaused(state, action: PayloadAction<boolean>) {
+      const match = state.currentMatch;
+      if (!match) return;
+      match.isScoringPaused = action.payload;
     },
     updateMatch(state, action: PayloadAction<Partial<MatchSetup>>) {
       if (state.currentMatch) {
@@ -91,20 +102,24 @@ const matchSlice = createSlice({
       const inningsObj = match[inningsKey];
       if (!inningsObj) return;
 
-      // optional strict validation against team players
-      // const battingPlayers = match[inningsObj.battingTeam].players;
-      // const bowlingPlayers = match[inningsObj.bowlingTeam].players;
+      const battingTeam = match[inningsObj.battingTeam];
+      const bowlingTeam = match[inningsObj.bowlingTeam];
+      const battingPlayers = battingTeam?.players ?? [];
+      const bowlingPlayers = bowlingTeam?.players ?? [];
 
-      // const strikerExists = battingPlayers.some(p => p.id === strikerId);
-      // const nonStrikerExists = battingPlayers.some(p => p.id === nonStrikerId);
-      // const bowlerExists = bowlingPlayers.some(p => p.id === bowlerId);
+      const strikerExists = battingPlayers.some(p => p.id === strikerId);
+      const nonStrikerExists = battingPlayers.some(p => p.id === nonStrikerId);
+      const bowlerExists = bowlingPlayers.some(p => p.id === bowlerId);
 
-      // if (!strikerExists || !nonStrikerExists || !bowlerExists) return;
+      if (!strikerExists || !nonStrikerExists || !bowlerExists) return;
 
       // set inside innings object
       inningsObj.strikerId = strikerId;
       inningsObj.nonStrikerId = nonStrikerId;
       inningsObj.bowlerId = bowlerId;
+      inningsObj.openingStrikerId = strikerId;
+      inningsObj.openingNonStrikerId = nonStrikerId;
+      inningsObj.openingBowlerId = bowlerId;
     },
     setActiveModal(
       state,
@@ -221,6 +236,7 @@ const matchSlice = createSlice({
       };
 
       match.currentInnings = 2;
+      state.preBallSnapshots = [];
     },
 
     recordBall(
@@ -234,6 +250,8 @@ const matchSlice = createSlice({
     ) {
       const match = state.currentMatch;
       if (!match) return;
+      if (match.isScoringPaused) return;
+      if (!state.preBallSnapshots) state.preBallSnapshots = [];
 
       const inningsKey: 'innings1' | 'innings2' =
         match.currentInnings === 2 ? 'innings2' : 'innings1';
@@ -267,6 +285,9 @@ const matchSlice = createSlice({
       const striker = batTeam.players.find(p => p.id === strikerId);
       const bowler = bowlTeam.players.find(p => p.id === bowlerId);
       if (!striker || !bowler) return;
+
+      const snap = cloneMatchForUndo(current(state.currentMatch) as MatchSetup);
+      state.preBallSnapshots.push(snap);
 
       const runsOffBat = action.payload.runsOffBat ?? 0;
       const extra = action.payload.extra ?? null;
@@ -460,9 +481,11 @@ const matchSlice = createSlice({
       state.lastCompletedMatch = match; // for summary screen
       state.history.push(match); // keep history
       state.currentMatch = null; // ✅ this will trigger navigation
+      state.preBallSnapshots = [];
     },
 
     undoLastBall(state) {
+      if (!state.preBallSnapshots) state.preBallSnapshots = [];
       const match = state.currentMatch;
       if (!match) return;
 
@@ -473,53 +496,13 @@ const matchSlice = createSlice({
 
       if (innings.balls.length === 0) return;
 
-      // remove last
-      innings.balls.pop();
+      const prev = state.preBallSnapshots.pop();
+      if (!prev) return;
 
-      // reset totals
-      innings.totalRuns = 0;
-      innings.totalWickets = 0;
-      innings.totalBalls = 0;
-
-      // reset player stats for BOTH teams (or at least current innings teams)
-      const resetTeam = (t: any) => {
-        t?.players?.forEach((p: any) => {
-          p.runs = 0;
-          p.balls = 0;
-          p.fours = 0;
-          p.sixes = 0;
-          p.isOut = false;
-          p.overs = 0;
-          p.maidens = 0;
-          p.conceded = 0;
-          p.wickets = 0;
-          p.wides = 0;
-          p.noBalls = 0;
-        });
-      };
-
-      resetTeam(match.teamA);
-      resetTeam(match.teamB);
-
-      // keep current striker/nonStriker/bowler as they were initially selected
-      // BUT recompute their changes using your same logic:
-      const savedStriker = innings.strikerId;
-      const savedNonStriker = innings.nonStrikerId;
-      const savedBowler = innings.bowlerId;
-
-      // restore them
-      innings.strikerId = savedStriker;
-      innings.nonStrikerId = savedNonStriker;
-      innings.bowlerId = savedBowler;
-
-      // replay all balls
-      const ballsCopy = [...innings.balls];
-      innings.balls = [];
-      ballsCopy.forEach(b => {
-        // dispatching inside reducer not allowed, so just call the same logic manually is long.
-        // easiest: you can create a shared function applyBall(state, payload) and call it here & in recordBall.
-        // For now: just push back and re-run recordBall logic by extracting it into a helper.
-      });
+      state.currentMatch = prev;
+    },
+    setHistory(state, action: PayloadAction<MatchSetup[]>) {
+      state.history = action.payload;
     },
 
     endMatch(state) {
@@ -527,9 +510,11 @@ const matchSlice = createSlice({
         state.history.push(state.currentMatch);
         state.currentMatch = null;
       }
+      state.preBallSnapshots = [];
     },
     clearHistory(state) {
       state.history = [];
+      state.preBallSnapshots = [];
     },
   },
 });
@@ -544,7 +529,9 @@ export const {
   setNextBatsman,
   setNextBowler,
   setActiveModal,
+  setScoringPaused,
   startSecondInnings,
   completeMatchIfNeeded,
+  setHistory,
 } = matchSlice.actions;
 export default matchSlice.reducer;

@@ -7,7 +7,7 @@ import rootReducer from './rootReducer';
 const persitConfig: PersistConfig<any> = {
   key: 'root',
   storage: AsyncStorage,
-  whitelist: ['auth', 'match'],
+  whitelist: ['auth', 'match', 'teams', 'tournament'],
 };
 const persistedReducer = persistReducer(persitConfig, rootReducer);
 export const store = configureStore({

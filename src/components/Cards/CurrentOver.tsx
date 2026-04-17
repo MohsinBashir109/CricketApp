@@ -3,10 +3,12 @@ import { StyleSheet, View } from 'react-native';
 import ThemeText from '../ThemeText';
 import { widthPixel, heightPixel, fontPixel } from '../../utils/constants';
 import { fontFamilies } from '../../utils/fontfamilies';
+import { colors } from '../../utils/colors';
+import { useThemeContext } from '../../theme/themeContext';
 
 type BallItem = {
-  over: number; // 1,2,3...
-  ballInOver: number; // 1-6, 0 for wide/noBall
+  over: number;
+  ballInOver: number;
   runs: number;
   extra?: 'wide' | 'noball' | 'bye' | 'legbye' | null;
   wicket?: boolean;
@@ -14,21 +16,21 @@ type BallItem = {
 
 type Props = {
   balls: BallItem[];
-  totalBalls: number; // innings.totalBalls (legal balls)
+  totalBalls: number;
 };
 
 const formatBall = (b: BallItem) => {
   if (b.wicket) return 'W';
-
   if (b.extra === 'wide') return `Wd${b.runs > 1 ? b.runs : ''}`;
   if (b.extra === 'noball') return `Nb${b.runs > 1 ? b.runs : ''}`;
   if (b.extra === 'bye') return `B${b.runs || 1}`;
   if (b.extra === 'legbye') return `Lb${b.runs || 1}`;
-
-  return b.runs === 0 ? '•' : String(b.runs); // dot ball as •
+  return b.runs === 0 ? '•' : String(b.runs);
 };
 
 const CurrentOver: React.FC<Props> = ({ balls, totalBalls }) => {
+  const { isDark } = useThemeContext();
+  const theme = colors[isDark ? 'dark' : 'light'];
   const currentOverNumber = Math.floor((totalBalls ?? 0) / 6) + 1;
 
   const currentOverBalls = useMemo(() => {
@@ -43,21 +45,32 @@ const CurrentOver: React.FC<Props> = ({ balls, totalBalls }) => {
     <View style={styles.wrapper}>
       <View style={styles.headerRow}>
         <ThemeText color="text" style={styles.title}>
-          Over {currentOverNumber}
+          This over
         </ThemeText>
-        <ThemeText color="text" style={styles.subtitle}>
-          Runs: {overRuns}
-        </ThemeText>
+        <View style={[styles.runsPill, { backgroundColor: theme.primaryMuted }]}>
+          <ThemeText color="primary" style={styles.subtitle}>
+            {overRuns} runs
+          </ThemeText>
+        </View>
       </View>
 
       <View style={styles.ballsRow}>
         {currentOverBalls.length === 0 ? (
-          <ThemeText color="text" style={styles.empty}>
-            No balls yet
+          <ThemeText color="secondaryText" style={styles.empty}>
+            No balls bowled yet in this over
           </ThemeText>
         ) : (
           currentOverBalls.map((b, idx) => (
-            <View key={`${b.over}-${idx}`} style={styles.ballPill}>
+            <View
+              key={`${b.over}-${idx}`}
+              style={[
+                styles.ballPill,
+                {
+                  borderColor: theme.border,
+                  backgroundColor: theme.surfaceElevated,
+                },
+              ]}
+            >
               <ThemeText color="text" style={styles.ballText}>
                 {formatBall(b)}
               </ThemeText>
@@ -73,23 +86,28 @@ export default CurrentOver;
 
 const styles = StyleSheet.create({
   wrapper: {
-    paddingHorizontal: widthPixel(16),
-    paddingTop: heightPixel(10),
-    paddingBottom: heightPixel(8),
+    paddingHorizontal: widthPixel(14),
+    paddingTop: heightPixel(12),
+    paddingBottom: heightPixel(14),
   },
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: heightPixel(8),
+    alignItems: 'center',
+    marginBottom: heightPixel(10),
   },
   title: {
-    fontFamily: fontFamilies.semibold,
-    fontSize: fontPixel(14),
+    fontFamily: fontFamilies.bold,
+    fontSize: fontPixel(15),
+  },
+  runsPill: {
+    paddingHorizontal: widthPixel(12),
+    paddingVertical: heightPixel(6),
+    borderRadius: widthPixel(20),
   },
   subtitle: {
-    fontFamily: fontFamilies.medium,
+    fontFamily: fontFamilies.semibold,
     fontSize: fontPixel(12),
-    opacity: 0.8,
   },
   ballsRow: {
     flexDirection: 'row',
@@ -97,17 +115,17 @@ const styles = StyleSheet.create({
     gap: widthPixel(8),
   },
   ballPill: {
-    paddingHorizontal: widthPixel(10),
-    paddingVertical: heightPixel(6),
+    paddingHorizontal: widthPixel(12),
+    paddingVertical: heightPixel(8),
     borderRadius: widthPixel(12),
-    borderWidth: 1,
-    borderColor: '#999',
+    borderWidth: StyleSheet.hairlineWidth,
   },
   ballText: {
     fontFamily: fontFamilies.bold,
-    fontSize: fontPixel(12),
+    fontSize: fontPixel(14),
   },
   empty: {
-    opacity: 0.7,
+    fontFamily: fontFamilies.regular,
+    fontSize: fontPixel(13),
   },
 });

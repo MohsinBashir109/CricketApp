@@ -1,53 +1,71 @@
-// src/navigation/HomeFlow/BottomTabs.tsx
-import React from 'react';
-import { View, Text, Image, StyleSheet, Platform } from 'react-native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as HomeScreens from '../../screens/HomeStack/HomeStack';
 
+import { Image, Platform, StyleSheet, View } from 'react-native';
+import { fontPixel, heightPixel, widthPixel } from '../../utils/constants';
+import { matches, profile, throphy } from '../../assets/images';
+
+import React from 'react';
+import ThemeText from '../../components/ThemeText';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { colors } from '../../utils/colors';
+import { fontFamilies } from '../../utils/fontfamilies';
 import { routes } from '../../utils/routes';
-import { homeIcon, profile, matches } from '../../assets/images';
-import { heightPixel, widthPixel, fontPixel } from '../../utils/constants';
-import LinearGradient from 'react-native-linear-gradient';
+import { useThemeContext } from '../../theme/themeContext';
 
 const Tab = createBottomTabNavigator();
 
 type TabIconProps = {
   focused: boolean;
   label: string;
-  source: any;
+  source: number;
 };
 
 const TabIcon = ({ focused, label, source }: TabIconProps) => {
+  const { isDark } = useThemeContext();
+  const theme = colors[isDark ? 'dark' : 'light'];
   return (
-    <View style={[styles.iconWrap, focused ? styles.iconWrapFocused : null]}>
-      {focused ? (
-        <LinearGradient
-          colors={['#90DDF6', '#3D84F6']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.gradient}
-        >
-          <Image source={source} style={styles.iconFocused} />
-        </LinearGradient>
-      ) : (
-        <Image source={source} style={styles.icon} />
-      )}
-
-      <View style={{ width: widthPixel(50), alignItems: 'center' }}>
-        <Text
-          style={[styles.label, focused ? styles.labelFocused : null]}
-          numberOfLines={1}
-        >
-          {label}
-        </Text>
-      </View>
+    <View style={styles.iconColumn}>
+      <Image
+        source={source}
+        style={[
+          styles.tabIcon,
+          focused ? styles.tabIconFocused : styles.tabIconMuted,
+          { tintColor: focused ? theme.tabIconSelected : theme.tabIconDefault },
+        ]}
+        resizeMode="contain"
+      />
+      <ThemeText
+        color={focused ? 'tabIconSelected' : 'tabIconDefault'}
+        style={[styles.tabLabel, focused && styles.tabLabelFocused]}
+        numberOfLines={1}
+      >
+        {label}
+      </ThemeText>
     </View>
   );
 };
 
+const tabIconMatches = ({ focused }: { focused: boolean }) => (
+  <TabIcon focused={focused} label="Home" source={matches} />
+);
+const tabIconTournaments = ({ focused }: { focused: boolean }) => (
+  <TabIcon focused={focused} label="Tournaments" source={throphy} />
+);
+const tabIconProfile = ({ focused }: { focused: boolean }) => (
+  <TabIcon focused={focused} label="Profile" source={profile} />
+);
+
 export const BottomTabs = () => {
   const insets = useSafeAreaInsets();
+  const { isDark } = useThemeContext();
+  const theme = colors[isDark ? 'dark' : 'light'];
+
+  const tabBarHeight =
+    Platform.OS === 'android'
+      ? heightPixel(52) + insets.bottom
+      : heightPixel(50) + insets.bottom;
 
   return (
     <Tab.Navigator
@@ -56,11 +74,23 @@ export const BottomTabs = () => {
         headerShown: false,
         tabBarShowLabel: false,
         tabBarHideOnKeyboard: true,
-
+        tabBarItemStyle: styles.tabBarItem,
         tabBarStyle: {
-          height:
-            Platform.OS === 'android' ? 60 + insets.bottom : 55 + insets.bottom,
-          paddingTop: Platform.OS === 'ios' ? 10 : 0,
+          height: tabBarHeight,
+          paddingTop: heightPixel(6),
+          paddingBottom:
+            Platform.OS === 'ios'
+              ? Math.max(insets.bottom, heightPixel(8))
+              : heightPixel(6) + insets.bottom,
+          paddingHorizontal: widthPixel(4),
+          backgroundColor: theme.bottomTab,
+          borderTopWidth: StyleSheet.hairlineWidth,
+          borderTopColor: theme.border,
+          elevation: 14,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -3 },
+          shadowOpacity: isDark ? 0.35 : 0.08,
+          shadowRadius: 10,
         },
       }}
     >
@@ -68,18 +98,24 @@ export const BottomTabs = () => {
         name={routes.matches}
         component={HomeScreens.Matches}
         options={{
-          tabBarIcon: ({ focused }) => (
-            <TabIcon focused={focused} label="Matches" source={matches} />
-          ),
+          tabBarAccessibilityLabel: 'Home, matches and scoring',
+          tabBarIcon: tabIconMatches,
+        }}
+      />
+      <Tab.Screen
+        name={routes.tournaments}
+        component={HomeScreens.TournamentsHome}
+        options={{
+          tabBarAccessibilityLabel: 'Tournaments',
+          tabBarIcon: tabIconTournaments,
         }}
       />
       <Tab.Screen
         name={routes.profile}
         component={HomeScreens.Profile}
         options={{
-          tabBarIcon: ({ focused }) => (
-            <TabIcon focused={focused} label="Profile" source={profile} />
-          ),
+          tabBarAccessibilityLabel: 'Profile and settings',
+          tabBarIcon: tabIconProfile,
         }}
       />
     </Tab.Navigator>
@@ -87,39 +123,31 @@ export const BottomTabs = () => {
 };
 
 const styles = StyleSheet.create({
-  iconWrap: {
+  tabBarItem: {
+    flex: 1,
+  },
+  iconColumn: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: heightPixel(10),
+    paddingBottom: heightPixel(2),
   },
-  iconWrapFocused: {
-    marginTop: 0,
-  },
-  gradient: {
-    borderRadius: widthPixel(999),
-    padding: widthPixel(10),
-    marginBottom: heightPixel(6),
-  },
-  icon: {
+  tabIcon: {
     width: widthPixel(22),
-    height: heightPixel(22),
-    resizeMode: 'contain',
-    marginBottom: heightPixel(6),
-    opacity: 0.7,
+    height: widthPixel(22),
+    marginBottom: heightPixel(4),
   },
-  iconFocused: {
-    width: widthPixel(22),
-    height: heightPixel(22),
-    resizeMode: 'contain',
-    tintColor: 'white',
+  tabIconFocused: {
+    opacity: 1,
   },
-  label: {
-    fontSize: fontPixel(10),
-    color: '#777',
+  tabIconMuted: {
+    opacity: 0.75,
   },
-  labelFocused: {
-    fontSize: fontPixel(10),
-    color: '#3D84F6',
-    fontWeight: '700',
+  tabLabel: {
+    fontFamily: fontFamilies.semibold,
+    fontSize: fontPixel(11),
+    letterSpacing: 0.15,
+  },
+  tabLabelFocused: {
+    fontFamily: fontFamilies.bold,
   },
 });

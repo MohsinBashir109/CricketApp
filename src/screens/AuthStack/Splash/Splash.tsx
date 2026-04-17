@@ -1,28 +1,24 @@
 import { CommonActions, useNavigation } from '@react-navigation/native';
-import { Image, Platform, StatusBar, StyleSheet, View } from 'react-native';
+import { ImageBackground, Platform, StatusBar, StyleSheet } from 'react-native';
 import React, { useEffect, useRef } from 'react';
 import { heightPixel, widthPixel } from '../../../utils/constants';
-import { loadAppOpenAd, showAppOpenAd } from '../../../ads/appOpenManager';
 
-import ThemeText from '../../../components/ThemeText';
 import { auth } from '../../../dbConfig/firebase';
-import { logo } from '../../../assets/images';
+
 import { onAuthStateChanged } from 'firebase/auth';
 import { routes } from '../../../utils/routes';
 import { setuser } from '../../../features/auth/authSlice';
 import { useDispatch } from 'react-redux';
-import { useThemeContext } from '../../../theme/themeContext';
+import { splashImage } from '../../../assets/images';
 
 const Splash = () => {
   const navigation = useNavigation<any>();
-  const { isDark } = useThemeContext();
+
   const dispatch = useDispatch();
   const hasNavigatedRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    loadAppOpenAd();
-
     const goNext = (user: any) => {
       if (hasNavigatedRef.current) return;
 
@@ -36,20 +32,10 @@ const Splash = () => {
       );
     };
     const unsub = onAuthStateChanged(auth, user => {
-      console.log('Auth state changed, user:', user);
       dispatch(setuser(user));
       timerRef.current = setTimeout(() => {
-        const shown = showAppOpenAd({
-          onClosed: () => goNext(user),
-          onError: () => goNext(user),
-        });
-        console.log('====================================shown');
-        console.log(shown);
-        console.log('====================================');
-        if (!shown) {
-          goNext(user);
-        }
-      }, 3000);
+        goNext(user);
+      }, 1500);
     });
     return () => {
       if (timerRef.current) {
@@ -57,10 +43,11 @@ const Splash = () => {
       }
       unsub();
     };
-  }, [navigation]);
+  }, [dispatch, navigation]);
 
   return (
-    <View
+    <ImageBackground
+      source={splashImage}
       style={[
         styles.container,
         {
@@ -68,19 +55,19 @@ const Splash = () => {
         },
       ]}
     >
-      <StatusBar
+      {/* <StatusBar
         barStyle={isDark ? 'light-content' : 'dark-content'}
         backgroundColor="transparent"
         translucent
-      />
+      /> */}
 
-      <View style={styles.imageContainer}>
+      {/* <View style={styles.imageContainer}>
         <Image source={logo} resizeMode="contain" style={styles.image} />
         <ThemeText color="secondary" style={styles.loadingText}>
           Loading the match…
         </ThemeText>
-      </View>
-    </View>
+      </View> */}
+    </ImageBackground>
   );
 };
 
