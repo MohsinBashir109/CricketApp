@@ -1,6 +1,7 @@
 import {
   Image,
   ImageBackground,
+  Pressable,
   StatusBar,
   StyleSheet,
   View,
@@ -13,17 +14,22 @@ import { fontFamilies } from '../utils/fontfamilies';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeContext } from '../theme/themeContext';
 import { logo, darkmode, lightmode3 } from '../assets/images/index';
+import { useNavigation } from '@react-navigation/native';
 
 type props = {
   text?: string;
   children: React.ReactNode;
   desText?: string;
+  /** Show a back button when navigation can go back (default: true). */
+  backButtonShown?: boolean;
 };
 
-const AuthWrapper = ({ children, text, desText }: props) => {
+const AuthWrapper = ({ children, text, desText, backButtonShown = true }: props) => {
   const insets = useSafeAreaInsets();
   const { isDark } = useThemeContext();
   const palette = colors[isDark ? 'dark' : 'light'];
+  const navigation = useNavigation<any>();
+  const canGoBack = backButtonShown && navigation?.canGoBack?.();
   return (
     <ImageBackground
       source={isDark ? darkmode : lightmode3}
@@ -50,6 +56,25 @@ const AuthWrapper = ({ children, text, desText }: props) => {
         backgroundColor={'transparent'}
         barStyle={isDark ? 'light-content' : 'dark-content'}
       />
+      {canGoBack ? (
+        <Pressable
+          onPress={() => navigation.goBack()}
+          hitSlop={12}
+          style={[
+            styles.backBtn,
+            {
+              backgroundColor: palette.primaryMuted,
+              borderColor: palette.border,
+            },
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+        >
+          <ThemeText color="primary" style={styles.backArrow}>
+            ‹
+          </ThemeText>
+        </Pressable>
+      ) : null}
       <View style={styles.content}>
         <View style={styles.header}>
           <Image source={logo} resizeMode="contain" style={styles.image} />
@@ -76,6 +101,23 @@ const AuthWrapper = ({ children, text, desText }: props) => {
 export default AuthWrapper;
 
 const styles = StyleSheet.create({
+  backBtn: {
+    position: 'absolute',
+    top: heightPixel(10),
+    left: widthPixel(16),
+    width: widthPixel(40),
+    height: widthPixel(40),
+    borderRadius: widthPixel(12),
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 50,
+  },
+  backArrow: {
+    fontSize: fontPixel(28),
+    marginTop: -heightPixel(4),
+    fontFamily: fontFamilies.semibold,
+  },
   glassOverlay: {
     ...StyleSheet.absoluteFillObject,
   },

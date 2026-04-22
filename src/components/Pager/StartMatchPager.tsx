@@ -52,6 +52,7 @@ const StartMatchPager = () => {
   const pagerRef = useRef<PagerView>(null);
   const [page, setPage] = useState(0);
   const [showTossPanel, setShowTossPanel] = useState(false);
+  const [addDuringMatchMode, setAddDuringMatchMode] = useState(false);
   const [match, setMatch] = useState<MatchSetup>({
     matchId: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
     teamA: { id: 1, name: '', players: [] },
@@ -77,15 +78,24 @@ const StartMatchPager = () => {
     const presetTeamA = preset.teamA;
     const presetTeamB = preset.teamB;
     const presetOvers = preset.overs ?? null;
+    const presetPlayersPerTeam = preset.playersPerTeam ?? null;
     const presetMatchId = preset.matchId;
 
     if (!presetMatchId || !presetTeamA || !presetTeamB) return;
+
+    setAddDuringMatchMode(
+      presetTeamA?.playerAddTiming === 'during_match' ||
+        presetTeamB?.playerAddTiming === 'during_match',
+    );
 
     setMatch(prev => ({
       ...prev,
       matchId: presetMatchId,
       tournamentId: preset.tournamentId,
       fixtureId: preset.fixtureId,
+      playersPerTeam: presetPlayersPerTeam,
+      sourceTeamAId: presetTeamA.id,
+      sourceTeamBId: presetTeamB.id,
       overs: presetOvers,
       teamA: {
         id: 1,
@@ -135,6 +145,10 @@ const StartMatchPager = () => {
       pagerRef.current?.setPage(2);
       const a = presetTeamA.players?.length ?? 0;
       const b = presetTeamB.players?.length ?? 0;
+      if (presetTeamA?.playerAddTiming === 'during_match' || presetTeamB?.playerAddTiming === 'during_match') {
+        setShowTossPanel(true);
+        return;
+      }
       if (a > 0 && b > 0) setShowTossPanel(true);
     });
   }, [route.params?.presetMatch]);
@@ -256,6 +270,7 @@ const StartMatchPager = () => {
         >
           <AddPlayers
             teamsSelected={match}
+            addDuringMatchMode={addDuringMatchMode}
             showTossPanel={showTossPanel}
             onOpenToss={() => setShowTossPanel(true)}
             onCloseToss={() => setShowTossPanel(false)}

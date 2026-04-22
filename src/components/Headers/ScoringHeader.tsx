@@ -2,6 +2,7 @@ import {
   Image,
   Platform,
   Pressable,
+  ScrollView,
   StatusBar,
   StyleSheet,
   View,
@@ -25,6 +26,8 @@ interface Score {
   currentInnings?: number;
   isPaused?: boolean;
   onTogglePause?: () => void;
+  onOpenMatchSettings?: () => void;
+  computed?: any;
 }
 
 const ballsToOvers = (balls: number) =>
@@ -32,6 +35,15 @@ const ballsToOvers = (balls: number) =>
 
 const ballsToOversDecimal = (balls: number) =>
   Math.floor(balls / 6) + (balls % 6) / 6;
+
+const formatThisOverBall = (b: any) => {
+  if (b?.wicket) return 'W';
+  if (b?.extra === 'wide') return `Wd${b?.runs > 1 ? b.runs : ''}`;
+  if (b?.extra === 'noball') return `Nb${b?.runs > 1 ? b.runs : ''}`;
+  if (b?.extra === 'bye') return `B${b?.runs || 1}`;
+  if (b?.extra === 'legbye') return `Lb${b?.runs || 1}`;
+  return b?.runs === 0 ? '•' : String(b?.runs ?? 0);
+};
 
 const ScoringHeader = ({
   innings,
@@ -41,16 +53,29 @@ const ScoringHeader = ({
   currentInnings,
   isPaused = false,
   onTogglePause,
+  onOpenMatchSettings,
+  computed,
 }: Score) => {
   const navigation = useNavigation<any>();
   const { isDark } = useThemeContext();
   const theme = colors[isDark ? 'dark' : 'light'];
 
-  const oversBowledText = ballsToOvers(innings.totalBalls);
+  const displayTotalBalls = computed?.totals?.totalLegalBalls ?? innings.totalBalls;
+  const displayTotalRuns = computed?.totals?.totalRuns ?? innings.totalRuns;
+  const displayWickets = computed?.totals?.totalWickets ?? innings.totalWickets;
+
+  const oversBowledText = ballsToOvers(displayTotalBalls);
   const oversLimitText = `${overs}`;
-  const oversDecimal = ballsToOversDecimal(innings.totalBalls);
+  const oversDecimal = ballsToOversDecimal(displayTotalBalls);
   const crr =
-    oversDecimal > 0 ? (innings.totalRuns / oversDecimal).toFixed(2) : '0.00';
+    oversDecimal > 0 ? (displayTotalRuns / oversDecimal).toFixed(2) : '0.00';
+
+  const thisOverChips = React.useMemo(() => {
+    const totalBalls = innings?.totalBalls ?? 0;
+    const currentOverNumber = Math.floor(totalBalls / 6) + 1;
+    const balls = innings?.balls ?? [];
+    return balls.filter((b: any) => b?.over === currentOverNumber);
+  }, [innings?.balls, innings?.totalBalls]);
 
   const statusBarStyle =
     isDark && theme.primary === '#3DDC9C' ? 'dark-content' : 'light-content';
@@ -100,13 +125,22 @@ const ScoringHeader = ({
               T{overs}
             </ThemeText>
           </View>
-          <Pressable hitSlop={16} onPress={() => onTogglePause?.()}>
-            <Image
-              source={isPaused ? play : pause}
-              style={styles.iconBtn}
-              tintColor={theme.white}
-            />
-          </Pressable>
+          <View style={styles.toolbarRight}>
+            {onOpenMatchSettings ? (
+              <Pressable hitSlop={16} onPress={() => onOpenMatchSettings()}>
+                <ThemeText style={styles.gearIcon} color="white">
+                  ⚙
+                </ThemeText>
+              </Pressable>
+            ) : null}
+            <Pressable hitSlop={16} onPress={() => onTogglePause?.()}>
+              <Image
+                source={isPaused ? play : pause}
+                style={styles.iconBtn}
+                tintColor={theme.white}
+              />
+            </Pressable>
+          </View>
         </View>
 
         <ThemeText style={styles.battingTeam} color="white" numberOfLines={1}>
@@ -116,10 +150,10 @@ const ScoringHeader = ({
         <View style={styles.scoreBlock}>
           <View>
             <ThemeText style={styles.megaRuns} color="white">
-              {innings.totalRuns}
+              {displayTotalRuns}
               <ThemeText style={styles.slashWkts} color="white">
                 {' '}
-                / {innings.totalWickets}
+                / {displayWickets}
               </ThemeText>
             </ThemeText>
             <ThemeText style={styles.inningsChip} color="white">
@@ -139,13 +173,30 @@ const ScoringHeader = ({
           </View>
         </View>
 
-        {innings1?.isCompleted && (
-          <View style={styles.targetRow}>
+        <View style={styles.targetRow}>
+          {innings1?.isCompleted ? (
             <ThemeText style={styles.targetText} color="white">
               Target {innings1?.totalRuns}
             </ThemeText>
-          </View>
-        )}
+          ) : (
+            <ThemeText style={styles.targetText} color="white">
+              This over
+            </ThemeText>
+          )}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.overChipsRow}
+          >
+            {thisOverChips.map((b: any, idx: number) => (
+              <View key={`${b?.over ?? 'o'}-${idx}`} style={styles.overChip}>
+                <ThemeText style={styles.overChipText} color="white">
+                  {formatThisOverBall(b)}
+                </ThemeText>
+              </View>
+            ))}
+          </ScrollView>
+        </View>
       </View>
     </LinearGradient>
   );
@@ -175,6 +226,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: widthPixel(10),
+  },
+  toolbarRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: widthPixel(14),
+  },
+  gearIcon: {
+    fontSize: fontPixel(20),
+    lineHeight: fontPixel(22),
+    opacity: 0.95,
   },
   livePill: {
     paddingHorizontal: widthPixel(10),
@@ -238,10 +299,26 @@ const styles = StyleSheet.create({
   },
   targetRow: {
     marginTop: heightPixel(10),
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   targetText: {
     fontFamily: fontFamilies.semibold,
     fontSize: fontPixel(13),
     opacity: 0.95,
+  },
+  overChipsRow: {
+    gap: widthPixel(8),
+    paddingLeft: widthPixel(12),
+    paddingRight: widthPixel(2),
+    alignItems: 'center',
+  },
+  overChip: {
+    paddingHorizontal: widthPixel(2),
+  },
+  overChipText: {
+    fontFamily: fontFamilies.semibold,
+    fontSize: fontPixel(10),
   },
 });

@@ -1,6 +1,6 @@
 import { PayloadAction, createSlice } from '@reduxjs/toolkit';
 import { PlayerRole } from '../../types/Playertype';
-import { TeamEntity, TeamPlayer } from '../../types/TournamentTypes';
+import { TeamEntity, TeamPlayer, TeamPlayerAddTiming } from '../../types/TournamentTypes';
 
 type AddTeamPlayerInput = {
   name: string;
@@ -12,6 +12,7 @@ type AddTeamPayload = {
   name: string;
   shortName?: string;
   players: AddTeamPlayerInput[];
+  playerAddTiming?: TeamPlayerAddTiming;
 };
 
 type UpdateTeamPayload = {
@@ -19,6 +20,7 @@ type UpdateTeamPayload = {
   name: string;
   shortName?: string;
   players: AddTeamPlayerInput[];
+  playerAddTiming?: TeamPlayerAddTiming;
 };
 
 interface TeamsState {
@@ -64,7 +66,9 @@ const teamsSlice = createSlice({
   reducers: {
     addTeam(state, action: PayloadAction<AddTeamPayload>) {
       const name = normalizeName(action.payload.name);
-      if (!name || action.payload.players.length === 0) return;
+      const playerAddTiming: TeamPlayerAddTiming = action.payload.playerAddTiming ?? 'now';
+      if (!name) return;
+      if (playerAddTiming === 'now' && action.payload.players.length === 0) return;
       if (isDuplicateTeamName(state, name)) return;
 
       const id = action.payload.id ?? createId('team');
@@ -74,6 +78,7 @@ const teamsSlice = createSlice({
         name,
         shortName: normalizeName(action.payload.shortName ?? '') || undefined,
         players: buildPlayers(action.payload.players),
+        playerAddTiming,
         createdAt: now,
         updatedAt: now,
         isArchived: false,
@@ -85,7 +90,10 @@ const teamsSlice = createSlice({
       if (!existing) return;
 
       const name = normalizeName(action.payload.name);
-      if (!name || action.payload.players.length === 0) return;
+      const playerAddTiming: TeamPlayerAddTiming =
+        action.payload.playerAddTiming ?? existing.playerAddTiming ?? 'now';
+      if (!name) return;
+      if (playerAddTiming === 'now' && action.payload.players.length === 0) return;
       if (isDuplicateTeamName(state, name, action.payload.id)) return;
 
       state.byId[action.payload.id] = {
@@ -93,6 +101,7 @@ const teamsSlice = createSlice({
         name,
         shortName: normalizeName(action.payload.shortName ?? '') || undefined,
         players: buildPlayers(action.payload.players),
+        playerAddTiming,
         updatedAt: new Date().toISOString(),
       };
     },

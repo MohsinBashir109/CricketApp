@@ -1,14 +1,6 @@
 import dayjs from 'dayjs';
-import React, { useEffect, useMemo, useState } from 'react';
-import {
-  Alert,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  View,
-} from 'react-native';
+import React, { Fragment, useEffect, useMemo, useState } from 'react';
+import { Alert, Dimensions, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import ThemeText from '../ThemeText';
 import ThemeInput from '../ThemeInput';
 import Button from '../themeButton';
@@ -26,6 +18,7 @@ type FixtureMode = 'round_robin' | 'knockout';
 type GeneratePayload = {
   mode: FixtureMode;
   overs: number;
+  playersPerTeam: number | null;
   doubleRoundRobin: boolean;
   startAtIso: string;
   matchesPerDayMode: 'fixed' | 'random' | 'untimed_same_day';
@@ -62,6 +55,25 @@ type Props = {
   onGenerate: (payload: GeneratePayload) => void;
 };
 
+function PlannerSectionHeader(props: {
+  title: string;
+  body: string;
+  onOpenInfo: (title: string, body: string) => void;
+}) {
+  return (
+    <View style={styles.sectionHeaderRow}>
+      <ThemeText color="text" style={styles.sectionTitle}>
+        {props.title}
+      </ThemeText>
+      <Pressable onPress={() => props.onOpenInfo(props.title, props.body)} hitSlop={10} style={styles.sectionInfoHit}>
+        <ThemeText color="primary" style={styles.sectionInfoIcon}>
+          ⓘ
+        </ThemeText>
+      </Pressable>
+    </View>
+  );
+}
+
 const FixturePlannerModal = ({
   visible,
   existingCount,
@@ -83,8 +95,8 @@ const FixturePlannerModal = ({
   const theme = colors[isDark ? 'dark' : 'light'];
 
   const [mode, setMode] = useState<FixtureMode>(defaultMode);
-  const [knockoutEnabled, setKnockoutEnabled] = useState(true);
   const [oversText, setOversText] = useState(String(defaultOvers));
+  const [playersText, setPlayersText] = useState('11');
   const [startAt, setStartAt] = useState<Date | null>(null);
   const [qualifiersText, setQualifiersText] = useState(String(defaultQualifiersPerGroup));
   const [allowedWeekdays, setAllowedWeekdays] = useState<number[]>([
@@ -100,6 +112,15 @@ const FixturePlannerModal = ({
   const overs = useMemo(() => Number(oversText), [oversText]);
   const oversValid = Number.isFinite(overs) && overs > 0;
 
+  const playersPerTeam = useMemo(() => {
+    const raw = playersText.trim();
+    if (!raw) return null;
+    const n = Number(raw);
+    if (!Number.isFinite(n) || n <= 0) return null;
+    return Math.floor(n);
+  }, [playersText]);
+  const playersValid = playersPerTeam != null;
+
   const weekdaysValid = allowedWeekdays.length > 0;
 
   const randomMinPerDay = useMemo(() => Number(randomMinText), [randomMinText]);
@@ -112,6 +133,18 @@ const FixturePlannerModal = ({
     randomMaxPerDay <= 6;
 
   const scheduleNeedsStart = matchesPerDayMode !== 'untimed_same_day';
+  const disableWeekdays = matchesPerDayMode === 'untimed_same_day';
+  const disableMatchesPerDayTop = matchesPerDayMode === 'untimed_same_day';
+
+  const weekdayColumns = 4;
+  const weekdayChipWidth = useMemo(() => {
+    const winW = Dimensions.get('window').width;
+    // Modal sheet is ~92% width with ~16px horizontal padding on each side inside ScrollView.
+    const sheetW = Math.max(0, winW * 0.92 - widthPixel(32));
+    const gap = widthPixel(10);
+    const usable = Math.max(0, sheetW - gap * (weekdayColumns - 1));
+    return Math.floor(usable / weekdayColumns);
+  }, []);
 
   const startWeekdayMatchesAllowed = useMemo(() => {
     if (!scheduleNeedsStart) return true;
@@ -128,7 +161,6 @@ const FixturePlannerModal = ({
 
   const qualifiersValid = useMemo(() => {
     if (!showQualifiersPerGroup && !showOpenGroupQualifiers) return true;
-    if (variant === 'full' && !knockoutEnabled) return true;
     if (qualifiersPerGroup == null) return false;
     if (typeof maxQualifiersPerGroup === 'number' && qualifiersPerGroup > maxQualifiersPerGroup)
       return false;
@@ -138,8 +170,6 @@ const FixturePlannerModal = ({
     qualifiersPerGroup,
     showQualifiersPerGroup,
     showOpenGroupQualifiers,
-    variant,
-    knockoutEnabled,
   ]);
 
   const startAtIso = useMemo(() => (startAt ? startAt.toISOString() : null), [startAt]);
@@ -157,7 +187,6 @@ const FixturePlannerModal = ({
     setMatchesPerDay(1);
     setRandomMinText('1');
     setRandomMaxText('2');
-    setKnockoutEnabled(true);
   }, [
     visible,
     defaultMode,
@@ -183,7 +212,20 @@ const FixturePlannerModal = ({
     );
   };
 
+  const [infoOpen, setInfoOpen] = useState(false);
+  const [infoTitle, setInfoTitle] = useState('');
+  const [infoBody, setInfoBody] = useState('');
+
+  const openInfo = (title: string, body: string) => {
+    setInfoTitle(title);
+    setInfoBody(body);
+    setInfoOpen(true);
+  };
+
+  const closeInfo = () => setInfoOpen(false);
+
   return (
+    <Fragment>
     <Modal
       visible={visible}
       transparent
@@ -211,18 +253,22 @@ const FixturePlannerModal = ({
 
         <ScrollView
           showsVerticalScrollIndicator={false}
+          style={styles.scroll}
           contentContainerStyle={styles.content}
         >
           {variant === 'legacy' ? (
             <>
-              <ThemeText color="text" style={styles.sectionLabel}>
-                Format
-              </ThemeText>
+              <PlannerSectionHeader
+                onOpenInfo={openInfo}
+                title="Format"
+                body="Choose whether this tournament schedule should be generated as a league (round robin) or as a knockout bracket."
+              />
               <View style={styles.chipsRow}>
                 <Pressable
                   onPress={() => setMode('round_robin')}
                   style={[
                     styles.chip,
+                    styles.chipGrow,
                     {
                       backgroundColor:
                         mode === 'round_robin' ? theme.primaryMuted : theme.background,
@@ -241,6 +287,7 @@ const FixturePlannerModal = ({
                   onPress={() => setMode('knockout')}
                   style={[
                     styles.chip,
+                    styles.chipGrow,
                     {
                       backgroundColor:
                         mode === 'knockout' ? theme.primaryMuted : theme.background,
@@ -257,87 +304,123 @@ const FixturePlannerModal = ({
                 </Pressable>
               </View>
             </>
-          ) : (
-            <>
-              <ThemeText color="text" style={styles.sectionLabel}>
-                Knockout stage
-              </ThemeText>
-              <View style={[styles.knockoutRow, { borderColor: theme.border }]}>
-                <View style={{ flex: 1 }}>
-                  <ThemeText color="text" style={styles.knockoutTitle}>
-                    Include knockout
-                  </ThemeText>
-                  <ThemeText color="secondaryText" style={styles.knockoutSub}>
-                    Generates group fixtures plus a knockout bracket (placeholders until the
-                    group stage finishes).
-                  </ThemeText>
-                </View>
-                <Switch value={knockoutEnabled} onValueChange={setKnockoutEnabled} />
-              </View>
-            </>
-          )}
+          ) : null}
 
-          <ThemeInput
-            title="Overs per match"
-            placeholder="e.g. 10"
-            leftIcon={ball}
-            value={oversText}
-            keyboardType="number-pad"
-            onChangeText={setOversText}
-          />
+          <View style={styles.formRow}>
+            <View style={styles.formCol}>
+              <ThemeInput
+                title="Overs per match"
+                titleInfoPress={() =>
+                  openInfo(
+                    'Overs per match',
+                    'How many overs each fixture should be scheduled for. This is saved on each generated fixture and used when you start scoring.',
+                  )
+                }
+                placeholder="e.g. 10"
+                leftIcon={ball}
+                value={oversText}
+                keyboardType="number-pad"
+                onChangeText={setOversText}
+                containerStyleOuter={styles.formField}
+              />
+            </View>
+            <View style={styles.formCol}>
+              <ThemeInput
+                title="Players per team"
+                titleInfoPress={() =>
+                  openInfo(
+                    'Players per team',
+                    'Maximum squad size allowed per team for this tournament’s fixtures. During scoring, adds are blocked once a team reaches this number (especially important for “add during match” squads).',
+                  )
+                }
+                placeholder="e.g. 11"
+                leftIcon={ball}
+                value={playersText}
+                keyboardType="number-pad"
+                onChangeText={setPlayersText}
+                containerStyleOuter={styles.formField}
+              />
+            </View>
+          </View>
+          {!playersValid ? (
+            <ThemeText color="error" style={styles.inlineError}>
+              Players per team is required.
+            </ThemeText>
+          ) : null}
 
-          <DateTimeField
-            title="Start date"
-            placeholder="YYYY-MM-DD"
-            leftIcon={throphy}
-            mode="date"
-            value={startAt}
-            onChange={next => {
-              if (!next) return;
-              const current = startAt ?? new Date();
-              const merged = new Date(
-                next.getFullYear(),
-                next.getMonth(),
-                next.getDate(),
-                current.getHours(),
-                current.getMinutes(),
-                0,
-                0,
-              );
-              setStartAt(merged);
-            }}
-            displayValue={formatDateForUiYmd(startAt)}
-          />
-          <DateTimeField
-            title="Start time (optional)"
-            placeholder="HH:MM (e.g. 09:00)"
-            leftIcon={ball}
-            mode="time"
-            value={startAt}
-            onChange={next => {
-              if (!next) return;
-              const current = startAt ?? new Date();
-              const merged = new Date(
-                current.getFullYear(),
-                current.getMonth(),
-                current.getDate(),
-                next.getHours(),
-                next.getMinutes(),
-                0,
-                0,
-              );
-              setStartAt(merged);
-            }}
-            displayValue={formatTimeForUiHm(startAt)}
-          />
+          <View style={styles.formRow}>
+            <View style={styles.formCol}>
+              <DateTimeField
+                title="Start date"
+                titleInfoPress={() =>
+                  openInfo(
+                    'Start date',
+                    'The first day the scheduler should begin placing fixtures. If you use weekday rules, this date should fall on an allowed day.',
+                  )
+                }
+                placeholder="YYYY-MM-DD"
+                leftIcon={throphy}
+                mode="date"
+                value={startAt}
+                style={styles.formField}
+                containerStyleOuter={styles.formField}
+                onChange={next => {
+                  if (!next) return;
+                  const current = startAt ?? new Date();
+                  const merged = new Date(
+                    next.getFullYear(),
+                    next.getMonth(),
+                    next.getDate(),
+                    current.getHours(),
+                    current.getMinutes(),
+                    0,
+                    0,
+                  );
+                  setStartAt(merged);
+                }}
+                displayValue={formatDateForUiYmd(startAt)}
+              />
+            </View>
+            <View style={styles.formCol}>
+              <DateTimeField
+                title="Start time (optional)"
+                titleInfoPress={() =>
+                  openInfo(
+                    'Start time (optional)',
+                    'Optional default time used when the scheduler assigns a timed slot. You can still edit individual fixture times later.',
+                  )
+                }
+                placeholder="HH:MM (e.g. 09:00)"
+                leftIcon={ball}
+                mode="time"
+                value={startAt}
+                style={styles.formField}
+                containerStyleOuter={styles.formField}
+                onChange={next => {
+                  if (!next) return;
+                  const current = startAt ?? new Date();
+                  const merged = new Date(
+                    current.getFullYear(),
+                    current.getMonth(),
+                    current.getDate(),
+                    next.getHours(),
+                    next.getMinutes(),
+                    0,
+                    0,
+                  );
+                  setStartAt(merged);
+                }}
+                displayValue={formatTimeForUiHm(startAt)}
+              />
+            </View>
+          </View>
           {!startValid && scheduleNeedsStart ? (
             <ThemeText color="error" style={styles.inlineError}>
               Select a start date (and optional time).
             </ThemeText>
           ) : null}
 
-          {(showQualifiersPerGroup || showOpenGroupQualifiers) &&
-          (variant !== 'full' || knockoutEnabled) ? (
+          {(showQualifiersPerGroup || showOpenGroupQualifiers) ? (
             <>
               <ThemeInput
                 title={
@@ -345,13 +428,21 @@ const FixturePlannerModal = ({
                     ? 'Teams qualifying for knockout'
                     : 'Teams qualifying from each group'
                 }
+                titleInfoPress={() =>
+                  openInfo(
+                    showOpenGroupQualifiers ? 'Teams qualifying for knockout' : 'Teams qualifying from each group',
+                    showOpenGroupQualifiers
+                      ? 'How many teams from the open pool advance into the knockout stage after the group/league fixtures.'
+                      : 'How many teams from each group advance into the knockout stage after group fixtures finish.',
+                  )
+                }
                 placeholder="e.g. 2"
                 leftIcon={throphy}
                 value={qualifiersText}
                 keyboardType="number-pad"
                 onChangeText={setQualifiersText}
               />
-              {qualifiersValid && (variant !== 'full' || knockoutEnabled) ? (
+              {qualifiersValid ? (
                 <ThemeText color="secondaryText" style={styles.helperAfterInput}>
                   {showOpenGroupQualifiers
                     ? `Top ${qualifiersPerGroup ?? '—'} team(s) from the open group will qualify for knockout.`
@@ -368,19 +459,32 @@ const FixturePlannerModal = ({
             </>
           ) : null}
 
-          <ThemeText color="text" style={styles.sectionLabel}>
-            Allowed match days
-          </ThemeText>
+          <PlannerSectionHeader
+            onOpenInfo={openInfo}
+            title="Allowed match days"
+            body="Pick which weekdays matches are allowed to be scheduled on. If you choose “All matches in one day”, weekday rules don’t apply."
+          />
           <View style={styles.weekdaysRow}>
-            {weekdayOptions.map(opt => {
+            {weekdayOptions.map((opt, idx) => {
               const active = allowedWeekdays.includes(opt.id);
+              const disabled = disableWeekdays;
+              const col = idx % weekdayColumns;
+              const isLastCol = col === weekdayColumns - 1;
               return (
                 <Pressable
                   key={opt.id}
-                  onPress={() => toggleWeekday(opt.id)}
+                  onPress={() => {
+                    if (disabled) return;
+                    toggleWeekday(opt.id);
+                  }}
+                  disabled={disabled}
                   style={[
                     styles.weekdayChip,
+                    disabled && styles.weekdayChipDisabled,
+                    !isLastCol && styles.weekdayChipSpacingRight,
+                    styles.weekdayChipSpacingBottom,
                     {
+                      width: weekdayChipWidth,
                       backgroundColor: active ? theme.primaryMuted : theme.background,
                       borderColor: active ? theme.primary : theme.border,
                     },
@@ -396,7 +500,7 @@ const FixturePlannerModal = ({
               );
             })}
           </View>
-          {!weekdaysValid ? (
+          {!disableWeekdays && !weekdaysValid ? (
             <ThemeText color="error" style={styles.inlineError}>
               Select at least one weekday.
             </ThemeText>
@@ -419,139 +523,176 @@ const FixturePlannerModal = ({
             </View>
           ) : null}
 
-          <ThemeText color="text" style={styles.sectionLabel}>
-            Matches per day
-          </ThemeText>
-          <View style={styles.chipsRow}>
-            <Pressable
-              onPress={() => {
-                setMatchesPerDayMode('fixed');
-                setMatchesPerDay(1);
-              }}
-              style={[
-                styles.chip,
-                {
-                  backgroundColor:
+          <PlannerSectionHeader
+            onOpenInfo={openInfo}
+            title="Matches per day"
+            body="Controls how many fixtures are placed per calendar day (or uses a random range). “All matches in one day” creates fixtures without specific times so you can assign them later."
+          />
+          <View style={styles.formRow}>
+            <View style={styles.formCol}>
+              <Pressable
+                onPress={() => {
+                  setMatchesPerDayMode('fixed');
+                  setMatchesPerDay(1);
+                }}
+                style={[
+                  styles.chip,
+                  styles.gridChip,
+                  disableMatchesPerDayTop && styles.chipMuted,
+                  {
+                    backgroundColor:
+                      matchesPerDayMode === 'fixed' && matchesPerDay === 1
+                        ? theme.primaryMuted
+                        : theme.background,
+                    borderColor:
+                      matchesPerDayMode === 'fixed' && matchesPerDay === 1
+                        ? theme.primary
+                        : theme.border,
+                  },
+                ]}
+              >
+                <ThemeText
+                  color={
                     matchesPerDayMode === 'fixed' && matchesPerDay === 1
-                      ? theme.primaryMuted
-                      : theme.background,
-                  borderColor:
-                    matchesPerDayMode === 'fixed' && matchesPerDay === 1
-                      ? theme.primary
-                      : theme.border,
-                },
-              ]}
-            >
-              <ThemeText
-                color={
-                  matchesPerDayMode === 'fixed' && matchesPerDay === 1
-                    ? 'primary'
-                    : 'text'
-                }
-                style={styles.chipText}
+                      ? 'primary'
+                      : 'text'
+                  }
+                  style={styles.chipText}
+                >
+                  1 match / day
+                </ThemeText>
+              </Pressable>
+            </View>
+            <View style={styles.formCol}>
+              <Pressable
+                onPress={() => {
+                  setMatchesPerDayMode('fixed');
+                  setMatchesPerDay(2);
+                }}
+                style={[
+                  styles.chip,
+                  styles.gridChip,
+                  disableMatchesPerDayTop && styles.chipMuted,
+                  {
+                    backgroundColor:
+                      matchesPerDayMode === 'fixed' && matchesPerDay === 2
+                        ? theme.primaryMuted
+                        : theme.background,
+                    borderColor:
+                      matchesPerDayMode === 'fixed' && matchesPerDay === 2
+                        ? theme.primary
+                        : theme.border,
+                  },
+                ]}
               >
-                1 match / day
-              </ThemeText>
-            </Pressable>
-            <Pressable
-              onPress={() => {
-                setMatchesPerDayMode('fixed');
-                setMatchesPerDay(2);
-              }}
-              style={[
-                styles.chip,
-                {
-                  backgroundColor:
+                <ThemeText
+                  color={
                     matchesPerDayMode === 'fixed' && matchesPerDay === 2
-                      ? theme.primaryMuted
-                      : theme.background,
-                  borderColor:
-                    matchesPerDayMode === 'fixed' && matchesPerDay === 2
-                      ? theme.primary
-                      : theme.border,
-                },
-              ]}
-            >
-              <ThemeText
-                color={
-                  matchesPerDayMode === 'fixed' && matchesPerDay === 2
-                    ? 'primary'
-                    : 'text'
-                }
-                style={styles.chipText}
-              >
-                2 matches / day
-              </ThemeText>
-            </Pressable>
-            <Pressable
-              onPress={() => setMatchesPerDayMode('random')}
-              style={[
-                styles.chip,
-                {
-                  backgroundColor:
-                    matchesPerDayMode === 'random'
-                      ? theme.primaryMuted
-                      : theme.background,
-                  borderColor:
-                    matchesPerDayMode === 'random' ? theme.primary : theme.border,
-                },
-              ]}
-            >
-              <ThemeText
-                color={matchesPerDayMode === 'random' ? 'primary' : 'text'}
-                style={styles.chipText}
-              >
-                Random
-              </ThemeText>
-            </Pressable>
+                      ? 'primary'
+                      : 'text'
+                  }
+                  style={styles.chipText}
+                >
+                  2 matches / day
+                </ThemeText>
+              </Pressable>
+            </View>
           </View>
 
-          <Pressable
-            onPress={() => setMatchesPerDayMode('untimed_same_day')}
-            style={[
-              styles.chipFullWidth,
-              {
-                backgroundColor:
-                  matchesPerDayMode === 'untimed_same_day'
-                    ? theme.primaryMuted
-                    : theme.background,
-                borderColor:
-                  matchesPerDayMode === 'untimed_same_day'
-                    ? theme.primary
-                    : theme.border,
-              },
-            ]}
-          >
-            <ThemeText
-              color={matchesPerDayMode === 'untimed_same_day' ? 'primary' : 'text'}
-              style={styles.chipText}
-            >
-              All matches in one day (no times)
-            </ThemeText>
-            <ThemeText color="secondaryText" style={styles.chipSubText}>
-              Fixtures are created without a scheduled date or time; set times later
-              if needed.
-            </ThemeText>
-          </Pressable>
+          <View style={styles.formRow}>
+            <View style={styles.formCol}>
+              <Pressable
+                onPress={() => {
+                  setMatchesPerDayMode('random');
+                }}
+                style={[
+                  styles.chip,
+                  styles.gridChip,
+                  disableMatchesPerDayTop && styles.chipMuted,
+                  {
+                    backgroundColor:
+                      matchesPerDayMode === 'random'
+                        ? theme.primaryMuted
+                        : theme.background,
+                    borderColor:
+                      matchesPerDayMode === 'random' ? theme.primary : theme.border,
+                  },
+                ]}
+              >
+                <ThemeText
+                  color={matchesPerDayMode === 'random' ? 'primary' : 'text'}
+                  style={styles.chipText}
+                >
+                  Random
+                </ThemeText>
+              </Pressable>
+            </View>
+            <View style={styles.formCol}>
+              <Pressable
+                onPress={() => setMatchesPerDayMode('untimed_same_day')}
+                style={[
+                  styles.chip,
+                  styles.gridChip,
+                  {
+                    backgroundColor:
+                      matchesPerDayMode === 'untimed_same_day'
+                        ? theme.primaryMuted
+                        : theme.background,
+                    borderColor:
+                      matchesPerDayMode === 'untimed_same_day'
+                        ? theme.primary
+                        : theme.border,
+                  },
+                ]}
+              >
+                <ThemeText
+                  color={matchesPerDayMode === 'untimed_same_day' ? 'primary' : 'text'}
+                  style={styles.chipText}
+                >
+                  All matches in one day
+                </ThemeText>
+              </Pressable>
+            </View>
+          </View>
 
           {matchesPerDayMode === 'random' ? (
             <>
-              <ThemeInput
-                title="Random min matches/day"
-                placeholder="e.g. 1"
-                leftIcon={ball}
-                value={randomMinText}
-                keyboardType="number-pad"
-                onChangeText={setRandomMinText}
-              />
-              <ThemeInput
-                title="Random max matches/day"
-                placeholder="e.g. 2"
-                leftIcon={ball}
-                value={randomMaxText}
-                keyboardType="number-pad"
-                onChangeText={setRandomMaxText}
-              />
+              <View style={styles.formRow}>
+                <View style={styles.formCol}>
+                  <ThemeInput
+                    title="Min matches/day"
+                    titleInfoPress={() =>
+                      openInfo(
+                        'Min matches/day',
+                        'When “Random” is selected, this is the minimum number of fixtures the generator will try to place on a single day.',
+                      )
+                    }
+                    placeholder="e.g. 1"
+                    leftIcon={ball}
+                    value={randomMinText}
+                    keyboardType="number-pad"
+                    onChangeText={setRandomMinText}
+                    containerStyleOuter={styles.formField}
+                  />
+                </View>
+                <View style={styles.formCol}>
+                  <ThemeInput
+                    title="Max matches/day"
+                    titleInfoPress={() =>
+                      openInfo(
+                        'Max matches/day',
+                        'When “Random” is selected, this is the maximum number of fixtures the generator will try to place on a single day.',
+                      )
+                    }
+                    placeholder="e.g. 2"
+                    leftIcon={ball}
+                    value={randomMaxText}
+                    keyboardType="number-pad"
+                    onChangeText={setRandomMaxText}
+                    containerStyleOuter={styles.formField}
+                  />
+                </View>
+              </View>
               {!randomRangeValid ? (
                 <ThemeText color="error" style={styles.inlineError}>
                   Enter a valid range (min ≥ 1, max ≥ min, max ≤ 6).
@@ -567,11 +708,41 @@ const FixturePlannerModal = ({
             </ThemeText>
           ) : null}
 
+          {variant === 'full' ? (
+            <>
+              <PlannerSectionHeader
+                onOpenInfo={openInfo}
+                title="Knockout"
+                body="Knockout is included for this tournament type. Pairings are created as placeholders until qualifiers are decided."
+              />
+              <Pressable
+                disabled
+                onPress={() => {}}
+                style={[
+                  styles.chipFullWidth,
+                  {
+                    backgroundColor: theme.primaryMuted,
+                    borderColor: theme.primary,
+                  },
+                ]}
+              >
+                <ThemeText color="primary" style={styles.chipText}>
+                  Include knockout
+                </ThemeText>
+                <ThemeText color="secondaryText" style={styles.chipSubTextSm}>
+                  Group fixtures plus a knockout bracket are generated (knockout placeholders until
+                  the group stage finishes).
+                </ThemeText>
+              </Pressable>
+            </>
+          ) : null}
+
           <Button
             title="Generate fixtures"
             leftIcon={throphy}
             onPress={() => {
               if (!oversValid) return;
+              if (!playersValid) return;
               if (scheduleNeedsStart && !startValid) return;
               if (!weekdaysValid) return;
               if (!qualifiersValid) return;
@@ -583,6 +754,7 @@ const FixturePlannerModal = ({
                 onGenerate({
                   mode: variant === 'full' ? 'round_robin' : mode,
                   overs,
+                  playersPerTeam,
                   doubleRoundRobin:
                     variant === 'full' || mode === 'round_robin' ? !!defaultDoubleRoundRobin : false,
                   startAtIso: startAtIso ?? new Date().toISOString(),
@@ -595,7 +767,7 @@ const FixturePlannerModal = ({
                   allowedWeekdays,
                   qualifiersPerGroup: q,
                   scheduleVariant: variant,
-                  knockoutEnabled: variant === 'full' ? knockoutEnabled : mode === 'knockout',
+                  knockoutEnabled: variant === 'full' ? true : mode === 'knockout',
                   openGroupQualifiers:
                     variant === 'full' && showOpenGroupQualifiers && typeof q === 'number'
                       ? q
@@ -604,9 +776,10 @@ const FixturePlannerModal = ({
                 onClose();
               };
 
-              if (variant === 'full' && knockoutEnabled && typeof qualifiersPerGroup === 'number') {
+              if (variant === 'full' && typeof qualifiersPerGroup === 'number') {
                 const slots =
                   tournamentFormat === 'open' ? qualifiersPerGroup : groupCount * qualifiersPerGroup;
+                // eslint-disable-next-line no-bitwise
                 const isPow2 = slots > 0 && (slots & (slots - 1)) === 0;
                 if (!isPow2) {
                   Alert.alert(
@@ -625,6 +798,7 @@ const FixturePlannerModal = ({
             }}
             disabled={
               !oversValid ||
+              !playersValid ||
               (scheduleNeedsStart && !startValid) ||
               !weekdaysValid ||
               !qualifiersValid ||
@@ -641,6 +815,28 @@ const FixturePlannerModal = ({
         </ScrollView>
       </View>
     </Modal>
+
+    <Modal visible={infoOpen} transparent animationType="fade" onRequestClose={closeInfo}>
+      <Pressable style={styles.infoBackdrop} onPress={closeInfo} />
+      <View style={styles.infoRoot} pointerEvents="box-none">
+        <View style={[styles.infoCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          <View style={styles.infoHeader}>
+            <ThemeText color="text" style={styles.infoTitle}>
+              {infoTitle}
+            </ThemeText>
+            <Pressable onPress={closeInfo} hitSlop={10}>
+              <ThemeText color="secondaryText" style={styles.infoClose}>
+                ✕
+              </ThemeText>
+            </Pressable>
+          </View>
+          <ThemeText color="secondaryText" style={styles.infoBody}>
+            {infoBody}
+          </ThemeText>
+        </View>
+      </View>
+    </Modal>
+    </Fragment>
   );
 };
 
@@ -660,6 +856,10 @@ const styles = StyleSheet.create({
     borderTopRightRadius: widthPixel(20),
     paddingBottom: heightPixel(18),
     maxHeight: '85%',
+    overflow: 'hidden',
+  },
+  scroll: {
+    flexGrow: 0,
   },
   handle: {
     alignSelf: 'center',
@@ -686,13 +886,81 @@ const styles = StyleSheet.create({
     paddingHorizontal: widthPixel(16),
     paddingBottom: heightPixel(18),
   },
-  sectionLabel: {
+  formRow: {
+    flexDirection: 'row',
+    gap: widthPixel(10),
+    marginBottom: heightPixel(6),
+  },
+  formCol: {
+    flex: 1,
+    minWidth: 0,
+  },
+  formField: {
+    flex: 1,
+    minWidth: 0,
+  },
+  sectionHeaderRow: {
     marginTop: heightPixel(10),
     marginBottom: heightPixel(8),
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: widthPixel(8),
+  },
+  sectionTitle: {
+    flex: 1,
+    minWidth: 0,
     fontFamily: fontFamilies.semibold,
     fontSize: fontPixel(12),
     letterSpacing: 0.4,
     textTransform: 'uppercase',
+  },
+  sectionInfoHit: {
+    paddingHorizontal: widthPixel(4),
+    paddingVertical: heightPixel(2),
+  },
+  sectionInfoIcon: {
+    fontFamily: fontFamilies.bold,
+    fontSize: fontPixel(14),
+    lineHeight: fontPixel(18),
+  },
+  infoBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+  infoRoot: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: widthPixel(18),
+  },
+  infoCard: {
+    width: '100%',
+    maxWidth: widthPixel(420),
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: widthPixel(16),
+    padding: widthPixel(14),
+  },
+  infoHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: widthPixel(10),
+    marginBottom: heightPixel(8),
+  },
+  infoTitle: {
+    flex: 1,
+    fontFamily: fontFamilies.bold,
+    fontSize: fontPixel(14),
+  },
+  infoClose: {
+    fontFamily: fontFamilies.bold,
+    fontSize: fontPixel(16),
+    lineHeight: fontPixel(20),
+  },
+  infoBody: {
+    fontFamily: fontFamilies.medium,
+    fontSize: fontPixel(12),
+    lineHeight: fontPixel(17),
   },
   chipsRow: {
     flexDirection: 'row',
@@ -700,11 +968,23 @@ const styles = StyleSheet.create({
     marginBottom: heightPixel(8),
   },
   chip: {
-    flex: 1,
     borderWidth: 1,
     borderRadius: widthPixel(14),
     paddingVertical: heightPixel(12),
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chipGrow: {
+    flex: 1,
+    minWidth: 0,
+  },
+  gridChip: {
+    alignSelf: 'stretch',
+    width: '100%',
+    minHeight: heightPixel(46),
+  },
+  chipMuted: {
+    opacity: 0.45,
   },
   chipText: {
     fontFamily: fontFamilies.semibold,
@@ -724,10 +1004,16 @@ const styles = StyleSheet.create({
     lineHeight: fontPixel(16),
     fontFamily: fontFamilies.medium,
   },
+  chipSubTextSm: {
+    marginTop: heightPixel(4),
+    fontSize: fontPixel(10),
+    lineHeight: fontPixel(14),
+    fontFamily: fontFamilies.medium,
+  },
   weekdaysRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: widthPixel(10),
+    justifyContent: 'flex-start',
     marginBottom: heightPixel(8),
   },
   weekdayChip: {
@@ -735,6 +1021,17 @@ const styles = StyleSheet.create({
     borderRadius: widthPixel(14),
     paddingVertical: heightPixel(10),
     paddingHorizontal: widthPixel(12),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  weekdayChipSpacingRight: {
+    marginRight: widthPixel(10),
+  },
+  weekdayChipSpacingBottom: {
+    marginBottom: heightPixel(10),
+  },
+  weekdayChipDisabled: {
+    opacity: 0.45,
   },
   weekdayChipText: {
     fontFamily: fontFamilies.semibold,
@@ -769,24 +1066,6 @@ const styles = StyleSheet.create({
     fontSize: fontPixel(12),
     lineHeight: fontPixel(17),
     fontFamily: fontFamilies.medium,
-  },
-  knockoutRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: widthPixel(12),
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: widthPixel(14),
-    padding: widthPixel(14),
-    marginBottom: heightPixel(10),
-  },
-  knockoutTitle: {
-    fontFamily: fontFamilies.semibold,
-    fontSize: fontPixel(14),
-  },
-  knockoutSub: {
-    marginTop: heightPixel(4),
-    fontSize: fontPixel(12),
-    lineHeight: fontPixel(17),
   },
   cancel: {
     alignSelf: 'center',

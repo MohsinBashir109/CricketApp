@@ -64,7 +64,7 @@ const Toss = ({ onSelect, match, compact = false, onClose }: TossProps) => {
 
   return (
     <View style={[styles.container, compact && styles.containerCompact]}>
-      {compact ? <View style={styles.handle} /> : null}
+      {compact ? <View style={[styles.handle, { backgroundColor: theme.border }]} /> : null}
       {step === 'winner' ? (
         <>
           <View style={styles.headerBlock}>
@@ -81,7 +81,7 @@ const Toss = ({ onSelect, match, compact = false, onClose }: TossProps) => {
             style={[
               styles.card,
               isDark ? styles.cardShadowDark : styles.cardShadowLight,
-              { backgroundColor: theme.surface, borderColor: theme.border },
+              { backgroundColor: theme.surfaceElevated ?? theme.background, borderColor: theme.border },
             ]}
           >
             <ThemeText color="secondaryText" style={styles.cardLabel}>
@@ -92,7 +92,7 @@ const Toss = ({ onSelect, match, compact = false, onClose }: TossProps) => {
               onPress={() => pickWinner('teamA')}
               style={({ pressed }) => [
                 styles.teamRow,
-                { backgroundColor: theme.surface, borderColor: theme.border },
+                { backgroundColor: theme.background, borderColor: theme.border },
                 pressed && styles.pressed,
               ]}
             >
@@ -118,7 +118,7 @@ const Toss = ({ onSelect, match, compact = false, onClose }: TossProps) => {
               onPress={() => pickWinner('teamB')}
               style={({ pressed }) => [
                 styles.teamRow,
-                { backgroundColor: theme.surface, borderColor: theme.border },
+                { backgroundColor: theme.background, borderColor: theme.border },
                 pressed && styles.pressed,
               ]}
             >
@@ -146,7 +146,7 @@ const Toss = ({ onSelect, match, compact = false, onClose }: TossProps) => {
           style={[
             styles.card,
             isDark ? styles.cardShadowDark : styles.cardShadowLight,
-            { backgroundColor: theme.surface, borderColor: theme.border },
+            { backgroundColor: theme.surfaceElevated ?? theme.background, borderColor: theme.border },
           ]}
         >
           <View style={styles.winnerRow}>

@@ -11,6 +11,11 @@ import { cardShadowLg, cardShadowSm } from '../../utils/cardShadow';
 import { selectActiveTeams } from '../../features/tournament/tournamentSelectors';
 import { addTeam } from '../../features/teams/teamsSlice';
 import { PlayerRole } from '../../types/Playertype';
+import { TeamPlayerAddTiming } from '../../types/TournamentTypes';
+import AddPlayersToTeamScreen, {
+  type SquadPlayer as SquadPlayerDraft,
+  type TeamRoleLabel,
+} from '../../screens/HomeStack/AddPlayers/AddPlayersToTeamScreen';
 
 type DraftPlayer = { id: string; name: string; role: PlayerRole };
 
@@ -22,6 +27,25 @@ const roleOptions: { label: string; value: PlayerRole }[] = [
   { label: 'All-Rounder', value: 'allrounder' },
   { label: 'Wicketkeeper', value: 'wicketkeeper' },
 ];
+
+const playerTimingOptions: { label: string; value: TeamPlayerAddTiming }[] = [
+  { label: 'Add player now', value: 'now' },
+  { label: 'Add during match', value: 'during_match' },
+];
+
+const roleToLabel: Record<PlayerRole, TeamRoleLabel> = {
+  batsman: 'Batsman',
+  bowler: 'Bowler',
+  allrounder: 'All-Rounder',
+  wicketkeeper: 'Wicketkeeper',
+};
+
+const labelToRole: Record<TeamRoleLabel, PlayerRole> = {
+  Batsman: 'batsman',
+  Bowler: 'bowler',
+  'All-Rounder': 'allrounder',
+  Wicketkeeper: 'wicketkeeper',
+};
 
 type Props = {
   visible: boolean;
@@ -50,18 +74,18 @@ const ChooseTeamsModal: React.FC<Props> = ({
 
   const [showAddTeam, setShowAddTeam] = useState(false);
   const [newTeamName, setNewTeamName] = useState('');
-  const [playerName, setPlayerName] = useState('');
-  const [playerRole, setPlayerRole] = useState<PlayerRole>('batsman');
+  const [playerAddTiming, setPlayerAddTiming] = useState<TeamPlayerAddTiming>('now');
   const [draftPlayers, setDraftPlayers] = useState<DraftPlayer[]>([]);
+  const [showAddPlayersScreen, setShowAddPlayersScreen] = useState(false);
 
   useEffect(() => {
     if (!visible) return;
     setLocalSelected(Array.from(new Set([...(selectedTeamIds ?? [])])));
     setShowAddTeam(false);
     setNewTeamName('');
-    setPlayerName('');
-    setPlayerRole('batsman');
+    setPlayerAddTiming('now');
     setDraftPlayers([]);
+    setShowAddPlayersScreen(false);
   }, [visible, selectedTeamIds]);
 
   const isComplete = teamCount > 1 && localSelected.length === teamCount;
@@ -80,32 +104,13 @@ const ChooseTeamsModal: React.FC<Props> = ({
     [teams, localSelected],
   );
 
-  const handleAddDraftPlayer = () => {
-    const nm = normalizeName(playerName);
-    if (!nm) {
-      Alert.alert('Missing player', 'Enter a player name before adding.');
-      return;
-    }
-    const dup = draftPlayers.some(p => p.name.toLowerCase() === nm.toLowerCase());
-    if (dup) {
-      Alert.alert('Duplicate player', 'This player is already added.');
-      return;
-    }
-    setDraftPlayers(prev => [
-      ...prev,
-      { id: `dp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, name: nm, role: playerRole },
-    ]);
-    setPlayerName('');
-    setPlayerRole('batsman');
-  };
-
   const handleSaveTeam = () => {
     const teamName = normalizeName(newTeamName);
     if (!teamName) {
       Alert.alert('Missing team name', 'Enter a team name before saving.');
       return;
     }
-    if (draftPlayers.length === 0) {
+    if (playerAddTiming === 'now' && draftPlayers.length === 0) {
       Alert.alert('Add players', 'Create at least one player for the new team.');
       return;
     }
@@ -121,14 +126,14 @@ const ChooseTeamsModal: React.FC<Props> = ({
         id: nextTeamId,
         name: teamName,
         players: draftPlayers.map(p => ({ name: p.name, role: p.role })),
+        playerAddTiming,
       }),
     );
 
     setShowAddTeam(false);
     setNewTeamName('');
     setDraftPlayers([]);
-    setPlayerName('');
-    setPlayerRole('batsman');
+    setShowAddPlayersScreen(false);
 
     if (teamCount > 0 && localSelected.length < teamCount) {
       setLocalSelected(current => (current.includes(nextTeamId) ? current : [...current, nextTeamId]));
@@ -212,20 +217,13 @@ const ChooseTeamsModal: React.FC<Props> = ({
                 <ThemeText color="text" style={styles.label}>
                   Add players
                 </ThemeText>
-                <TextInput
-                  value={playerName}
-                  onChangeText={setPlayerName}
-                  placeholder="Player name"
-                  placeholderTextColor={theme.secondaryText}
-                  style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.surface }]}
-                />
                 <View style={styles.optionWrap}>
-                  {roleOptions.map(opt => {
-                    const selected = playerRole === opt.value;
+                  {playerTimingOptions.map(opt => {
+                    const selected = playerAddTiming === opt.value;
                     return (
                       <Pressable
                         key={opt.value}
-                        onPress={() => setPlayerRole(opt.value)}
+                        onPress={() => setPlayerAddTiming(opt.value)}
                         style={[
                           styles.choiceChip,
                           {
@@ -241,25 +239,25 @@ const ChooseTeamsModal: React.FC<Props> = ({
                     );
                   })}
                 </View>
-                <Button title="Add player" onPress={handleAddDraftPlayer} />
+                {playerAddTiming === 'during_match' ? (
+                  <ThemeText color="secondaryText" style={styles.timingHint}>
+                    You can save this team now and add players later during the match.
+                  </ThemeText>
+                ) : null}
 
-                {draftPlayers.map(p => (
-                  <View key={p.id} style={[styles.listRow, { borderBottomColor: theme.border }]}>
-                    <View style={{ flex: 1 }}>
-                      <ThemeText color="text" style={styles.listTitle}>
-                        {p.name}
+                {playerAddTiming === 'now' ? (
+                  <View style={styles.playersCtaBlock}>
+                    <Button
+                      title={draftPlayers.length > 0 ? `Add / edit players (${draftPlayers.length})` : 'Add players'}
+                      onPress={() => setShowAddPlayersScreen(true)}
+                    />
+                    {draftPlayers.length > 0 ? (
+                      <ThemeText color="secondaryText" style={styles.playersCountHint}>
+                        {draftPlayers.length} player{draftPlayers.length === 1 ? '' : 's'} added.
                       </ThemeText>
-                      <ThemeText color="secondaryText" style={styles.listMeta}>
-                        {p.role}
-                      </ThemeText>
-                    </View>
-                    <Pressable onPress={() => setDraftPlayers(cur => cur.filter(x => x.id !== p.id))}>
-                      <ThemeText color="error" style={styles.removeText}>
-                        Remove
-                      </ThemeText>
-                    </Pressable>
+                    ) : null}
                   </View>
-                ))}
+                ) : null}
 
                 <Button title="Save team" onPress={handleSaveTeam} />
               </View>
@@ -297,6 +295,32 @@ const ChooseTeamsModal: React.FC<Props> = ({
           </View>
         </View>
       </View>
+
+      <Modal
+        visible={showAddPlayersScreen}
+        animationType="slide"
+        onRequestClose={() => setShowAddPlayersScreen(false)}
+      >
+        <AddPlayersToTeamScreen
+          teamDisplayName={normalizeName(newTeamName) || 'New team'}
+          initialPlayers={draftPlayers.map<SquadPlayerDraft>(p => ({
+            id: p.id,
+            name: p.name,
+            role: roleToLabel[p.role],
+          }))}
+          onBack={() => setShowAddPlayersScreen(false)}
+          onSaveTeam={squad => {
+            setDraftPlayers(
+              squad.map(p => ({
+                id: p.id,
+                name: normalizeName(p.name),
+                role: labelToRole[p.role],
+              })),
+            );
+            setShowAddPlayersScreen(false);
+          }}
+        />
+      </Modal>
     </Modal>
   );
 };
@@ -369,6 +393,21 @@ const styles = StyleSheet.create({
     fontSize: fontPixel(13),
     lineHeight: fontPixel(18),
     marginBottom: heightPixel(12),
+  },
+  timingHint: {
+    marginTop: -heightPixel(4),
+    marginBottom: heightPixel(10),
+    fontSize: fontPixel(12),
+    lineHeight: fontPixel(18),
+  },
+  playersCtaBlock: {
+    marginTop: heightPixel(6),
+    marginBottom: heightPixel(10),
+  },
+  playersCountHint: {
+    marginTop: heightPixel(8),
+    fontSize: fontPixel(12),
+    lineHeight: fontPixel(18),
   },
   label: {
     marginTop: heightPixel(10),

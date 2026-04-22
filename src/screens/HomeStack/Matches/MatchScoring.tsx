@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { InteractionManager, ScrollView, StyleSheet, View } from 'react-native';
 import {
   addStrikerAndBowlerInnings,
@@ -29,7 +29,6 @@ import BatsmenBowlerCard from '../../../components/Cards/BatsmenBowlerCard';
 import BatsmenBowlerScorringHeader from '../../../components/Headers/BatsmenScorringHeader';
 import Batsmenrow from '../../../components/Flatlistcomponents/Batsmenrow';
 import Bowlerow from '../../../components/Flatlistcomponents/BowlerRow';
-import CurrentOver from '../../../components/Cards/CurrentOver';
 import ScoreControls from '../../../components/Flatlistcomponents/ScoreControls';
 import ScoringHeader from '../../../components/Headers/ScoringHeader';
 import { colors } from '../../../utils/colors';
@@ -37,6 +36,10 @@ import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeContext } from '../../../theme/themeContext';
 import TieResolutionModal from '../../../components/Modals/TieResolutionModal';
+import { recomputeInningsFromBalls } from '../../../utils/recomputeFromBalls';
+import EditOversModal from '../../../components/Modals/EditOversModal';
+import MatchSettingsModal from '../../../components/Modals/MatchSettingsModal';
+import { deleteBall, editBall } from '../../../features/match/matchSlice';
 
 const MatchScoring = () => {
   const { isDark } = useThemeContext();
@@ -49,6 +52,9 @@ const MatchScoring = () => {
   const navigation = useNavigation<any>();
   /** Prevents duplicate navigate for the same completed match (Strict Mode / re-renders). */
   const summaryHandoffForMatchIdRef = useRef<string | null>(null);
+  /** Auto-open OPENERS only once per innings start until set. */
+  const openersPromptedRef = useRef(false);
+  const openersStartStepRef = useRef<'BATTERS' | 'BOWLER'>('BATTERS');
 
   const innings = useMemo(() => {
     if (!currentMatch) return undefined;
@@ -73,6 +79,21 @@ const MatchScoring = () => {
     return currentMatch.innings2 ?? currentMatch.innings1;
   }, [currentMatch]);
 
+  const inningsKey = useMemo(() => {
+    if (!currentMatch) return null;
+    const ci = currentMatch.currentInnings ?? 1;
+    if (ci === 1) return 'innings1' as const;
+    if (ci === 2) return 'innings2' as const;
+    if (ci === 3) return 'superOverInnings1' as const;
+    if (ci === 4) return 'superOverInnings2' as const;
+    return 'innings1' as const;
+  }, [currentMatch?.currentInnings, currentMatch]);
+
+  const computed = useMemo(() => {
+    if (!currentMatch || !inningsKey) return null;
+    return recomputeInningsFromBalls(currentMatch, inningsKey);
+  }, [currentMatch, inningsKey]);
+
   const superOverAlsoTied = useMemo(() => {
     if (!currentMatch?.pendingTieResolution) return false;
     const so1 = currentMatch.superOverInnings1;
@@ -88,6 +109,8 @@ const MatchScoring = () => {
   }, [currentMatch]);
 
   const activeModal = innings?.activeModal ?? null;
+  const [showEditOvers, setShowEditOvers] = useState(false);
+  const [showMatchSettings, setShowMatchSettings] = useState(false);
 
   const battingTeamObj =
     innings?.battingTeam === 'teamA'
@@ -141,7 +164,13 @@ const MatchScoring = () => {
     if (!innings) return;
     if (innings.isCompleted) return;
 
+    if (!needOpenersAtStart) {
+      openersPromptedRef.current = false;
+      return;
+    }
     if (isInningsStart && needOpenersAtStart && innings.activeModal == null) {
+      if (openersPromptedRef.current) return;
+      openersPromptedRef.current = true;
       dispatch(setActiveModal('OPENERS'));
     }
   }, [
@@ -316,6 +345,8 @@ const MatchScoring = () => {
         currentInnings={headerInningsChip}
         isPaused={isPaused}
         onTogglePause={() => dispatch(setScoringPaused(!isPaused))}
+        onOpenMatchSettings={() => setShowMatchSettings(true)}
+        computed={computed}
       />
 
       <ScrollView
@@ -334,6 +365,11 @@ const MatchScoring = () => {
             innings={safeInnings}
             currentMatch={currentMatch}
             useInningsBallsOnlyStats={useInningsBallsOnlyStats}
+            onPressAdd={() => {
+              openersStartStepRef.current = 'BATTERS';
+              dispatch(setActiveModal('OPENERS'));
+            }}
+            computed={computed}
           />
         </View>
 
@@ -343,15 +379,15 @@ const MatchScoring = () => {
             innings={safeInnings}
             currentMatch={currentMatch}
             useInningsBallsOnlyStats={useInningsBallsOnlyStats}
+            onPressAdd={() => {
+              openersStartStepRef.current = 'BOWLER';
+              dispatch(setActiveModal('OPENERS'));
+            }}
+            computed={computed}
           />
         </View>
 
-        <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-          <CurrentOver
-            balls={safeInnings.balls || []}
-            totalBalls={safeInnings.totalBalls || 0}
-          />
-        </View>
+        {/* "This over" chips are shown in header next to Target */}
       </ScrollView>
 
       <View
@@ -370,16 +406,24 @@ const MatchScoring = () => {
           }
           undoDisabled={ballCount === 0}
           onRunPress={runs => dispatch(recordBall({ runsOffBat: runs }))}
-          onExtraPress={type => {
-            if (type === 'wide' || type === 'noball') {
-              dispatch(recordBall({ extra: type, extraRuns: 1 }));
-            } else {
-              dispatch(recordBall({ extra: type, extraRuns: 1 }));
+          onExtraPick={({ type, value }) => {
+            if (type === 'wide') {
+              // Wide: extras only (0–6 as picked).
+              dispatch(recordBall({ extra: 'wide', extraRuns: value, runsOffBat: 0 }));
+              return;
             }
+            if (type === 'noball') {
+              // No-ball: 1 extra + optional runs off bat (batsman runs).
+              dispatch(recordBall({ extra: 'noball', extraRuns: 1, runsOffBat: value as any }));
+              return;
+            }
+            // Bye/Leg-bye: all runs are extras.
+            dispatch(recordBall({ extra: type, extraRuns: value, runsOffBat: 0 }));
           }}
           onWicketPress={() => dispatch(recordBall({ wicket: true }))}
           onUndoPress={() => dispatch(undoLastBall())}
           onEndOverPress={() => {}}
+          onEditOversPress={() => setShowEditOvers(true)}
         />
       </View>
 
@@ -391,8 +435,8 @@ const MatchScoring = () => {
         batsmen={safeBattingTeamObj.players || []}
         bowler={safeBowlingTeamObj.players || []}
         visible={activeModal === 'OPENERS'}
+        openersStartStep={openersStartStepRef.current}
         onClose={() => {
-          if (needOpeners) return;
           dispatch(setActiveModal(null));
         }}
         onConfirmOpeners={({ striker, nonStriker, bowlerSelected }) => {
@@ -442,6 +486,26 @@ const MatchScoring = () => {
         superOverAlsoTied={superOverAlsoTied}
         onChooseDraw={() => dispatch(resolveTieAsDraw())}
         onChooseSuperOver={() => dispatch(beginSuperOver())}
+      />
+
+      {inningsKey && innings ? (
+        <EditOversModal
+          visible={showEditOvers}
+          onClose={() => setShowEditOvers(false)}
+          inningsKey={inningsKey}
+          balls={innings.balls ?? []}
+          onEditBall={(ballIndex, patch) =>
+            dispatch(editBall({ inningsKey, ballIndex, patch }))
+          }
+          onDeleteBall={ballIndex => dispatch(deleteBall({ inningsKey, ballIndex }))}
+        />
+      ) : null}
+
+      <MatchSettingsModal
+        visible={showMatchSettings}
+        onClose={() => setShowMatchSettings(false)}
+        teamAName={currentMatch.teamA?.name ?? 'Team A'}
+        teamBName={currentMatch.teamB?.name ?? 'Team B'}
       />
     </View>
   );

@@ -20,6 +20,7 @@ import ThemeText from '../ThemeText';
 import { colors } from '../../utils/colors';
 import { fontFamilies } from '../../utils/fontfamilies';
 import { useThemeContext } from '../../theme/themeContext';
+import { cardShadowLg } from '../../utils/cardShadow';
 
 interface AddPlayersModalProps {
   isVisible: boolean;
@@ -37,6 +38,7 @@ const AddPlayersModal = ({
   onSubmit,
 }: AddPlayersModalProps) => {
   const { isDark } = useThemeContext();
+  const theme = colors[isDark ? 'dark' : 'light'];
   const [selectedPlayers, setSelectedPlayers] = useState<Player[]>([]);
   const [role, setRole] = useState<PlayerRole | undefined>(undefined);
 
@@ -94,13 +96,13 @@ const AddPlayersModal = ({
       <View
         style={[
           styles.container,
-          { backgroundColor: colors[isDark ? 'dark' : 'light'].background },
+          { backgroundColor: theme.background },
         ]}
       >
         <View
           style={[
             styles.header,
-            { backgroundColor: colors[isDark ? 'dark' : 'light'].primary },
+            { backgroundColor: theme.primary },
           ]}
         >
           {activeTeam?.id === 1 && (
@@ -159,7 +161,7 @@ const AddPlayersModal = ({
             <Image
               source={cross}
               style={{ width: widthPixel(20), height: widthPixel(20) }}
-              tintColor={colors[isDark ? 'dark' : 'light'].white}
+              tintColor={theme.white}
             />
           </Pressable>
         </View>
@@ -173,7 +175,16 @@ const AddPlayersModal = ({
             Enter player names and assign a role to build your team lineup.
           </ThemeText>
         </View>
-        <View style={styles.innerViewModal}>
+        <View
+          style={[
+            styles.innerViewModal,
+            isDark ? styles.sheetShadowDark : styles.sheetShadowLight,
+            {
+              backgroundColor: theme.surface,
+              borderColor: theme.border,
+            },
+          ]}
+        >
           <ThemeInput
             placeholder="Enter the player name "
             leftIcon={teamSlect}
@@ -238,6 +249,8 @@ const AddPlayersModal = ({
 export default AddPlayersModal;
 
 const styles = StyleSheet.create({
+  sheetShadowLight: cardShadowLg(false),
+  sheetShadowDark: cardShadowLg(true),
   container: {
     flex: 1,
     borderTopLeftRadius: widthPixel(10),
@@ -254,6 +267,11 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingTop: heightPixel(10),
     paddingHorizontal: widthPixel(10),
+    marginTop: heightPixel(14),
+    marginHorizontal: widthPixel(10),
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: widthPixel(18),
+    overflow: 'hidden',
   },
   label: {
     fontFamily: fontFamilies.bold,

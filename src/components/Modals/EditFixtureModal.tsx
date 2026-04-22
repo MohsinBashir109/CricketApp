@@ -32,6 +32,7 @@ type Props = {
     status: string;
     matchId: string | null;
     overs?: number | null;
+    playersPerTeam?: number | null;
   } | null;
   onClose: () => void;
   onSave: (payload: {
@@ -40,6 +41,7 @@ type Props = {
     teamBId: string;
     scheduledAtIso: string;
     overs: number | null;
+    playersPerTeam: number | null;
     status: 'upcoming' | 'no_result' | 'abandoned';
     resultSummary: string | null;
     /** When set, marks the fixture completed without starting the scorer. */
@@ -65,6 +67,7 @@ const EditFixtureModal = ({ visible, teams, fixture, onClose, onSave }: Props) =
   const [teamBId, setTeamBId] = useState<string>('');
   const [scheduledAt, setScheduledAt] = useState<Date | null>(null);
   const [oversText, setOversText] = useState<string>('');
+  const [playersText, setPlayersText] = useState<string>('');
   const [matchCondition, setMatchCondition] = useState<
     'scheduled' | 'delayed' | 'rain' | 'abandoned'
   >('scheduled');
@@ -86,6 +89,7 @@ const EditFixtureModal = ({ visible, teams, fixture, onClose, onSave }: Props) =
     const baseIso = fixture.scheduledAt ?? new Date().toISOString();
     setScheduledAt(isoToDate(baseIso) ?? new Date());
     setOversText(fixture.overs != null ? String(fixture.overs) : '');
+    setPlayersText(fixture.playersPerTeam != null ? String(fixture.playersPerTeam) : '');
     setMatchCondition('scheduled');
     setDirectWinner('none');
     setBatFirst('none');
@@ -105,6 +109,13 @@ const EditFixtureModal = ({ visible, teams, fixture, onClose, onSave }: Props) =
     if (!Number.isFinite(n) || n <= 0) return null;
     return Math.floor(n);
   }, [oversText]);
+  const playersPerTeam = useMemo(() => {
+    const raw = playersText.trim();
+    if (!raw) return null;
+    const n = Number(raw);
+    if (!Number.isFinite(n) || n <= 0) return null;
+    return Math.floor(n);
+  }, [playersText]);
   const valid =
     canEdit &&
     !!teamAId &&
@@ -354,6 +365,21 @@ const EditFixtureModal = ({ visible, teams, fixture, onClose, onSave }: Props) =
               {oversText.trim() && overs == null ? (
                 <ThemeText color="error" style={styles.inlineError}>
                   Enter a valid overs number.
+                </ThemeText>
+              ) : null}
+
+              <ThemeInput
+                title="Players per team (optional)"
+                placeholder="e.g. 11"
+                leftIcon={ball}
+                value={playersText}
+                keyboardType="number-pad"
+                onChangeText={setPlayersText}
+                editable={canEdit}
+              />
+              {playersText.trim() && playersPerTeam == null ? (
+                <ThemeText color="error" style={styles.inlineError}>
+                  Enter a valid players number.
                 </ThemeText>
               ) : null}
 
@@ -628,6 +654,7 @@ const EditFixtureModal = ({ visible, teams, fixture, onClose, onSave }: Props) =
                 teamBId,
                 scheduledAtIso: scheduledAtIso!,
                 overs,
+                playersPerTeam,
                 status: completeWithoutScoring ? 'upcoming' : status,
                 resultSummary: completeWithoutScoring ? null : resultSummary,
                 completeWithoutScoring,

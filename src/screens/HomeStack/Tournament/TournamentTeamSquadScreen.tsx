@@ -1,7 +1,8 @@
-import React, { useMemo } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useSelector } from 'react-redux';
+import React, { useMemo, useState } from 'react';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useDispatch, useSelector } from 'react-redux';
 import ThemeText from '../../../components/ThemeText';
+import Button from '../../../components/themeButton';
 import { RootState } from '../../../features/store/rootReducer';
 import {
   selectTournamentById,
@@ -15,6 +16,11 @@ import { fontFamilies } from '../../../utils/fontfamilies';
 import { fontPixel, heightPixel, widthPixel } from '../../../utils/constants';
 import { cardShadowSm } from '../../../utils/cardShadow';
 import HomeWrapper from '../../../wrappers/HomeWrapper';
+import AddPlayersToTeamScreen, {
+  type SquadPlayer as SquadPlayerDraft,
+  type TeamRoleLabel,
+} from '../AddPlayers/AddPlayersToTeamScreen';
+import { updateTeam } from '../../../features/teams/teamsSlice';
 
 function teamInitials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -35,7 +41,22 @@ function roleLabel(role: PlayerRole | undefined): string {
   return map[role] ?? role;
 }
 
+const roleToLabel: Record<PlayerRole, TeamRoleLabel> = {
+  batsman: 'Batsman',
+  bowler: 'Bowler',
+  allrounder: 'All-Rounder',
+  wicketkeeper: 'Wicketkeeper',
+};
+
+const labelToRole: Record<TeamRoleLabel, PlayerRole> = {
+  Batsman: 'batsman',
+  Bowler: 'bowler',
+  'All-Rounder': 'allrounder',
+  Wicketkeeper: 'wicketkeeper',
+};
+
 const TournamentTeamSquadScreen = ({ route, navigation }: any) => {
+  const dispatch = useDispatch();
   const tournamentId = route?.params?.tournamentId as string;
   const teamId = route?.params?.teamId as string;
 
@@ -52,6 +73,7 @@ const TournamentTeamSquadScreen = ({ route, navigation }: any) => {
 
   const { isDark } = useThemeContext();
   const theme = colors[isDark ? 'dark' : 'light'];
+  const [showSquadEditor, setShowSquadEditor] = useState(false);
 
   if (!tournament || !team) {
     return (
@@ -74,6 +96,7 @@ const TournamentTeamSquadScreen = ({ route, navigation }: any) => {
   }
 
   const players = team.players ?? [];
+  const canAddNow = (team as any)?.playerAddTiming !== 'during_match';
 
   return (
     <HomeWrapper>
@@ -124,15 +147,30 @@ const TournamentTeamSquadScreen = ({ route, navigation }: any) => {
             { backgroundColor: theme.surface, borderColor: theme.border },
           ]}
         >
-          <ThemeText color="text" style={styles.sectionTitle}>
-            Squad
-          </ThemeText>
+          <View style={styles.squadHeaderRow}>
+            <ThemeText color="text" style={styles.sectionTitle}>
+              Squad
+            </ThemeText>
+            {canAddNow ? (
+              <View style={{ width: widthPixel(140) }}>
+                <Button
+                  title={players.length === 0 ? 'Add players' : 'Edit squad'}
+                  onPress={() => setShowSquadEditor(true)}
+                />
+              </View>
+            ) : null}
+          </View>
 
           {players.length === 0 ? (
-            <ThemeText color="secondaryText" style={styles.emptySquad}>
-              No squad members yet. Add players to this team from your saved teams
-              list.
-            </ThemeText>
+            canAddNow ? (
+              <ThemeText color="secondaryText" style={styles.emptySquad}>
+                No squad members yet. Tap “Add players” to build this team now.
+              </ThemeText>
+            ) : (
+              <ThemeText color="secondaryText" style={styles.emptySquad}>
+                Players will be added during the match.
+              </ThemeText>
+            )
           ) : (
             players.map((p: TeamPlayer, idx: number) => (
               <View
@@ -158,6 +196,34 @@ const TournamentTeamSquadScreen = ({ route, navigation }: any) => {
           )}
         </View>
       </ScrollView>
+
+      <Modal
+        visible={showSquadEditor}
+        animationType="slide"
+        onRequestClose={() => setShowSquadEditor(false)}
+      >
+        <AddPlayersToTeamScreen
+          teamDisplayName={team.name}
+          initialPlayers={players.map<SquadPlayerDraft>(p => ({
+            id: p.id,
+            name: p.name,
+            role: roleToLabel[p.role],
+          }))}
+          onBack={() => setShowSquadEditor(false)}
+          onSaveTeam={squad => {
+            dispatch(
+              updateTeam({
+                id: team.id,
+                name: team.name,
+                shortName: team.shortName,
+                playerAddTiming: (team as any)?.playerAddTiming ?? 'now',
+                players: squad.map(p => ({ name: p.name, role: labelToRole[p.role] })),
+              }),
+            );
+            setShowSquadEditor(false);
+          }}
+        />
+      </Modal>
     </HomeWrapper>
   );
 };
@@ -223,10 +289,16 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     minWidth: 0,
   },
+  squadHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: widthPixel(12),
+    marginBottom: heightPixel(10),
+  },
   sectionTitle: {
     fontFamily: fontFamilies.bold,
     fontSize: fontPixel(16),
-    marginBottom: heightPixel(10),
   },
   emptySquad: {
     fontSize: fontPixel(13),

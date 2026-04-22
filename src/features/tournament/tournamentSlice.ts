@@ -36,6 +36,7 @@ export type GenerateTournamentFixturesPayload = {
   tournamentId: string;
   mode: 'round_robin' | 'knockout';
   overs: number | null;
+  playersPerTeam?: number | null;
   doubleRoundRobin?: boolean;
   startAtIso?: string | null;
   /**
@@ -53,6 +54,7 @@ export type GenerateTournamentFixturesPayload = {
 export type GenerateFullTournamentSchedulePayload = {
   tournamentId: string;
   overs: number | null;
+  playersPerTeam?: number | null;
   doubleRoundRobin?: boolean;
   startAtIso?: string | null;
   matchesPerDayMode?: 'fixed' | 'random' | 'untimed_same_day';
@@ -519,6 +521,7 @@ const tournamentSlice = createSlice({
 
       const now = new Date().toISOString();
       const overs = action.payload.overs ?? null;
+      const playersPerTeam = action.payload.playersPerTeam ?? null;
       const startAtIso = action.payload.startAtIso ?? null;
 
       // Save group qualification rule (used later for knockout progression).
@@ -554,6 +557,7 @@ const tournamentSlice = createSlice({
           teamAId: f.teamAId,
           teamBId: f.teamBId,
           overs,
+          playersPerTeam,
           status: 'upcoming',
           scheduledAt,
           venue: null,
@@ -748,6 +752,7 @@ const tournamentSlice = createSlice({
 
       const now = new Date().toISOString();
       const overs = action.payload.overs ?? null;
+      const playersPerTeam = action.payload.playersPerTeam ?? null;
 
       const groupSizes = (tournament.groupIds ?? [])
         .map(id => state.groupsById[id]?.teamIds?.length ?? 0)
@@ -818,6 +823,7 @@ const tournamentSlice = createSlice({
           teamAId: gf.teamAId,
           teamBId: gf.teamBId,
           overs,
+          playersPerTeam,
           status: bye ? 'completed' : 'upcoming',
           venue: null,
           roundLabel: gf.roundLabel,
@@ -871,6 +877,7 @@ const tournamentSlice = createSlice({
           teamAId: kf.teamAId,
           teamBId: kf.teamBId,
           overs,
+          playersPerTeam,
           status: 'upcoming',
           venue: null,
           roundLabel: kf.roundName,
@@ -929,6 +936,7 @@ const tournamentSlice = createSlice({
         teamBId: string;
         scheduledAt: string;
         overs?: number | null;
+        playersPerTeam?: number | null;
         /** Allow marking outcome before scoring starts. */
         status?: TournamentFixtureEntity['status'];
         /** Optional note to display on fixture card. */
@@ -956,6 +964,15 @@ const tournamentSlice = createSlice({
           fixture.overs = null;
         } else if (Number.isFinite(o) && o > 0 && o <= 200) {
           fixture.overs = Math.floor(o);
+        }
+      }
+
+      if (typeof action.payload.playersPerTeam !== 'undefined') {
+        const p = action.payload.playersPerTeam;
+        if (p == null) {
+          fixture.playersPerTeam = null;
+        } else if (Number.isFinite(p) && p > 0 && p <= 30) {
+          fixture.playersPerTeam = Math.floor(p);
         }
       }
 

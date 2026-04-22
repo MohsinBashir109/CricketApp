@@ -7,6 +7,7 @@ import { useThemeContext } from '../../theme/themeContext';
 import { colors } from '../../utils/colors';
 import { fontFamilies } from '../../utils/fontfamilies';
 import { fontPixel, heightPixel, widthPixel } from '../../utils/constants';
+import { cardShadowSm } from '../../utils/cardShadow';
 import { selectActiveTeams } from '../../features/tournament/tournamentSelectors';
 import {
   clearPickFromSavedTeamsResult,
@@ -368,14 +369,54 @@ const CreateTournamentFlow: React.FC<Props> = ({ navigation, expanded, onCollaps
           <ThemeText color="text" style={styles.sectionTitle}>
             Review
           </ThemeText>
-          <ThemeText color="secondaryText" style={styles.helperText}>
-            {selectedTeams.length} teams selected.
-          </ThemeText>
-          {selectedTeams.map(t => (
-            <ThemeText key={t.id} color="text" style={styles.reviewRow}>
-              {t.name}
-            </ThemeText>
-          ))}
+          <View
+            style={[
+              styles.reviewCard,
+              isDark ? styles.reviewShadowDark : styles.reviewShadowLight,
+              { backgroundColor: theme.surface, borderColor: theme.border },
+            ]}
+          >
+            <View style={styles.reviewHeader}>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <ThemeText color="text" style={styles.reviewTitle}>
+                  Selected teams
+                </ThemeText>
+                <ThemeText color="secondaryText" style={styles.reviewSub}>
+                  Double-check before saving.
+                </ThemeText>
+              </View>
+              <View
+                style={[
+                  styles.countPill,
+                  { backgroundColor: theme.primaryMuted, borderColor: theme.border },
+                ]}
+              >
+                <ThemeText color="primary" style={styles.countPillText}>
+                  {selectedTeams.length}
+                </ThemeText>
+              </View>
+            </View>
+
+            {selectedTeams.map((t, idx) => {
+              const count = t.players?.length ?? 0;
+              return (
+                <View
+                  key={t.id}
+                  style={[
+                    styles.reviewTeamRow,
+                    idx > 0 ? { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.border } : null,
+                  ]}
+                >
+                  <ThemeText color="text" style={styles.reviewTeamName} numberOfLines={1}>
+                    {t.name}
+                  </ThemeText>
+                  <ThemeText color="secondaryText" style={styles.reviewTeamMeta}>
+                    {count === 0 ? 'No players' : `${count} player${count === 1 ? '' : 's'}`}
+                  </ThemeText>
+                </View>
+              );
+            })}
+          </View>
 
           <Button title="Save tournament" onPress={handleSaveTournament} />
         </>
@@ -385,6 +426,8 @@ const CreateTournamentFlow: React.FC<Props> = ({ navigation, expanded, onCollaps
 };
 
 const styles = StyleSheet.create({
+  reviewShadowLight: cardShadowSm(false),
+  reviewShadowDark: cardShadowSm(true),
   sectionTitle: {
     fontSize: fontPixel(16),
     fontFamily: fontFamilies.bold,
@@ -440,9 +483,52 @@ const styles = StyleSheet.create({
     fontSize: fontPixel(12),
     lineHeight: fontPixel(18),
   },
-  reviewRow: {
+  reviewCard: {
+    borderWidth: 1,
+    borderRadius: widthPixel(18),
+    padding: widthPixel(14),
     marginTop: heightPixel(6),
-    fontSize: fontPixel(13),
+    marginBottom: heightPixel(10),
+  },
+  reviewHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: widthPixel(12),
+    paddingBottom: heightPixel(10),
+  },
+  reviewTitle: {
+    fontSize: fontPixel(15),
+    fontFamily: fontFamilies.bold,
+  },
+  reviewSub: {
+    marginTop: heightPixel(2),
+    fontSize: fontPixel(12),
+    lineHeight: fontPixel(18),
+  },
+  countPill: {
+    minWidth: widthPixel(38),
+    paddingHorizontal: widthPixel(12),
+    height: heightPixel(34),
+    borderRadius: widthPixel(999),
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  countPillText: {
+    fontSize: fontPixel(14),
+    fontFamily: fontFamilies.bold,
+  },
+  reviewTeamRow: {
+    paddingVertical: heightPixel(10),
+  },
+  reviewTeamName: {
+    fontSize: fontPixel(14),
+    fontFamily: fontFamilies.semibold,
+  },
+  reviewTeamMeta: {
+    marginTop: heightPixel(2),
+    fontSize: fontPixel(12),
+    lineHeight: fontPixel(18),
   },
 });
 
