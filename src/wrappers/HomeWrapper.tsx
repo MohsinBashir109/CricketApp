@@ -1,4 +1,4 @@
-import { ImageBackground, StatusBar, StyleSheet } from 'react-native';
+import { ImageBackground, StatusBar, StyleSheet, View } from 'react-native';
 import { fontPixel, heightPixel, widthPixel } from '../utils/constants';
 
 import { colors } from '../utils/colors';
@@ -6,7 +6,7 @@ import { fontFamilies } from '../utils/fontfamilies';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeContext } from '../theme/themeContext';
 import { UserHeader } from '../components/Headers/UserHeader';
-import { darkmode, lightmode } from '../assets/images';
+import { darkmode, lightmode3 } from '../assets/images';
 
 type props = {
   text?: string;
@@ -18,18 +18,23 @@ type props = {
 const HomeWrapper = ({ children, headerShown }: props) => {
   const insets = useSafeAreaInsets();
   const { isDark } = useThemeContext();
+  const palette = colors[isDark ? 'dark' : 'light'];
   return (
     <ImageBackground
-      source={isDark ? darkmode : lightmode}
+      source={isDark ? darkmode : lightmode3}
+      imageStyle={isDark ? styles.bgImageDark : styles.bgImageLight}
       style={[
         styles.background,
         {
           paddingTop: insets.top,
-          backgroundColor: colors[isDark ? 'dark' : 'light'].background,
-          opacity: 0.9,
+          backgroundColor: palette.background,
         },
       ]}
     >
+      <View
+        pointerEvents="none"
+        style={[styles.glassOverlay, isDark ? styles.glassOverlayDark : styles.glassOverlayLight]}
+      />
       <StatusBar
         translucent
         backgroundColor="transparent"
@@ -45,6 +50,21 @@ const HomeWrapper = ({ children, headerShown }: props) => {
 export default HomeWrapper;
 
 const styles = StyleSheet.create({
+  glassOverlay: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  glassOverlayDark: {
+    backgroundColor: 'rgba(0,0,0,0.25)',
+  },
+  glassOverlayLight: {
+    backgroundColor: 'rgba(255,255,255,0.18)',
+  },
+  bgImageDark: {
+    opacity: 0.35,
+  },
+  bgImageLight: {
+    opacity: 0.55,
+  },
   image: {
     width: widthPixel(80),
     height: heightPixel(110),

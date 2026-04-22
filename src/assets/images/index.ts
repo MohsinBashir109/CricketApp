@@ -26,14 +26,22 @@ import usernameicon from './usernameicon.png';
 import visibility from './visibility.png';
 import wicket from './wicket.png';
 import splashImage from './splash.png';
-import authBackground from './authBackground.png';
+import lightmode3 from './lightmode3.png';
+
 import darkmode from './darkmode.png';
 import lightmode from './lightmode.png';
-
+import lightmode2 from './lightmode2.png';
+import cardbackgroun from './cardbackgroun.png';
+import cardt from './cardt.png';
+import lightmodesplash from './lightmodesplash.png';
 export {
+  lightmodesplash,
+  cardt,
+  cardbackgroun,
+  lightmode3,
   darkmode,
   lightmode,
-  authBackground,
+  lightmode2,
   splashImage,
   teamSlect,
   throwBall,

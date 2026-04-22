@@ -12,6 +12,8 @@ import {
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
 import { fontPixel, heightPixel, widthPixel } from '../../../utils/constants';
+import { useThemeContext } from '../../../theme/themeContext';
+import { cardShadowLg } from '../../../utils/cardShadow';
 
 export type TeamRoleLabel =
   | 'Batsman'
@@ -75,6 +77,7 @@ const AddPlayersToTeamScreen: React.FC<Props> = ({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [inputError, setInputError] = useState<string | null>(null);
   const insets = useSafeAreaInsets();
+  const { isDark } = useThemeContext();
 
   const title = useMemo(
     () => `Add Players to Team ${teamDisplayName}`,
@@ -188,7 +191,8 @@ const AddPlayersToTeamScreen: React.FC<Props> = ({
             Enter player details to build your team lineup.
           </Text>
 
-          <View style={styles.card}>
+          <View style={isDark ? styles.cardShadowWrapDark : styles.cardShadowWrapLight}>
+            <View style={styles.card}>
             <View
               style={[
                 styles.inputShell,
@@ -254,10 +258,12 @@ const AddPlayersToTeamScreen: React.FC<Props> = ({
             >
               <Text style={styles.primaryBtnText}>{primaryCtaLabel}</Text>
             </Pressable>
+            </View>
           </View>
 
           <Text style={styles.listHeading}>Squad</Text>
-          <View style={styles.listCard}>
+          <View style={isDark ? styles.cardShadowWrapDark : styles.cardShadowWrapLight}>
+            <View style={styles.listCard}>
             <View style={styles.listHeaderRow}>
               <Text style={[styles.colIdx, styles.listHeaderText]}>#</Text>
               <Text style={[styles.colName, styles.listHeaderText]}>
@@ -315,6 +321,7 @@ const AddPlayersToTeamScreen: React.FC<Props> = ({
                 </View>
               ))
             )}
+            </View>
           </View>
         </ScrollView>
 
@@ -344,6 +351,8 @@ const AddPlayersToTeamScreen: React.FC<Props> = ({
 export default AddPlayersToTeamScreen;
 
 const styles = StyleSheet.create({
+  cardShadowWrapLight: cardShadowLg(false),
+  cardShadowWrapDark: cardShadowLg(true),
   safe: {
     flex: 1,
     backgroundColor: BG,
@@ -425,11 +434,6 @@ const styles = StyleSheet.create({
     padding: widthPixel(18),
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: BORDER,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    elevation: 2,
   },
   inputShell: {
     flexDirection: 'row',
@@ -540,11 +544,6 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: BORDER,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
   },
   listHeaderRow: {
     flexDirection: 'row',

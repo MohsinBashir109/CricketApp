@@ -1,6 +1,7 @@
 import { StyleSheet, View } from 'react-native';
 import React, { useMemo } from 'react';
 import { fontPixel, heightPixel, widthPixel } from '../../utils/constants';
+import { aggregateBattingFromBalls } from '../../utils/inningsStatsFromBalls';
 
 import ThemeText from '../ThemeText';
 import { colors } from '../../utils/colors';
@@ -10,6 +11,8 @@ import { useThemeContext } from '../../theme/themeContext';
 interface BatsmenRowProps {
   innings?: any;
   currentMatch?: any;
+  /** When set, drives ball-only stats row (Super Over); when unset, uses currentInnings 3/4. */
+  useInningsBallsOnlyStats?: boolean;
 }
 
 const calcStrikeRate = (runs?: number, balls?: number) => {
@@ -55,10 +58,41 @@ const getOutText = (
   return (player?.outType ?? 'out').toString();
 };
 
-const Batsmenrow = ({ innings, currentMatch }: BatsmenRowProps) => {
+const getSuperOverOutText = (
+  playerId: number,
+  innings: any,
+  currentMatch: any,
+  bowlingKey: 'teamA' | 'teamB' | undefined,
+) => {
+  const balls = innings?.balls ?? [];
+  for (let i = balls.length - 1; i >= 0; i--) {
+    const b = balls[i];
+    if (b?.wicket && b?.dismissedBatsmanId === playerId) {
+      const bowlingPlayers = bowlingKey
+        ? currentMatch?.[bowlingKey]?.players ?? []
+        : [];
+      const bowler = bowlingPlayers.find((p: any) => p.id === b.bowlerId);
+      return `b ${bowler?.name ?? 'bowler'}`;
+    }
+  }
+  return 'not out';
+};
+
+const Batsmenrow = ({
+  innings,
+  currentMatch,
+  useInningsBallsOnlyStats,
+}: BatsmenRowProps) => {
   const { isDark } = useThemeContext();
   const theme = colors[isDark ? 'dark' : 'light'];
   const battingKey = innings?.battingTeam as 'teamA' | 'teamB' | undefined;
+  const bowlingKey = innings?.bowlingTeam as 'teamA' | 'teamB' | undefined;
+
+  const ci = currentMatch?.currentInnings ?? 1;
+  const isSuperOverInnings =
+    useInningsBallsOnlyStats !== undefined
+      ? useInningsBallsOnlyStats
+      : ci === 3 || ci === 4;
 
   const strikerId: number | null | undefined = innings?.strikerId;
   const nonStrikerId: number | null | undefined = innings?.nonStrikerId;
@@ -67,7 +101,36 @@ const Batsmenrow = ({ innings, currentMatch }: BatsmenRowProps) => {
     return battingKey ? currentMatch?.[battingKey]?.players ?? [] : [];
   }, [battingKey, currentMatch]);
 
+  const soBatAgg = useMemo(
+    () =>
+      isSuperOverInnings
+        ? aggregateBattingFromBalls(innings?.balls)
+        : null,
+    [isSuperOverInnings, innings?.balls],
+  );
+
   const batsmenData = useMemo(() => {
+    if (isSuperOverInnings && soBatAgg) {
+      const balls = innings?.balls ?? [];
+      const dismissed = new Set<number>();
+      for (const b of balls) {
+        if (b?.wicket && b?.dismissedBatsmanId != null) {
+          dismissed.add(b.dismissedBatsmanId);
+        }
+      }
+      const list = battingPlayers.filter((p: any) => {
+        const isCurrent = p.id === strikerId || p.id === nonStrikerId;
+        const hasThisInnings =
+          soBatAgg.has(p.id) || dismissed.has(p.id);
+        return isCurrent || hasThisInnings;
+      });
+      return list.sort((a: any, b: any) => {
+        const rank = (id: number) =>
+          id === strikerId ? 0 : id === nonStrikerId ? 1 : 2;
+        return rank(a.id) - rank(b.id);
+      });
+    }
+
     const list = battingPlayers
       .filter((p: any) => {
         const isCurrent = p.id === strikerId || p.id === nonStrikerId;
@@ -82,7 +145,14 @@ const Batsmenrow = ({ innings, currentMatch }: BatsmenRowProps) => {
       });
 
     return list;
-  }, [battingPlayers, strikerId, nonStrikerId]);
+  }, [
+    battingPlayers,
+    strikerId,
+    nonStrikerId,
+    isSuperOverInnings,
+    soBatAgg,
+    innings?.balls,
+  ]);
 
   if (batsmenData.length === 0) {
     return (
@@ -96,6 +166,16 @@ const Batsmenrow = ({ innings, currentMatch }: BatsmenRowProps) => {
     <View style={styles.list}>
       {batsmenData.map((item: any) => {
         const isStriker = item.id === strikerId;
+        const aggRow = soBatAgg?.get(item.id);
+        const dispRuns = isSuperOverInnings
+          ? (aggRow?.runs ?? 0)
+          : (item?.runs ?? 0);
+        const dispBalls = isSuperOverInnings
+          ? (aggRow?.balls ?? 0)
+          : (item?.balls ?? 0);
+        const outLine = isSuperOverInnings
+          ? getSuperOverOutText(item.id, innings, currentMatch, bowlingKey)
+          : getOutText(item, currentMatch, innings, battingKey);
         return (
           <View
             key={String(item.id)}
@@ -122,18 +202,18 @@ const Batsmenrow = ({ innings, currentMatch }: BatsmenRowProps) => {
                 style={styles.outText}
                 numberOfLines={1}
               >
-                {getOutText(item, currentMatch, innings, battingKey)}
+                {outLine}
               </ThemeText>
             </View>
             <View style={styles.right}>
               <ThemeText style={styles.num} color="text">
-                {item?.runs ?? 0}
+                {dispRuns}
               </ThemeText>
               <ThemeText style={styles.num} color="text">
-                {item?.balls ?? 0}
+                {dispBalls}
               </ThemeText>
               <ThemeText style={styles.sr} color="desText">
-                {calcStrikeRate(item?.runs, item?.balls)}
+                {calcStrikeRate(dispRuns, dispBalls)}
               </ThemeText>
             </View>
           </View>

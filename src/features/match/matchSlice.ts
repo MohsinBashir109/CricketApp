@@ -1,9 +1,80 @@
-import { MatchSetup, SetOpenersAndBowlerPayload } from '../../types/Playertype';
+import {
+  Ball,
+  Innings,
+  MatchSetup,
+  SetOpenersAndBowlerPayload,
+  SuperOverRoundSnapshot,
+} from '../../types/Playertype';
 import { PayloadAction, createSlice, current } from '@reduxjs/toolkit';
 import { ballsToOvers, oversToBalls } from '../../utils/constants';
+import { PlayerRole } from '../../types/Playertype';
 
 function cloneMatchForUndo(match: MatchSetup): MatchSetup {
   return JSON.parse(JSON.stringify(match)) as MatchSetup;
+}
+
+function cloneInnings(innings: Innings): Innings {
+  return JSON.parse(JSON.stringify(innings)) as Innings;
+}
+
+type ScoringInningsKey =
+  | 'innings1'
+  | 'innings2'
+  | 'superOverInnings1'
+  | 'superOverInnings2';
+
+function getScoringInningsKey(match: MatchSetup): ScoringInningsKey | null {
+  const ci = match.currentInnings;
+  if (ci === 1) return 'innings1';
+  if (ci === 2) return 'innings2';
+  if (ci === 3) return 'superOverInnings1';
+  if (ci === 4) return 'superOverInnings2';
+  return null;
+}
+
+function getInningsByInningNo(
+  match: MatchSetup,
+  inningNo: number | null | undefined,
+): { key: ScoringInningsKey; innings: Innings } | null {
+  const no = inningNo ?? match.currentInnings;
+  if (no === 1 && match.innings1)
+    return { key: 'innings1', innings: match.innings1 };
+  if (no === 2 && match.innings2)
+    return { key: 'innings2', innings: match.innings2 };
+  if (no === 3 && match.superOverInnings1)
+    return { key: 'superOverInnings1', innings: match.superOverInnings1 };
+  if (no === 4 && match.superOverInnings2)
+    return { key: 'superOverInnings2', innings: match.superOverInnings2 };
+  return null;
+}
+
+function mainInningsRunsForTeam(
+  i1: Innings,
+  i2: Innings,
+  team: 'teamA' | 'teamB',
+): number {
+  let r = 0;
+  if (i1.battingTeam === team) r += i1.totalRuns ?? 0;
+  if (i2.battingTeam === team) r += i2.totalRuns ?? 0;
+  return r;
+}
+
+function superOverRunsForTeam(
+  so1: Innings,
+  so2: Innings,
+  team: 'teamA' | 'teamB',
+): number {
+  let r = 0;
+  if (so1.battingTeam === team) r += so1.totalRuns ?? 0;
+  if (so2.battingTeam === team) r += so2.totalRuns ?? 0;
+  return r;
+}
+
+function clearAllScorerModals(match: MatchSetup) {
+  match.innings1 && (match.innings1.activeModal = null);
+  match.innings2 && (match.innings2.activeModal = null);
+  match.superOverInnings1 && (match.superOverInnings1.activeModal = null);
+  match.superOverInnings2 && (match.superOverInnings2.activeModal = null);
 }
 
 interface MatchState {
@@ -26,6 +97,7 @@ const matchSlice = createSlice({
   reducers: {
     setmatch(state, action: PayloadAction<MatchSetup>) {
       state.preBallSnapshots = [];
+      state.lastCompletedMatch = null;
       state.currentMatch = {
         ...action.payload,
         isCompleted: false,
@@ -48,6 +120,51 @@ const matchSlice = createSlice({
           ...action.payload,
         };
       }
+    },
+
+    addLivePlayerToTeam(
+      state,
+      action: PayloadAction<{
+        teamKey: 'teamA' | 'teamB';
+        name: string;
+        role?: PlayerRole;
+      }>,
+    ) {
+      const match = state.currentMatch;
+      if (!match) return;
+      if (match.isCompleted) return;
+
+      const team = action.payload.teamKey === 'teamA' ? match.teamA : match.teamB;
+      if (!team) return;
+
+      const name = (action.payload.name ?? '').trim();
+      if (!name) return;
+
+      const exists = (team.players ?? []).some(
+        p => (p.name ?? '').trim().toLowerCase() === name.toLowerCase(),
+      );
+      if (exists) return;
+
+      const id = Date.now() + Math.floor(Math.random() * 1000);
+      const next = {
+        id,
+        name,
+        role: action.payload.role,
+        runs: 0,
+        balls: 0,
+        fours: 0,
+        sixes: 0,
+        isOut: false,
+        overs: 0,
+        maidens: 0,
+        conceded: 0,
+        wickets: 0,
+        wides: 0,
+        noBalls: 0,
+      };
+
+      if (!team.players) team.players = [];
+      team.players.push(next as any);
     },
     // addStrikerAndBowlerInnings(state, action: PayloadAction<any>) {
     //   const match = state.currentMatch;
@@ -96,11 +213,9 @@ const matchSlice = createSlice({
       if (strikerId === nonStrikerId) return;
 
       const inningNo = innings ?? match.currentInnings;
-      const inningsKey: 'innings1' | 'innings2' =
-        inningNo === 2 ? 'innings2' : 'innings1';
-
-      const inningsObj = match[inningsKey];
-      if (!inningsObj) return;
+      const found = getInningsByInningNo(match, inningNo);
+      if (!found) return;
+      const inningsObj = found.innings;
 
       const battingTeam = match[inningsObj.battingTeam];
       const bowlingTeam = match[inningsObj.bowlingTeam];
@@ -127,11 +242,13 @@ const matchSlice = createSlice({
     ) {
       const match = state.currentMatch;
       if (!match) return;
+      if (match.isCompleted) return;
 
-      const inningsKey: 'innings1' | 'innings2' =
-        match.currentInnings === 2 ? 'innings2' : 'innings1';
-      const innings = match[inningsKey];
+      const key = getScoringInningsKey(match);
+      if (!key) return;
+      const innings = match[key];
       if (!innings) return;
+      if (innings.isCompleted) return;
 
       innings.activeModal = action.payload;
     },
@@ -146,9 +263,9 @@ const matchSlice = createSlice({
       const match = state.currentMatch;
       if (!match) return;
 
-      const inningsKey: 'innings1' | 'innings2' =
-        match.currentInnings === 2 ? 'innings2' : 'innings1';
-      const innings = match[inningsKey];
+      const key = getScoringInningsKey(match);
+      if (!key) return;
+      const innings = match[key];
       if (!innings) return;
 
       const { batsmanId, target } = action.payload;
@@ -180,9 +297,9 @@ const matchSlice = createSlice({
       const match = state.currentMatch;
       if (!match) return;
 
-      const inningsKey: 'innings1' | 'innings2' =
-        match.currentInnings === 2 ? 'innings2' : 'innings1';
-      const innings = match[inningsKey];
+      const key = getScoringInningsKey(match);
+      if (!key) return;
+      const innings = match[key];
       if (!innings) return;
 
       innings.bowlerId = action.payload.bowlerId;
@@ -251,18 +368,24 @@ const matchSlice = createSlice({
       const match = state.currentMatch;
       if (!match) return;
       if (match.isScoringPaused) return;
+      if (match.pendingTieResolution) return;
       if (!state.preBallSnapshots) state.preBallSnapshots = [];
 
-      const inningsKey: 'innings1' | 'innings2' =
-        match.currentInnings === 2 ? 'innings2' : 'innings1';
-      const innings = match[inningsKey];
+      const key = getScoringInningsKey(match);
+      if (!key) return;
+      const innings = match[key]!;
 
       if (!innings) return;
       if (innings.isCompleted) return;
 
       // ✅ OVERS LIMIT GUARD (legal balls only)
-      const oversLimit = Number(match.overs ?? 0); // make sure match.overs is number OR string-number
-      const maxBalls = oversLimit > 0 ? oversLimit * 6 : Infinity;
+      const oversLimit = Number(match.overs ?? 0);
+      const maxBalls =
+        key === 'superOverInnings1' || key === 'superOverInnings2'
+          ? 6
+          : oversLimit > 0
+            ? oversLimit * 6
+            : Infinity;
 
       // if innings already ended by overs or all-out, block scoring
       if (innings.isCompleted) return;
@@ -308,7 +431,7 @@ const matchSlice = createSlice({
       const over = Math.floor(innings.totalBalls / 6) + 1;
       const ballInOver = (innings.totalBalls % 6) + 1;
 
-      const newBall = {
+      const newBall: Ball = {
         ballNumber: innings.balls.length + 1,
         over,
         ballInOver: isLegal ? ballInOver : 0,
@@ -336,6 +459,7 @@ const matchSlice = createSlice({
           outTarget === 'STRIKER' ? innings.strikerId : innings.nonStrikerId;
 
         if (outId != null) {
+          newBall.dismissedBatsmanId = outId;
           const outPlayer = batTeam.players.find(p => p.id === outId);
           if (outPlayer) outPlayer.isOut = true;
         }
@@ -404,6 +528,16 @@ const matchSlice = createSlice({
           return;
         }
       }
+      if (match.currentInnings === 4 && match.superOverInnings1) {
+        const target = (match.superOverInnings1.totalRuns ?? 0) + 1;
+        if ((innings.totalRuns ?? 0) >= target) {
+          innings.isCompleted = true;
+          innings.activeModal = null;
+          innings.pendingBowlerChange = false;
+          innings.winnerReason = 'TARGET_CHASED';
+          return;
+        }
+      }
 
       // Strike rotation on odd totals (includes wides/no-balls)
       if (totalRuns % 2 === 1) {
@@ -431,56 +565,209 @@ const matchSlice = createSlice({
     completeMatchIfNeeded(state) {
       const match = state.currentMatch;
       if (!match) return;
+      if (match.pendingTieResolution) return;
+      if ((match.currentInnings ?? 1) > 2) return;
 
       const i1 = match.innings1;
       const i2 = match.innings2;
 
-      // need both innings
       if (!i1 || !i2) return;
-
-      // must both be completed
       if (!i1.isCompleted || !i2.isCompleted) return;
-
-      // prevent double-run
       if (match.isCompleted) return;
 
-      // -----------------------------
-      // Decide winner (simple version)
-      // -----------------------------
-      const teamARuns =
-        i1.battingTeam === 'teamA' ? i1.totalRuns : i2.totalRuns;
+      const teamARuns = mainInningsRunsForTeam(i1, i2, 'teamA');
+      const teamBRuns = mainInningsRunsForTeam(i1, i2, 'teamB');
 
-      const teamBRuns =
-        i1.battingTeam === 'teamB' ? i1.totalRuns : i2.totalRuns;
+      if (teamARuns === teamBRuns) {
+        match.pendingTieResolution = true;
+        match.isScoringPaused = true;
+        clearAllScorerModals(match);
+        return;
+      }
 
       let winnerTeam: 'teamA' | 'teamB' | null = null;
       let resultReason: MatchSetup['resultReason'] = 'TIE';
 
       if (teamARuns > teamBRuns) {
         winnerTeam = 'teamA';
-        resultReason = 'DEFENDED'; // or just 'WIN'
-      } else if (teamBRuns > teamARuns) {
+        resultReason = 'DEFENDED';
+      } else {
         winnerTeam = 'teamB';
         resultReason = 'CHASED';
-      } else {
-        winnerTeam = null;
-        resultReason = 'TIE';
       }
 
       match.isCompleted = true;
       match.winnerTeam = winnerTeam;
       match.winnerTeamName =
         winnerTeam === 'teamA'
-          ? match.teamA?.name
-          : winnerTeam === 'teamB'
-          ? match.teamB?.name
-          : '';
+          ? match.teamA?.name ?? ''
+          : match.teamB?.name ?? '';
       match.resultReason = resultReason;
 
-      // push to history and clear current match
-      state.lastCompletedMatch = match; // for summary screen
-      state.history.push(match); // keep history
-      state.currentMatch = null; // ✅ this will trigger navigation
+      clearAllScorerModals(match);
+      match.isScoringPaused = false;
+
+      state.lastCompletedMatch = match;
+      state.history.push(match);
+      state.currentMatch = null;
+      state.preBallSnapshots = [];
+    },
+
+    resolveTieAsDraw(state) {
+      const match = state.currentMatch;
+      if (!match?.pendingTieResolution) return;
+
+      const hadCompletedSuperOver =
+        (match.superOverHistory?.length ?? 0) > 0 ||
+        (!!match.superOverInnings1?.isCompleted &&
+          !!match.superOverInnings2?.isCompleted);
+
+      match.pendingTieResolution = false;
+      match.isScoringPaused = false;
+      match.isCompleted = true;
+      match.winnerTeam = null;
+      match.winnerTeamName = '';
+      match.resultReason = 'TIE';
+      match.tieResolvedBy = hadCompletedSuperOver ? 'super_over_tied' : 'draw';
+
+      clearAllScorerModals(match);
+
+      state.lastCompletedMatch = match;
+      state.history.push(match);
+      state.currentMatch = null;
+      state.preBallSnapshots = [];
+    },
+
+    beginSuperOver(state) {
+      const match = state.currentMatch;
+      if (!match?.pendingTieResolution) return;
+      if (!match.innings1 || !match.innings2) return;
+
+      // Archive a completed tied Super Over before starting the next round (repeat until decisive).
+      const prevSo1 = match.superOverInnings1;
+      const prevSo2 = match.superOverInnings2;
+      if (prevSo1?.isCompleted && prevSo2?.isCompleted) {
+        if (!match.superOverHistory) match.superOverHistory = [];
+        const snap: SuperOverRoundSnapshot = {
+          inning1: cloneInnings(prevSo1),
+          inning2: cloneInnings(prevSo2),
+        };
+        match.superOverHistory.push(snap);
+      }
+
+      match.pendingTieResolution = false;
+      match.isScoringPaused = false;
+      match.superOverInnings1 = undefined;
+      match.superOverInnings2 = undefined;
+
+      const battingTeam = match.innings2.battingTeam;
+      const bowlingTeam = match.innings2.bowlingTeam;
+      const battingTeamObj =
+        battingTeam === 'teamA' ? match.teamA : match.teamB;
+      const bowlingTeamObj =
+        bowlingTeam === 'teamA' ? match.teamA : match.teamB;
+
+      match.superOverInnings1 = {
+        battingTeam,
+        bowlingTeam,
+        battingTeamName: battingTeamObj?.name ?? '',
+        bowlingTeamName: bowlingTeamObj?.name ?? '',
+        totalRuns: 0,
+        totalWickets: 0,
+        totalBalls: 0,
+        strikerId: null,
+        nonStrikerId: null,
+        bowlerId: null,
+        balls: [],
+        activeModal: 'OPENERS',
+        outTarget: 'STRIKER',
+        pendingBowlerChange: false,
+        isCompleted: false,
+        winnerReason: undefined,
+      };
+
+      match.currentInnings = 3;
+      state.preBallSnapshots = [];
+    },
+
+    startSuperOverSecondInnings(state) {
+      const match = state.currentMatch;
+      if (!match) return;
+      const so1 = match.superOverInnings1;
+      if (!so1?.isCompleted) return;
+      if (match.currentInnings !== 3) return;
+      if (match.superOverInnings2) return;
+
+      const battingTeam = so1.bowlingTeam;
+      const bowlingTeam = so1.battingTeam;
+      const battingTeamObj =
+        battingTeam === 'teamA' ? match.teamA : match.teamB;
+      const bowlingTeamObj =
+        bowlingTeam === 'teamA' ? match.teamA : match.teamB;
+
+      match.superOverInnings2 = {
+        battingTeam,
+        bowlingTeam,
+        battingTeamName: battingTeamObj?.name ?? '',
+        bowlingTeamName: bowlingTeamObj?.name ?? '',
+        totalRuns: 0,
+        totalWickets: 0,
+        totalBalls: 0,
+        strikerId: null,
+        nonStrikerId: null,
+        bowlerId: null,
+        balls: [],
+        activeModal: 'OPENERS',
+        outTarget: 'STRIKER',
+        pendingBowlerChange: false,
+        isCompleted: false,
+        winnerReason: undefined,
+      };
+
+      match.currentInnings = 4;
+      state.preBallSnapshots = [];
+    },
+
+    completeSuperOverIfNeeded(state) {
+      const match = state.currentMatch;
+      if (!match) return;
+      if (match.pendingTieResolution) return;
+      if (match.isCompleted) return;
+
+      const so1 = match.superOverInnings1;
+      const so2 = match.superOverInnings2;
+      if (!so1?.isCompleted || !so2?.isCompleted) return;
+
+      const ra = superOverRunsForTeam(so1, so2, 'teamA');
+      const rb = superOverRunsForTeam(so1, so2, 'teamB');
+
+      if (ra === rb) {
+        match.pendingTieResolution = true;
+        match.isScoringPaused = true;
+        clearAllScorerModals(match);
+        return;
+      }
+
+      const winnerTeam: 'teamA' | 'teamB' = ra > rb ? 'teamA' : 'teamB';
+      const secondBatting = so2.battingTeam;
+      const resultReason: MatchSetup['resultReason'] =
+        winnerTeam === secondBatting ? 'CHASED' : 'DEFENDED';
+
+      match.isCompleted = true;
+      match.winnerTeam = winnerTeam;
+      match.winnerTeamName =
+        winnerTeam === 'teamA'
+          ? match.teamA?.name ?? ''
+          : match.teamB?.name ?? '';
+      match.resultReason = resultReason;
+      match.tieResolvedBy = 'super_over';
+
+      clearAllScorerModals(match);
+      match.isScoringPaused = false;
+
+      state.lastCompletedMatch = match;
+      state.history.push(match);
+      state.currentMatch = null;
       state.preBallSnapshots = [];
     },
 
@@ -489,9 +776,9 @@ const matchSlice = createSlice({
       const match = state.currentMatch;
       if (!match) return;
 
-      const inningsKey: 'innings1' | 'innings2' =
-        match.currentInnings === 2 ? 'innings2' : 'innings1';
-      const innings = match[inningsKey];
+      const key = getScoringInningsKey(match);
+      if (!key) return;
+      const innings = match[key];
       if (!innings) return;
 
       if (innings.balls.length === 0) return;
@@ -510,19 +797,26 @@ const matchSlice = createSlice({
         state.history.push(state.currentMatch);
         state.currentMatch = null;
       }
+      state.lastCompletedMatch = null;
       state.preBallSnapshots = [];
     },
     clearHistory(state) {
       state.history = [];
       state.preBallSnapshots = [];
     },
+
+    clearLastCompletedMatch(state) {
+      state.lastCompletedMatch = null;
+    },
   },
 });
 export const {
   setmatch,
   updateMatch,
+  addLivePlayerToTeam,
   endMatch,
   clearHistory,
+  clearLastCompletedMatch,
   addStrikerAndBowlerInnings,
   recordBall,
   undoLastBall,
@@ -532,6 +826,10 @@ export const {
   setScoringPaused,
   startSecondInnings,
   completeMatchIfNeeded,
+  resolveTieAsDraw,
+  beginSuperOver,
+  startSuperOverSecondInnings,
+  completeSuperOverIfNeeded,
   setHistory,
 } = matchSlice.actions;
 export default matchSlice.reducer;

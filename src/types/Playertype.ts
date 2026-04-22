@@ -50,6 +50,8 @@ export interface Ball {
   runsOffBat?: number; // 0/1/2/3/4/6 (only for normal / noBall+bat)
 
   wicket?: boolean;
+  /** Who was dismissed on this ball (when wicket is true); used for Super Over score rows. */
+  dismissedBatsmanId?: number | null;
 
   strikerId: number | null;
   bowlerId: number | null;
@@ -57,22 +59,44 @@ export interface Ball {
 
 export interface MatchSetup {
   matchId: string;
+  /** Optional linkage when match is scored inside a tournament fixture. */
+  tournamentId?: string;
+  fixtureId?: string;
   teamA: Team | null;
   teamB: Team | null;
   tossWinner?: 'teamA' | 'teamB' | '';
   electedTo?: 'bat' | 'bowl' | '';
   overs?: number | null;
   tossWinnerName?: string;
-  currentInnings: 1 | 2 | null;
+  /** 3 / 4 = Super Over (first / second innings of the over-per-side tie-break). */
+  currentInnings: 1 | 2 | 3 | 4 | null;
 
   innings1: Innings | null;
   innings2: Innings | null;
+  /** Super Over innings after a tied main innings (optional). */
+  superOverInnings1?: Innings | null;
+  superOverInnings2?: Innings | null;
+  /**
+   * Completed Super Over pairs from earlier tie-break rounds (each: first bat, reply).
+   * Appended when a Super Over is tied and another round is started.
+   */
+  superOverHistory?: SuperOverRoundSnapshot[] | null;
+  /** Main innings scores level — user must pick draw or Super Over (scoring paused). */
+  pendingTieResolution?: boolean;
+  /** How a tie was settled (if applicable). */
+  tieResolvedBy?: 'draw' | 'super_over' | 'super_over_tied';
   isCompleted?: boolean;
   resultReason?: 'CHASED' | 'DEFENDED' | 'TIE' | 'NO_RESULT';
   winnerTeam?: 'teamA' | 'teamB' | null;
   winnerTeamName?: string;
   /** When true, scoring actions are blocked (live match paused). */
   isScoringPaused?: boolean;
+}
+
+/** Immutable snapshot of one finished Super Over round (two mini-innings). */
+export interface SuperOverRoundSnapshot {
+  inning1: Innings;
+  inning2: Innings;
 }
 
 export interface Innings {
@@ -102,7 +126,7 @@ export interface SetOpenersAndBowlerPayload {
   strikerId: number;
   nonStrikerId: number;
   bowlerId: number;
-  innings?: 1 | 2; // optional; fallback to currentMatch.currentInnings
+  innings?: 1 | 2 | 3 | 4; // optional; fallback to currentMatch.currentInnings
 }
 
 export type ActiveModal = 'OPENERS' | 'NEXT_BATSMAN' | 'NEXT_BOWLER' | null;

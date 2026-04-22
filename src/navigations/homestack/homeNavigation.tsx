@@ -75,6 +75,14 @@ export const HomeNavigation = () => {
         name={routes.tournamentDetails}
         component={Home.TournamentDetailsScreen}
       />
+      <HomeStack.Screen
+        name={routes.tournamentTeamSquad}
+        component={Home.TournamentTeamSquadScreen}
+      />
+      <HomeStack.Screen
+        name={routes.tournamentMatchDetail}
+        component={Home.TournamentMatchDetailScreen}
+      />
       <HomeStack.Screen name={routes.startMatch} component={Home.Startmatch} />
       <HomeStack.Screen
         name={routes.addPlayersToTeam}
@@ -91,6 +99,14 @@ export const HomeNavigation = () => {
       <HomeStack.Screen
         name={routes.matchHistory}
         component={Home.MatchHistoryScreen}
+      />
+      <HomeStack.Screen
+        name={routes.uncompletedTournaments}
+        component={Home.UncompletedTournamentsScreen}
+      />
+      <HomeStack.Screen
+        name={routes.addFromSavedTeams}
+        component={Home.AddFromSavedTeamsScreen}
       />
     </HomeStack.Navigator>
   );

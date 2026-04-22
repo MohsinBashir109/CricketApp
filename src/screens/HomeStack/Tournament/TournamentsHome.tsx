@@ -1,28 +1,28 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSelector } from 'react-redux';
 import ThemeText from '../../../components/ThemeText';
 import Button from '../../../components/themeButton';
+import CreateTournamentFlow from '../../../components/Tournament/CreateTournamentFlow';
 import { selectActiveTeams, selectAllTournaments } from '../../../features/tournament/tournamentSelectors';
 import { useThemeContext } from '../../../theme/themeContext';
 import { colors } from '../../../utils/colors';
 import { fontFamilies } from '../../../utils/fontfamilies';
 import { fontPixel, heightPixel, widthPixel } from '../../../utils/constants';
+import { cardShadowLg } from '../../../utils/cardShadow';
 import { routes } from '../../../utils/routes';
 import HomeWrapper from '../../../wrappers/HomeWrapper';
 
 const TournamentsHome = ({ navigation }: any) => {
+  const [createExpanded, setCreateExpanded] = useState(false);
   const tournaments = useSelector(selectAllTournaments);
   const teams = useSelector(selectActiveTeams);
   const { isDark } = useThemeContext();
   const themeColors = colors[isDark ? 'dark' : 'light'];
 
-  const summary = useMemo(
-    () => [
-      { label: 'Saved Teams', value: String(teams.length) },
-      { label: 'Tournaments', value: String(tournaments.length) },
-    ],
-    [teams.length, tournaments.length],
+  const activeCount = useMemo(
+    () => tournaments.filter(t => t.status !== 'completed').length,
+    [tournaments],
   );
 
   return (
@@ -34,6 +34,7 @@ const TournamentsHome = ({ navigation }: any) => {
         <View
           style={[
             styles.heroCard,
+            isDark ? styles.cardShadowDark : styles.cardShadowLight,
             {
               backgroundColor: themeColors.surface,
               borderColor: themeColors.border,
@@ -44,116 +45,93 @@ const TournamentsHome = ({ navigation }: any) => {
             Tournament Center
           </ThemeText>
           <ThemeText color="secondaryText" style={styles.heroText}>
-            Create open or group-based tournaments using saved teams, then review
-            the structure before you start scheduling fixtures.
+            Start here to create a tournament, then manage history and active
+            tournaments below.
           </ThemeText>
 
-          <View style={styles.summaryRow}>
-            {summary.map(item => (
-              <View
-                key={item.label}
-                style={[
-                  styles.summaryCard,
-                  {
-                    backgroundColor: themeColors.primaryMuted,
-                  },
-                ]}
-              >
-                <ThemeText color="primary" style={styles.summaryValue}>
-                  {item.value}
-                </ThemeText>
-                <ThemeText color="secondaryText" style={styles.summaryLabel}>
-                  {item.label}
-                </ThemeText>
-              </View>
-            ))}
-          </View>
-
-          <Button
-            title="Create Tournament"
-            onPress={() => navigation.navigate(routes.createTournament)}
+          <CreateTournamentFlow
+            navigation={navigation}
+            expanded={createExpanded}
+            onCollapse={() => setCreateExpanded(false)}
           />
+
+          {!createExpanded ? (
+            <Button title="Create Tournament" onPress={() => setCreateExpanded(true)} />
+          ) : (
+            <Pressable
+              onPress={() => setCreateExpanded(false)}
+              style={styles.collapseLink}
+              hitSlop={12}
+            >
+              <ThemeText color="primary" style={styles.collapseText}>
+                Collapse
+              </ThemeText>
+            </Pressable>
+          )}
           {teams.length < 2 ? (
             <ThemeText color="secondaryText" style={styles.helperText}>
-              You can open the flow now, but you must add at least 2 teams inside
-              the creation screen before you can save the tournament.
+              You need at least two saved teams to finish creating a tournament
+              (you can add teams inside “Choose teams”).
             </ThemeText>
           ) : null}
         </View>
 
-        <View style={styles.sectionHeader}>
-          <ThemeText color="text" style={styles.sectionTitle}>
-            Saved Tournaments
+        <View
+          style={[
+            styles.historyCard,
+            isDark ? styles.cardShadowDark : styles.cardShadowLight,
+            {
+              backgroundColor: themeColors.surface,
+              borderColor: themeColors.border,
+            },
+          ]}
+        >
+          <ThemeText color="text" style={styles.cardTitle}>
+            Tournament history
           </ThemeText>
+          <ThemeText color="secondaryText" style={styles.historyText}>
+            View your saved tournaments and open their details anytime.
+          </ThemeText>
+          <Button
+            title="View tournament history"
+            onPress={() => navigation.navigate(routes.matchHistory, { initialTab: 'tournament' })}
+            buttonStyle={styles.historyCta}
+          />
         </View>
 
-        {tournaments.length === 0 ? (
-          <View
-            style={[
-              styles.emptyCard,
-              {
-                backgroundColor: themeColors.surface,
-                borderColor: themeColors.border,
-              },
-            ]}
-          >
-            <ThemeText color="text" style={styles.emptyTitle}>
-              No tournaments yet
-            </ThemeText>
-            <ThemeText color="secondaryText" style={styles.emptyText}>
-              Start with a tournament name, select teams, choose open or
-              group-based structure, and save the setup.
+        <View
+          style={[
+            styles.historyCard,
+            isDark ? styles.cardShadowDark : styles.cardShadowLight,
+            {
+              backgroundColor: themeColors.surface,
+              borderColor: themeColors.border,
+            },
+          ]}
+        >
+          <View style={styles.cardTitleRow}>
+            <ThemeText color="text" style={styles.cardTitle}>
+              Active tournaments
             </ThemeText>
           </View>
-        ) : (
-          tournaments.map(tournament => (
-            <Pressable
-              key={tournament.id}
-              onPress={() =>
-                navigation.navigate(routes.tournamentDetails, {
-                  tournamentId: tournament.id,
-                })
-              }
-              style={[
-                styles.tournamentCard,
-                {
-                  backgroundColor: themeColors.surface,
-                  borderColor: themeColors.border,
-                },
-              ]}
-            >
-              <View style={styles.tournamentHeader}>
-                <ThemeText color="text" style={styles.tournamentName}>
-                  {tournament.name}
-                </ThemeText>
-                <View
-                  style={[
-                    styles.badge,
-                    { backgroundColor: themeColors.primaryMuted },
-                  ]}
-                >
-                  <ThemeText color="primary" style={styles.badgeText}>
-                    {tournament.status.toUpperCase()}
-                  </ThemeText>
-                </View>
-              </View>
-              <ThemeText color="secondaryText" style={styles.tournamentMeta}>
-                {tournament.formatType === 'groupBased'
-                  ? `${tournament.groupCount} groups`
-                  : 'Open tournament'}
-              </ThemeText>
-              <ThemeText color="secondaryText" style={styles.tournamentMeta}>
-                {tournament.teamCount} teams • {tournament.competitionType}
-              </ThemeText>
-            </Pressable>
-          ))
-        )}
+          <ThemeText color="secondaryText" style={styles.historyText}>
+            Continue tournaments that are not completed yet.
+          </ThemeText>
+          <Button
+            title="View active tournaments"
+            onPress={() => navigation.navigate(routes.uncompletedTournaments)}
+            buttonStyle={styles.historyCta}
+            disabled={activeCount === 0}
+          />
+        </View>
       </ScrollView>
     </HomeWrapper>
   );
 };
 
 const styles = StyleSheet.create({
+  cardShadowLight: cardShadowLg(false),
+  cardShadowDark: cardShadowLg(true),
   content: {
     paddingTop: heightPixel(20),
     paddingBottom: heightPixel(32),
@@ -172,35 +150,42 @@ const styles = StyleSheet.create({
     fontSize: fontPixel(14),
     lineHeight: fontPixel(21),
   },
-  summaryRow: {
-    flexDirection: 'row',
-    gap: widthPixel(12),
-    marginVertical: heightPixel(18),
-  },
-  summaryCard: {
-    flex: 1,
-    borderRadius: widthPixel(16),
-    padding: widthPixel(14),
-  },
-  summaryValue: {
-    fontSize: fontPixel(22),
-    fontFamily: fontFamilies.bold,
-  },
-  summaryLabel: {
-    marginTop: heightPixel(4),
-    fontSize: fontPixel(12),
-  },
   helperText: {
     marginTop: heightPixel(8),
     fontSize: fontPixel(12),
   },
-  sectionHeader: {
-    marginTop: heightPixel(24),
-    marginBottom: heightPixel(12),
+  collapseLink: {
+    marginTop: heightPixel(12),
+    alignSelf: 'flex-start',
+    paddingVertical: heightPixel(6),
   },
-  sectionTitle: {
+  collapseText: {
+    fontSize: fontPixel(13),
+    fontFamily: fontFamilies.semibold,
+  },
+  historyCard: {
+    borderWidth: 1,
+    borderRadius: widthPixel(18),
+    padding: widthPixel(18),
+    marginTop: heightPixel(24),
+  },
+  cardTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: widthPixel(12),
+  },
+  cardTitle: {
     fontSize: fontPixel(18),
     fontFamily: fontFamilies.bold,
+  },
+  historyText: {
+    marginTop: heightPixel(8),
+    fontSize: fontPixel(14),
+    lineHeight: fontPixel(21),
+  },
+  historyCta: {
+    marginTop: heightPixel(12),
   },
   emptyCard: {
     borderWidth: 1,

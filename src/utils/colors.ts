@@ -99,6 +99,7 @@ export const colors = {
     buttonBackGround: '#3DDC9C',
     buttonBackGroundOther: '#1A2220',
     fogotText: '#3DDC9C',
+    orColor: '#64748B',
     transparent: 'transparent',
     bottomTab: '#0B1210',
     tabGradient: ['#2EE6A8', '#1A8A66'],

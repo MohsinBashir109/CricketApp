@@ -1,6 +1,7 @@
 import { useNavigation } from '@react-navigation/native';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { fontPixel, heightPixel, widthPixel } from '../../../utils/constants';
+import { cardShadowLg, cardShadowSm } from '../../../utils/cardShadow';
 import { matches } from '../../../assets/images';
 
 import Button from '../../../components/themeButton';
@@ -11,16 +12,18 @@ import ThemeText from '../../../components/ThemeText';
 import { colors } from '../../../utils/colors';
 import { fontFamilies } from '../../../utils/fontfamilies';
 import { routes } from '../../../utils/routes';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { useThemeContext } from '../../../theme/themeContext';
-import { selectActiveTeams } from '../../../features/tournament/tournamentSelectors';
+import { RootState } from '../../../features/store/rootReducer';
+import { clearLastCompletedMatch } from '../../../features/match/matchSlice';
 
 const ballsToOvers = (balls: number) =>
   `${Math.floor((balls || 0) / 6)}.${(balls || 0) % 6}`;
 
 const Matches = () => {
   const match = useSelector((state: any) => state.match);
-  const activeTeams = useSelector(selectActiveTeams);
+  const tournamentsById = useSelector((s: RootState) => s.tournament.tournamentsById);
+  const dispatch = useDispatch();
   const navigation = useNavigation();
   const { isDark } = useThemeContext();
   const theme = colors[isDark ? 'dark' : 'light'];
@@ -39,20 +42,41 @@ const Matches = () => {
 
   const tossWinnerKey = match?.currentMatch?.tossWinner;
   const currentMatch = match?.currentMatch;
+  const lastCompletedMatch = match?.lastCompletedMatch;
+  const tournamentName =
+    currentMatch?.tournamentId ? tournamentsById?.[currentMatch.tournamentId]?.name : null;
+  const lastTournamentName =
+    lastCompletedMatch?.tournamentId
+      ? tournamentsById?.[lastCompletedMatch.tournamentId]?.name
+      : null;
   const tossWinnerName =
     tossWinnerKey === 'teamA'
       ? currentMatch?.teamA?.name
       : tossWinnerKey === 'teamB'
-        ? currentMatch?.teamB?.name
-        : '';
+      ? currentMatch?.teamB?.name
+      : '';
   const innings =
     currentMatch?.currentInnings === 2
       ? currentMatch?.innings2
       : currentMatch?.innings1;
 
-  const completedMatchesCount = Array.isArray(match?.history)
-    ? match.history.length
-    : 0;
+  const lastResultLine = (() => {
+    const m = lastCompletedMatch;
+    if (!m) return '';
+    const w = m.winnerTeamName ?? '';
+    if (m.resultReason === 'TIE') return 'Match tied';
+    if (m.resultReason === 'NO_RESULT') return 'No result';
+    if (m.tieResolvedBy === 'super_over' && w) return `${w} won (Super Over)`;
+    if (m.tieResolvedBy === 'super_over_tied') return 'Match tied (Super Over tied)';
+    return w ? `${w} won` : 'Match finished';
+  })();
+
+  const openLastSummary = () => {
+    if (!lastCompletedMatch) return;
+    const snapshot = lastCompletedMatch;
+    dispatch(clearLastCompletedMatch());
+    (navigation as any).navigate(routes.matchsummary, { match: snapshot });
+  };
 
   return (
     <HomeWrapper headerShown={true}>
@@ -64,9 +88,17 @@ const Matches = () => {
       >
         <View style={[styles.section, styles.sectionFirst]}>
           <View style={styles.sectionTitleRow}>
-            <View style={[styles.liveDot, { backgroundColor: theme.accent }]} />
+            <View
+              style={[
+                styles.liveDot,
+                {
+                  backgroundColor:
+                    currentMatch !== null ? theme.accent : theme.primary,
+                },
+              ]}
+            />
             <ThemeText style={styles.sectionTitle} color="text">
-              Live match
+              {currentMatch !== null ? 'Live match' : 'Last result'}
             </ThemeText>
           </View>
 
@@ -75,20 +107,12 @@ const Matches = () => {
               teamAName={currentMatch?.teamA?.name}
               teamBName={currentMatch?.teamB?.name}
               onPress={openLiveMatch}
+              matchTypeLabel={
+                tournamentName ?? (currentMatch?.tournamentId ? 'Tournament' : 'Simple match')
+              }
             >
               <View style={styles.liveMetaRow}>
-                <View style={styles.liveBadge}>
-                  <View style={[styles.liveDot, { backgroundColor: theme.accent }]} />
-                  <ThemeText color="primary" style={styles.liveBadgeText}>
-                    Live now
-                  </ThemeText>
-                </View>
-                {innings && (
-                  <ThemeText style={styles.oversMetaSmall} color="desText">
-                    {ballsToOvers(innings.totalBalls)} / T
-                    {currentMatch?.overs} overs
-                  </ThemeText>
-                )}
+                {/* kept row for spacing; overs moved beside score */}
               </View>
 
               {innings && (
@@ -100,18 +124,58 @@ const Matches = () => {
                       / {innings.totalWickets}
                     </ThemeText>
                   </ThemeText>
+                  <ThemeText
+                    style={[styles.oversMetaSmall, styles.oversRight]}
+                    color="desText"
+                  >
+                    {ballsToOvers(innings.totalBalls)} / T{currentMatch?.overs}{' '}
+                    overs
+                  </ThemeText>
                 </View>
               )}
 
-              <ThemeText style={styles.tossLine} color="desText" numberOfLines={2}>
-                {tossWinnerName
-                  ? `${tossWinnerName} won the toss and chose to ${currentMatch?.electedTo}.`
-                  : 'Tap to continue scoring.'}
-              </ThemeText>
+              <View style={styles.tossRow}>
+                <ThemeText
+                  style={styles.tossLine}
+                  color="desText"
+                  numberOfLines={2}
+                >
+                  {tossWinnerName
+                    ? `${tossWinnerName} won the toss and chose to ${currentMatch?.electedTo}.`
+                    : 'Tap to continue scoring.'}
+                </ThemeText>
 
-              <View style={[styles.continuePill, { backgroundColor: theme.primaryMuted }]}>
-                <ThemeText style={styles.continueText} color="primary">
-                  Continue scoring →
+                <View
+                  style={[
+                    styles.continuePillInline,
+                    { backgroundColor: theme.primaryMuted },
+                  ]}
+                >
+                  <ThemeText style={styles.continueText} color="primary">
+                    Continue →
+                  </ThemeText>
+                </View>
+              </View>
+            </MatchCard>
+          ) : lastCompletedMatch ? (
+            <MatchCard
+              teamAName={lastCompletedMatch?.teamA?.name}
+              teamBName={lastCompletedMatch?.teamB?.name}
+              onPress={openLastSummary}
+              matchTypeLabel={
+                lastTournamentName ??
+                (lastCompletedMatch?.tournamentId ? 'Tournament' : 'Simple match')
+              }
+            >
+              <ThemeText style={styles.lastResultText} color="secondaryText">
+                {lastResultLine}
+              </ThemeText>
+              <View style={styles.viewSummaryRowHome}>
+                <ThemeText style={styles.viewSummaryTextHome} color="primary">
+                  View summary
+                </ThemeText>
+                <ThemeText style={styles.viewSummaryArrowHome} color="primary">
+                  →
                 </ThemeText>
               </View>
             </MatchCard>
@@ -119,6 +183,7 @@ const Matches = () => {
             <View
               style={[
                 styles.liveEmptyCard,
+                isDark ? styles.cardShadowDark : styles.cardShadowLight,
                 {
                   backgroundColor: theme.surfaceElevated,
                   borderColor: theme.border,
@@ -139,6 +204,7 @@ const Matches = () => {
         <View
           style={[
             styles.heroIntroCard,
+            isDark ? styles.heroShadowDark : styles.heroShadowLight,
             {
               backgroundColor: theme.surface,
               borderColor: theme.border,
@@ -152,39 +218,6 @@ const Matches = () => {
             Start a fresh match, manage teams, and continue live scoring all
             from one place.
           </ThemeText>
-
-          <View style={styles.summaryRow}>
-            <View
-              style={[
-                styles.summaryCard,
-                {
-                  backgroundColor: theme.primaryMuted,
-                },
-              ]}
-            >
-              <ThemeText color="primary" style={styles.summaryValue}>
-                {activeTeams.length}
-              </ThemeText>
-              <ThemeText color="secondaryText" style={styles.summaryLabel}>
-                Saved teams
-              </ThemeText>
-            </View>
-            <View
-              style={[
-                styles.summaryCard,
-                {
-                  backgroundColor: theme.primaryMuted,
-                },
-              ]}
-            >
-              <ThemeText color="primary" style={styles.summaryValue}>
-                {completedMatchesCount}
-              </ThemeText>
-              <ThemeText color="secondaryText" style={styles.summaryLabel}>
-                Completed matches
-              </ThemeText>
-            </View>
-          </View>
 
           <Button
             title="Start new match"
@@ -200,6 +233,7 @@ const Matches = () => {
           <View
             style={[
               styles.recentHeroCard,
+              isDark ? styles.heroShadowDark : styles.heroShadowLight,
               {
                 backgroundColor: theme.surface,
                 borderColor: theme.border,
@@ -210,11 +244,6 @@ const Matches = () => {
               <ThemeText style={styles.sectionTitle} color="text">
                 Recent matches
               </ThemeText>
-              <View style={[styles.recentCountPill, { backgroundColor: theme.primaryMuted }]}>
-                <ThemeText style={styles.recentCountText} color="primary">
-                  {completedMatchesCount}
-                </ThemeText>
-              </View>
             </View>
 
             <ThemeText style={styles.recentSubText} color="secondaryText">
@@ -236,6 +265,10 @@ const Matches = () => {
 export default Matches;
 
 const styles = StyleSheet.create({
+  cardShadowLight: cardShadowSm(false),
+  cardShadowDark: cardShadowSm(true),
+  heroShadowLight: cardShadowLg(false),
+  heroShadowDark: cardShadowLg(true),
   scroll: { flex: 1, width: '100%' },
   content: {
     paddingTop: heightPixel(20),
@@ -260,31 +293,8 @@ const styles = StyleSheet.create({
     fontSize: fontPixel(14),
     lineHeight: fontPixel(21),
   },
-  summaryRow: {
-    flexDirection: 'row',
-    gap: widthPixel(12),
-    marginVertical: heightPixel(18),
-  },
-  summaryCard: {
-    flex: 1,
-    borderRadius: widthPixel(16),
-    padding: widthPixel(14),
-  },
-  summaryValue: {
-    fontSize: fontPixel(22),
-    fontFamily: fontFamilies.bold,
-  },
-  summaryLabel: {
-    marginTop: heightPixel(4),
-    fontSize: fontPixel(12),
-  },
   primaryCta: {
     marginTop: heightPixel(16),
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
   },
   primaryCtaText: {
     fontFamily: fontFamilies.bold,
@@ -327,7 +337,7 @@ const styles = StyleSheet.create({
     fontSize: fontPixel(11),
   },
   scoreRow: {
-    marginTop: heightPixel(12),
+    // marginTop: heightPixel(2),
     flexDirection: 'row',
     alignItems: 'baseline',
     justifyContent: 'space-between',
@@ -349,14 +359,30 @@ const styles = StyleSheet.create({
     fontFamily: fontFamilies.medium,
     fontSize: fontPixel(11),
   },
+  oversRight: {
+    textAlign: 'right',
+  },
+  tossRow: {
+    marginTop: heightPixel(10),
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: widthPixel(10),
+  },
   tossLine: {
+    flex: 1,
     fontFamily: fontFamilies.regular,
     fontSize: fontPixel(13),
-    marginTop: heightPixel(10),
     lineHeight: fontPixel(18),
   },
   continuePill: {
     marginTop: heightPixel(14),
+    alignSelf: 'flex-start',
+    paddingHorizontal: widthPixel(14),
+    paddingVertical: heightPixel(10),
+    borderRadius: widthPixel(12),
+  },
+  continuePillInline: {
     alignSelf: 'flex-start',
     paddingHorizontal: widthPixel(14),
     paddingVertical: heightPixel(10),
@@ -392,18 +418,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: widthPixel(12),
   },
-  recentCountPill: {
-    minWidth: widthPixel(44),
-    paddingHorizontal: widthPixel(12),
-    paddingVertical: heightPixel(8),
-    borderRadius: widthPixel(999),
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  recentCountText: {
-    fontFamily: fontFamilies.bold,
-    fontSize: fontPixel(14),
-  },
   recentSubText: {
     marginTop: heightPixel(8),
     fontFamily: fontFamilies.regular,
@@ -412,5 +426,26 @@ const styles = StyleSheet.create({
   },
   recentCta: {
     marginTop: heightPixel(14),
+  },
+  lastResultText: {
+    marginTop: heightPixel(8),
+    fontFamily: fontFamilies.medium,
+    fontSize: fontPixel(14),
+    lineHeight: fontPixel(20),
+  },
+  viewSummaryRowHome: {
+    marginTop: heightPixel(12),
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  viewSummaryTextHome: {
+    fontFamily: fontFamilies.bold,
+    fontSize: fontPixel(13),
+    letterSpacing: 0.3,
+  },
+  viewSummaryArrowHome: {
+    fontFamily: fontFamilies.bold,
+    fontSize: fontPixel(16),
   },
 });
