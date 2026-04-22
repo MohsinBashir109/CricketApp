@@ -4,6 +4,7 @@ import {
   ImageSourcePropType,
   Modal,
   StyleSheet,
+  TextInput,
   TouchableOpacity,
   useWindowDimensions,
   View,
@@ -11,11 +12,15 @@ import {
 import React, { useEffect, useMemo, useState } from 'react';
 import { allrounder, bat, bowlericon, wicket } from '../../assets/images';
 import { fontPixel, heightPixel, widthPixel } from '../../utils/constants';
+import { cardShadowLg, cardShadowSm } from '../../utils/cardShadow';
 
 import ThemeText from '../ThemeText';
 import { colors } from '../../utils/colors';
 import { fontFamilies } from '../../utils/fontfamilies';
 import { useThemeContext } from '../../theme/themeContext';
+import { useDispatch } from 'react-redux';
+import { addLivePlayerToTeam } from '../../features/match/matchSlice';
+import { PlayerRole } from '../../types/Playertype';
 
 export type BatsmanRow = {
   id: string;
@@ -85,6 +90,7 @@ const BatsmenBowlerCard: React.FC<Props> = ({
   innings,
   currentMatch,
 }) => {
+  const dispatch = useDispatch();
   const { isDark } = useThemeContext();
   const theme = colors[isDark ? 'dark' : 'light'];
   const isInline = presentation === 'inline';
@@ -99,9 +105,20 @@ const BatsmenBowlerCard: React.FC<Props> = ({
   const [strikerId, setStrikerId] = useState<string | null>(null);
   const [confirmBowlerStep, setConfirmBowlerStep] = useState(false);
   const [selectedBowlerId, setSelectedBowlerId] = useState<string | null>(null);
+  const [showAddLivePlayer, setShowAddLivePlayer] = useState(false);
+  const [newPlayerName, setNewPlayerName] = useState('');
+  const [newPlayerRole, setNewPlayerRole] = useState<PlayerRole>('batsman');
+  const inningsLabel = () => {
+    const ci = currentMatch?.currentInnings ?? 1;
+    if (ci === 1) return 'Innings 1';
+    if (ci === 2) return 'Innings 2';
+    if (ci === 3) return 'Super Over (1st)';
+    if (ci === 4) return 'Super Over (2nd)';
+    return 'Innings 2';
+  };
+
   const getHeaderContent = () => {
-    const inningsText =
-      currentMatch?.currentInnings === 1 ? 'Innings 1' : 'Innings 2';
+    const inningsText = inningsLabel();
 
     const battingTeamName =
       currentMatch?.[innings?.battingTeam ?? 'teamA']?.name ?? 'Batting Team';
@@ -145,8 +162,7 @@ const BatsmenBowlerCard: React.FC<Props> = ({
     }
   };
   const headerContent = getHeaderContent();
-  const inningsText =
-    currentMatch?.currentInnings === 1 ? 'Innings 1' : 'Innings 2';
+  const inningsText = inningsLabel();
   const battingTeamName =
     currentMatch?.[innings?.battingTeam ?? 'teamA']?.name ?? 'Batting Team';
   const bowlingTeamName =
@@ -161,7 +177,8 @@ const BatsmenBowlerCard: React.FC<Props> = ({
     string | null
   >(null);
 
-  // Reset local state whenever modal opens or mode changes
+  // Reset local state whenever modal opens, mode changes, or innings phase (e.g. Super Over)
+  const inningsPhase = currentMatch?.currentInnings ?? 1;
   useEffect(() => {
     if (!visible) return;
 
@@ -172,7 +189,18 @@ const BatsmenBowlerCard: React.FC<Props> = ({
 
     setSelectedNextBatId(null);
     setSelectedNextBowlerId(null);
-  }, [visible, mode]);
+    setShowAddLivePlayer(false);
+    setNewPlayerName('');
+    setNewPlayerRole('batsman');
+  }, [visible, mode, inningsPhase]);
+
+  const targetTeamKey: 'teamA' | 'teamB' | null = useMemo(() => {
+    const inn = innings;
+    if (!inn) return null;
+    if (isNextBat) return inn.battingTeam ?? null;
+    if (isNextBow) return inn.bowlingTeam ?? null;
+    return confirmBowlerStep ? inn.bowlingTeam ?? null : inn.battingTeam ?? null;
+  }, [innings, isNextBat, isNextBow, confirmBowlerStep]);
 
   const getRoleMeta = (
     role?: string,
@@ -192,8 +220,11 @@ const BatsmenBowlerCard: React.FC<Props> = ({
   };
   const strikerIdOnCrease = innings?.strikerId;
   const nonStrikerIdOnCrease = innings?.nonStrikerId;
+  const allowDismissedBatters =
+    inningsPhase === 3 || inningsPhase === 4;
+
   const availableBatsmen = batsmen.filter(b => {
-    if (b?.isOut === true) return false;
+    if (!allowDismissedBatters && b?.isOut === true) return false;
 
     if (mode === 'NEXT_BATSMAN') {
       if (
@@ -445,6 +476,13 @@ const BatsmenBowlerCard: React.FC<Props> = ({
       style={[
         styles.modalCard,
         isInline && styles.modalCardInline,
+        isInline
+          ? isDark
+            ? cardShadowSm(true)
+            : cardShadowSm(false)
+          : isDark
+            ? cardShadowLg(true)
+            : cardShadowLg(false),
         {
           backgroundColor: theme.surface,
           borderColor: theme.border,
@@ -453,6 +491,77 @@ const BatsmenBowlerCard: React.FC<Props> = ({
         },
       ]}
     >
+      <View style={styles.addLiveWrap}>
+        <ThemeText color="secondaryText" style={[styles.addLiveHint, { color: theme.text, opacity: 0.75 }]}>
+          Need to add a late player? Add them to this live match.
+        </ThemeText>
+        <TouchableOpacity onPress={() => setShowAddLivePlayer(v => !v)} style={styles.addLiveToggle}>
+          <ThemeText color="primary" style={[styles.addLiveToggleText, { color: theme.primary }]}>
+            {showAddLivePlayer ? 'Hide' : '+ Add player'}
+          </ThemeText>
+        </TouchableOpacity>
+      </View>
+
+      {showAddLivePlayer ? (
+        <View
+          style={[
+            styles.addLiveCard,
+            isDark ? cardShadowSm(true) : cardShadowSm(false),
+            { borderColor: theme.border, backgroundColor: theme.surfaceElevated },
+          ]}
+        >
+          <TextInput
+            value={newPlayerName}
+            onChangeText={setNewPlayerName}
+            placeholder="Player name"
+            placeholderTextColor={theme.secondaryText}
+            style={[
+              styles.addLiveInput,
+              { color: theme.text, borderColor: theme.border, backgroundColor: theme.background },
+            ]}
+          />
+          <View style={styles.roleRow}>
+            {(['batsman', 'bowler', 'allrounder', 'wicketkeeper'] as PlayerRole[]).map(r => {
+              const selected = newPlayerRole === r;
+              return (
+                <TouchableOpacity
+                  key={r}
+                  onPress={() => setNewPlayerRole(r)}
+                  style={[
+                    styles.roleChip,
+                    {
+                      borderColor: selected ? theme.primary : theme.border,
+                      backgroundColor: selected ? theme.primaryMuted : 'transparent',
+                    },
+                  ]}
+                >
+                  <ThemeText
+                    color={selected ? 'primary' : 'secondaryText'}
+                    style={[styles.roleChipText, { color: selected ? theme.primary : theme.text }]}
+                  >
+                    {r === 'allrounder'
+                      ? 'All-Rounder'
+                      : r === 'wicketkeeper'
+                      ? 'Wicketkeeper'
+                      : r.charAt(0).toUpperCase() + r.slice(1)}
+                  </ThemeText>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          <Button
+            title="Add to match"
+            onPress={() => {
+              const nm = newPlayerName.trim();
+              if (!nm || !targetTeamKey) return;
+              dispatch(addLivePlayerToTeam({ teamKey: targetTeamKey, name: nm, role: newPlayerRole }));
+              setNewPlayerName('');
+            }}
+            disabled={!newPlayerName.trim() || !targetTeamKey}
+          />
+        </View>
+      ) : null}
+
       <View
         style={[
           styles.header,
@@ -618,6 +727,58 @@ const BatsmenBowlerCard: React.FC<Props> = ({
 export default BatsmenBowlerCard;
 
 const styles = StyleSheet.create({
+  addLiveWrap: {
+    paddingHorizontal: widthPixel(15),
+    paddingTop: heightPixel(12),
+    paddingBottom: heightPixel(6),
+  },
+  addLiveHint: {
+    fontFamily: fontFamilies.regular,
+    fontSize: fontPixel(12),
+    lineHeight: fontPixel(18),
+  },
+  addLiveToggle: {
+    marginTop: heightPixel(6),
+    alignSelf: 'flex-start',
+    paddingVertical: heightPixel(6),
+  },
+  addLiveToggleText: {
+    fontFamily: fontFamilies.semibold,
+    fontSize: fontPixel(13),
+  },
+  addLiveCard: {
+    marginHorizontal: widthPixel(15),
+    marginTop: heightPixel(8),
+    marginBottom: heightPixel(6),
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: widthPixel(14),
+    padding: widthPixel(12),
+  },
+  addLiveInput: {
+    borderWidth: 1,
+    borderRadius: widthPixel(12),
+    paddingHorizontal: widthPixel(12),
+    paddingVertical: heightPixel(10),
+    fontSize: fontPixel(14),
+    marginBottom: heightPixel(10),
+    fontFamily: fontFamilies.regular,
+  },
+  roleRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: widthPixel(10),
+    marginBottom: heightPixel(10),
+  },
+  roleChip: {
+    borderWidth: 1,
+    borderRadius: widthPixel(999),
+    paddingVertical: heightPixel(8),
+    paddingHorizontal: widthPixel(12),
+  },
+  roleChipText: {
+    fontFamily: fontFamilies.semibold,
+    fontSize: fontPixel(12),
+  },
   header: {
     paddingHorizontal: widthPixel(15),
     paddingVertical: heightPixel(15),

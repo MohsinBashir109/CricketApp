@@ -105,7 +105,7 @@ const UncompletedTournamentsScreen = ({ navigation }: any) => {
                   : 'Open tournament'}
               </ThemeText>
               <ThemeText color="secondaryText" style={styles.tournamentMeta}>
-                {tournament.teamCount} teams • {tournament.competitionType}
+                {tournament.teamCount} teams
               </ThemeText>
             </Pressable>
           ))

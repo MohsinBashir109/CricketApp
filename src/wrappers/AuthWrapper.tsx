@@ -12,7 +12,7 @@ import { colors } from '../utils/colors';
 import { fontFamilies } from '../utils/fontfamilies';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeContext } from '../theme/themeContext';
-import { logo, darkmode, lightmode } from '../assets/images/index';
+import { logo, darkmode, lightmode3 } from '../assets/images/index';
 
 type props = {
   text?: string;
@@ -26,7 +26,8 @@ const AuthWrapper = ({ children, text, desText }: props) => {
   const palette = colors[isDark ? 'dark' : 'light'];
   return (
     <ImageBackground
-      source={isDark ? darkmode : lightmode}
+      source={isDark ? darkmode : lightmode3}
+      imageStyle={isDark ? styles.bgImageDark : styles.bgImageLight}
       // resizeMode="contain"
       // imageStyle={{ opacity: 0.8 }}
       style={[
@@ -37,6 +38,13 @@ const AuthWrapper = ({ children, text, desText }: props) => {
         },
       ]}
     >
+      <View
+        pointerEvents="none"
+        style={[
+          styles.glassOverlay,
+          isDark ? styles.glassOverlayDark : styles.glassOverlayLight,
+        ]}
+      />
       <StatusBar
         translucent
         backgroundColor={'transparent'}
@@ -68,6 +76,21 @@ const AuthWrapper = ({ children, text, desText }: props) => {
 export default AuthWrapper;
 
 const styles = StyleSheet.create({
+  glassOverlay: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  glassOverlayDark: {
+    backgroundColor: 'rgba(0,0,0,0.25)',
+  },
+  glassOverlayLight: {
+    backgroundColor: 'rgba(255,255,255,0.18)',
+  },
+  bgImageDark: {
+    opacity: 0.65,
+  },
+  bgImageLight: {
+    opacity: 0.5,
+  },
   content: {
     flex: 1,
     width: '100%',

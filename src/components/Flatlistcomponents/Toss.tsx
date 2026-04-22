@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 import React, { useMemo, useState } from 'react';
 import { fontPixel, heightPixel, widthPixel } from '../../utils/constants';
+import { cardShadowSm } from '../../utils/cardShadow';
 
 import { MatchSetup } from '../../types/Playertype';
 import ThemeText from '../ThemeText';
@@ -79,6 +80,7 @@ const Toss = ({ onSelect, match, compact = false, onClose }: TossProps) => {
           <View
             style={[
               styles.card,
+              isDark ? styles.cardShadowDark : styles.cardShadowLight,
               { backgroundColor: theme.surface, borderColor: theme.border },
             ]}
           >
@@ -143,6 +145,7 @@ const Toss = ({ onSelect, match, compact = false, onClose }: TossProps) => {
         <View
           style={[
             styles.card,
+            isDark ? styles.cardShadowDark : styles.cardShadowLight,
             { backgroundColor: theme.surface, borderColor: theme.border },
           ]}
         >
@@ -210,6 +213,8 @@ const Toss = ({ onSelect, match, compact = false, onClose }: TossProps) => {
 export default Toss;
 
 const styles = StyleSheet.create({
+  cardShadowLight: cardShadowSm(false),
+  cardShadowDark: cardShadowSm(true),
   container: {
     width: '100%',
     marginTop: heightPixel(20),
@@ -246,11 +251,6 @@ const styles = StyleSheet.create({
     borderRadius: widthPixel(18),
     borderWidth: StyleSheet.hairlineWidth,
     padding: widthPixel(14),
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
   },
   cardLabel: {
     fontFamily: fontFamilies.semibold,

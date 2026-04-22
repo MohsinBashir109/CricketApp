@@ -1,9 +1,12 @@
+import dayjs from 'dayjs';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
+  Alert,
   Modal,
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   View,
 } from 'react-native';
 import ThemeText from '../ThemeText';
@@ -14,10 +17,27 @@ import { useThemeContext } from '../../theme/themeContext';
 import { colors } from '../../utils/colors';
 import { fontFamilies } from '../../utils/fontfamilies';
 import { fontPixel, heightPixel, widthPixel } from '../../utils/constants';
+import { cardShadowLg } from '../../utils/cardShadow';
 import DateTimeField from '../DateTime/DateTimeField';
 import { formatDateForUiYmd, formatTimeForUiHm, isoToDate } from '../../utils/datetime';
 
 type FixtureMode = 'round_robin' | 'knockout';
+
+type GeneratePayload = {
+  mode: FixtureMode;
+  overs: number;
+  doubleRoundRobin: boolean;
+  startAtIso: string;
+  matchesPerDayMode: 'fixed' | 'random' | 'untimed_same_day';
+  matchesPerDay: 1 | 2;
+  randomMinPerDay: number;
+  randomMaxPerDay: number;
+  allowedWeekdays: number[]; // 0=Sun ... 6=Sat
+  qualifiersPerGroup: number | null;
+  scheduleVariant?: 'full' | 'legacy';
+  knockoutEnabled?: boolean;
+  openGroupQualifiers?: number | null;
+};
 
 type Props = {
   visible: boolean;
@@ -29,21 +49,17 @@ type Props = {
   defaultStartAtIso: string;
   /** For group-based tournaments, ask how many qualify from each group. */
   showQualifiersPerGroup?: boolean;
+  /** Open pool: top N qualify for knockout. */
+  showOpenGroupQualifiers?: boolean;
   defaultQualifiersPerGroup?: number;
   maxQualifiersPerGroup?: number;
+  /** When variant is full, used to validate knockout bracket size. */
+  tournamentFormat?: 'open' | 'groupBased';
+  groupCount?: number;
+  /** full = league + knockout shell (default for tournament fixtures). */
+  variant?: 'full' | 'legacy';
   onClose: () => void;
-  onGenerate: (payload: {
-    mode: FixtureMode;
-    overs: number;
-    doubleRoundRobin: boolean;
-    startAtIso: string;
-    matchesPerDayMode: 'fixed' | 'random';
-    matchesPerDay: 1 | 2;
-    randomMinPerDay: number;
-    randomMaxPerDay: number;
-    allowedWeekdays: number[]; // 0=Sun ... 6=Sat
-    qualifiersPerGroup: number | null;
-  }) => void;
+  onGenerate: (payload: GeneratePayload) => void;
 };
 
 const FixturePlannerModal = ({
@@ -54,8 +70,12 @@ const FixturePlannerModal = ({
   defaultOvers,
   defaultStartAtIso,
   showQualifiersPerGroup = false,
+  showOpenGroupQualifiers = false,
   defaultQualifiersPerGroup = 2,
   maxQualifiersPerGroup,
+  tournamentFormat = 'open',
+  groupCount = 1,
+  variant = 'full',
   onClose,
   onGenerate,
 }: Props) => {
@@ -63,24 +83,24 @@ const FixturePlannerModal = ({
   const theme = colors[isDark ? 'dark' : 'light'];
 
   const [mode, setMode] = useState<FixtureMode>(defaultMode);
+  const [knockoutEnabled, setKnockoutEnabled] = useState(true);
   const [oversText, setOversText] = useState(String(defaultOvers));
-  const [doubleRoundRobin, setDoubleRoundRobin] = useState(defaultDoubleRoundRobin);
   const [startAt, setStartAt] = useState<Date | null>(null);
   const [qualifiersText, setQualifiersText] = useState(String(defaultQualifiersPerGroup));
-  const [matchesPerDayMode, setMatchesPerDayMode] = useState<'fixed' | 'random'>(
-    'fixed',
-  );
-  const [matchesPerDay, setMatchesPerDay] = useState<1 | 2>(1);
-  const [randomMinText, setRandomMinText] = useState('1');
-  const [randomMaxText, setRandomMaxText] = useState('2');
   const [allowedWeekdays, setAllowedWeekdays] = useState<number[]>([
     0, 1, 2, 3, 4, 5, 6,
   ]);
+  const [matchesPerDayMode, setMatchesPerDayMode] = useState<
+    'fixed' | 'random' | 'untimed_same_day'
+  >('fixed');
+  const [matchesPerDay, setMatchesPerDay] = useState<1 | 2>(1);
+  const [randomMinText, setRandomMinText] = useState('1');
+  const [randomMaxText, setRandomMaxText] = useState('2');
 
   const overs = useMemo(() => Number(oversText), [oversText]);
   const oversValid = Number.isFinite(overs) && overs > 0;
 
-  const canDouble = mode === 'round_robin';
+  const weekdaysValid = allowedWeekdays.length > 0;
 
   const randomMinPerDay = useMemo(() => Number(randomMinText), [randomMinText]);
   const randomMaxPerDay = useMemo(() => Number(randomMaxText), [randomMaxText]);
@@ -91,22 +111,36 @@ const FixturePlannerModal = ({
     randomMaxPerDay >= randomMinPerDay &&
     randomMaxPerDay <= 6;
 
-  const weekdaysValid = allowedWeekdays.length > 0;
+  const scheduleNeedsStart = matchesPerDayMode !== 'untimed_same_day';
+
+  const startWeekdayMatchesAllowed = useMemo(() => {
+    if (!scheduleNeedsStart) return true;
+    if (!startAt) return false;
+    return allowedWeekdays.includes(dayjs(startAt).day());
+  }, [allowedWeekdays, startAt, scheduleNeedsStart]);
 
   const qualifiersPerGroup = useMemo(() => {
-    if (!showQualifiersPerGroup) return null;
+    if (!showQualifiersPerGroup && !showOpenGroupQualifiers) return null;
     const n = Number(qualifiersText.trim());
     if (!Number.isFinite(n) || n < 1) return null;
     return Math.floor(n);
-  }, [qualifiersText, showQualifiersPerGroup]);
+  }, [qualifiersText, showQualifiersPerGroup, showOpenGroupQualifiers]);
 
   const qualifiersValid = useMemo(() => {
-    if (!showQualifiersPerGroup) return true;
+    if (!showQualifiersPerGroup && !showOpenGroupQualifiers) return true;
+    if (variant === 'full' && !knockoutEnabled) return true;
     if (qualifiersPerGroup == null) return false;
     if (typeof maxQualifiersPerGroup === 'number' && qualifiersPerGroup > maxQualifiersPerGroup)
       return false;
     return true;
-  }, [maxQualifiersPerGroup, qualifiersPerGroup, showQualifiersPerGroup]);
+  }, [
+    maxQualifiersPerGroup,
+    qualifiersPerGroup,
+    showQualifiersPerGroup,
+    showOpenGroupQualifiers,
+    variant,
+    knockoutEnabled,
+  ]);
 
   const startAtIso = useMemo(() => (startAt ? startAt.toISOString() : null), [startAt]);
 
@@ -116,19 +150,18 @@ const FixturePlannerModal = ({
     if (!visible) return;
     setMode(defaultMode);
     setOversText(String(defaultOvers));
-    setDoubleRoundRobin(defaultDoubleRoundRobin);
     setStartAt(isoToDate(defaultStartAtIso) ?? new Date());
     setQualifiersText(String(defaultQualifiersPerGroup));
+    setAllowedWeekdays([0, 1, 2, 3, 4, 5, 6]);
     setMatchesPerDayMode('fixed');
     setMatchesPerDay(1);
     setRandomMinText('1');
     setRandomMaxText('2');
-    setAllowedWeekdays([0, 1, 2, 3, 4, 5, 6]);
+    setKnockoutEnabled(true);
   }, [
     visible,
     defaultMode,
     defaultOvers,
-    defaultDoubleRoundRobin,
     existingCount,
     defaultStartAtIso,
     defaultQualifiersPerGroup,
@@ -158,7 +191,13 @@ const FixturePlannerModal = ({
       onRequestClose={onClose}
     >
       <Pressable style={styles.backdrop} onPress={onClose} />
-      <View style={[styles.sheet, { backgroundColor: theme.surface }]}>
+      <View
+        style={[
+          styles.sheet,
+          isDark ? styles.sheetShadowDark : styles.sheetShadowLight,
+          { backgroundColor: theme.surface },
+        ]}
+      >
         <View style={[styles.handle, { backgroundColor: theme.border }]} />
 
         <View style={styles.header}>
@@ -174,47 +213,69 @@ const FixturePlannerModal = ({
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.content}
         >
-          <ThemeText color="text" style={styles.sectionLabel}>
-            Format
-          </ThemeText>
-          <View style={styles.chipsRow}>
-            <Pressable
-              onPress={() => setMode('round_robin')}
-              style={[
-                styles.chip,
-                {
-                  backgroundColor:
-                    mode === 'round_robin' ? theme.primaryMuted : theme.background,
-                  borderColor: mode === 'round_robin' ? theme.primary : theme.border,
-                },
-              ]}
-            >
-              <ThemeText
-                color={mode === 'round_robin' ? 'primary' : 'text'}
-                style={styles.chipText}
-              >
-                Round robin
+          {variant === 'legacy' ? (
+            <>
+              <ThemeText color="text" style={styles.sectionLabel}>
+                Format
               </ThemeText>
-            </Pressable>
-            <Pressable
-              onPress={() => setMode('knockout')}
-              style={[
-                styles.chip,
-                {
-                  backgroundColor:
-                    mode === 'knockout' ? theme.primaryMuted : theme.background,
-                  borderColor: mode === 'knockout' ? theme.primary : theme.border,
-                },
-              ]}
-            >
-              <ThemeText
-                color={mode === 'knockout' ? 'primary' : 'text'}
-                style={styles.chipText}
-              >
-                Knockout
+              <View style={styles.chipsRow}>
+                <Pressable
+                  onPress={() => setMode('round_robin')}
+                  style={[
+                    styles.chip,
+                    {
+                      backgroundColor:
+                        mode === 'round_robin' ? theme.primaryMuted : theme.background,
+                      borderColor: mode === 'round_robin' ? theme.primary : theme.border,
+                    },
+                  ]}
+                >
+                  <ThemeText
+                    color={mode === 'round_robin' ? 'primary' : 'text'}
+                    style={styles.chipText}
+                  >
+                    Round robin
+                  </ThemeText>
+                </Pressable>
+                <Pressable
+                  onPress={() => setMode('knockout')}
+                  style={[
+                    styles.chip,
+                    {
+                      backgroundColor:
+                        mode === 'knockout' ? theme.primaryMuted : theme.background,
+                      borderColor: mode === 'knockout' ? theme.primary : theme.border,
+                    },
+                  ]}
+                >
+                  <ThemeText
+                    color={mode === 'knockout' ? 'primary' : 'text'}
+                    style={styles.chipText}
+                  >
+                    Knockout
+                  </ThemeText>
+                </Pressable>
+              </View>
+            </>
+          ) : (
+            <>
+              <ThemeText color="text" style={styles.sectionLabel}>
+                Knockout stage
               </ThemeText>
-            </Pressable>
-          </View>
+              <View style={[styles.knockoutRow, { borderColor: theme.border }]}>
+                <View style={{ flex: 1 }}>
+                  <ThemeText color="text" style={styles.knockoutTitle}>
+                    Include knockout
+                  </ThemeText>
+                  <ThemeText color="secondaryText" style={styles.knockoutSub}>
+                    Generates group fixtures plus a knockout bracket (placeholders until the
+                    group stage finishes).
+                  </ThemeText>
+                </View>
+                <Switch value={knockoutEnabled} onValueChange={setKnockoutEnabled} />
+              </View>
+            </>
+          )}
 
           <ThemeInput
             title="Overs per match"
@@ -269,22 +330,34 @@ const FixturePlannerModal = ({
             }}
             displayValue={formatTimeForUiHm(startAt)}
           />
-          {!startValid ? (
+          {!startValid && scheduleNeedsStart ? (
             <ThemeText color="error" style={styles.inlineError}>
               Select a start date (and optional time).
             </ThemeText>
           ) : null}
 
-          {showQualifiersPerGroup ? (
+          {(showQualifiersPerGroup || showOpenGroupQualifiers) &&
+          (variant !== 'full' || knockoutEnabled) ? (
             <>
               <ThemeInput
-                title="Qualified teams per group"
+                title={
+                  showOpenGroupQualifiers
+                    ? 'Teams qualifying for knockout'
+                    : 'Teams qualifying from each group'
+                }
                 placeholder="e.g. 2"
                 leftIcon={throphy}
                 value={qualifiersText}
                 keyboardType="number-pad"
                 onChangeText={setQualifiersText}
               />
+              {qualifiersValid && (variant !== 'full' || knockoutEnabled) ? (
+                <ThemeText color="secondaryText" style={styles.helperAfterInput}>
+                  {showOpenGroupQualifiers
+                    ? `Top ${qualifiersPerGroup ?? '—'} team(s) from the open group will qualify for knockout.`
+                    : `Top ${qualifiersPerGroup ?? '—'} team(s) from each group will qualify for knockout.`}
+                </ThemeText>
+              ) : null}
               {!qualifiersValid ? (
                 <ThemeText color="error" style={styles.inlineError}>
                   Enter a valid number{typeof maxQualifiersPerGroup === 'number'
@@ -433,6 +506,34 @@ const FixturePlannerModal = ({
             </Pressable>
           </View>
 
+          <Pressable
+            onPress={() => setMatchesPerDayMode('untimed_same_day')}
+            style={[
+              styles.chipFullWidth,
+              {
+                backgroundColor:
+                  matchesPerDayMode === 'untimed_same_day'
+                    ? theme.primaryMuted
+                    : theme.background,
+                borderColor:
+                  matchesPerDayMode === 'untimed_same_day'
+                    ? theme.primary
+                    : theme.border,
+              },
+            ]}
+          >
+            <ThemeText
+              color={matchesPerDayMode === 'untimed_same_day' ? 'primary' : 'text'}
+              style={styles.chipText}
+            >
+              All matches in one day (no times)
+            </ThemeText>
+            <ThemeText color="secondaryText" style={styles.chipSubText}>
+              Fixtures are created without a scheduled date or time; set times later
+              if needed.
+            </ThemeText>
+          </Pressable>
+
           {matchesPerDayMode === 'random' ? (
             <>
               <ThemeInput
@@ -459,63 +560,75 @@ const FixturePlannerModal = ({
             </>
           ) : null}
 
-          <ThemeText color="text" style={styles.sectionLabel}>
-            Options
-          </ThemeText>
-
-          <Pressable
-            disabled={!canDouble}
-            onPress={() => canDouble && setDoubleRoundRobin(v => !v)}
-            style={[
-              styles.optionRow,
-              styles.optionRowEnabled,
-              !canDouble && styles.optionRowDisabled,
-              { backgroundColor: theme.background, borderColor: theme.border },
-            ]}
-          >
-            <View style={styles.optionText}>
-              <ThemeText color="text" style={styles.optionTitle}>
-                Double round robin
-              </ThemeText>
-              <ThemeText color="secondaryText" style={styles.optionSub}>
-                Each team plays twice (home/away style).
-              </ThemeText>
-            </View>
-            <ThemeText color="secondaryText" style={styles.optionValue}>
-              {doubleRoundRobin ? 'On' : 'Off'}
+          {!startWeekdayMatchesAllowed && scheduleNeedsStart && startValid ? (
+            <ThemeText color="error" style={styles.inlineError}>
+              Start date must fall on an allowed weekday so every match stays on a
+              permitted day.
             </ThemeText>
-          </Pressable>
+          ) : null}
 
           <Button
             title="Generate fixtures"
             leftIcon={throphy}
             onPress={() => {
               if (!oversValid) return;
-              if (!startValid) return;
+              if (scheduleNeedsStart && !startValid) return;
               if (!weekdaysValid) return;
               if (!qualifiersValid) return;
+              if (scheduleNeedsStart && !startWeekdayMatchesAllowed) return;
               if (matchesPerDayMode === 'random' && !randomRangeValid) return;
-              onGenerate({
-                mode,
-                overs,
-                doubleRoundRobin: canDouble ? doubleRoundRobin : false,
-                startAtIso: startAtIso!,
-                matchesPerDayMode,
-                matchesPerDay,
-                randomMinPerDay:
-                  matchesPerDayMode === 'random' ? randomMinPerDay : matchesPerDay,
-                randomMaxPerDay:
-                  matchesPerDayMode === 'random' ? randomMaxPerDay : matchesPerDay,
-                allowedWeekdays,
-                qualifiersPerGroup,
-              });
-              onClose();
+
+              const run = () => {
+                const q = qualifiersPerGroup;
+                onGenerate({
+                  mode: variant === 'full' ? 'round_robin' : mode,
+                  overs,
+                  doubleRoundRobin:
+                    variant === 'full' || mode === 'round_robin' ? !!defaultDoubleRoundRobin : false,
+                  startAtIso: startAtIso ?? new Date().toISOString(),
+                  matchesPerDayMode,
+                  matchesPerDay,
+                  randomMinPerDay:
+                    matchesPerDayMode === 'random' ? randomMinPerDay : matchesPerDay,
+                  randomMaxPerDay:
+                    matchesPerDayMode === 'random' ? randomMaxPerDay : matchesPerDay,
+                  allowedWeekdays,
+                  qualifiersPerGroup: q,
+                  scheduleVariant: variant,
+                  knockoutEnabled: variant === 'full' ? knockoutEnabled : mode === 'knockout',
+                  openGroupQualifiers:
+                    variant === 'full' && showOpenGroupQualifiers && typeof q === 'number'
+                      ? q
+                      : null,
+                });
+                onClose();
+              };
+
+              if (variant === 'full' && knockoutEnabled && typeof qualifiersPerGroup === 'number') {
+                const slots =
+                  tournamentFormat === 'open' ? qualifiersPerGroup : groupCount * qualifiersPerGroup;
+                const isPow2 = slots > 0 && (slots & (slots - 1)) === 0;
+                if (!isPow2) {
+                  Alert.alert(
+                    'Knockout bracket size',
+                    `${slots} teams would enter knockout. For a balanced bracket, 2, 4, 8, 16, or 32 teams work best; otherwise byes are used automatically.`,
+                    [
+                      { text: 'Adjust', style: 'cancel' },
+                      { text: 'Continue', onPress: run },
+                    ],
+                  );
+                  return;
+                }
+              }
+
+              run();
             }}
             disabled={
               !oversValid ||
-              !startValid ||
+              (scheduleNeedsStart && !startValid) ||
               !weekdaysValid ||
               !qualifiersValid ||
+              (scheduleNeedsStart && !startWeekdayMatchesAllowed) ||
               (matchesPerDayMode === 'random' && !randomRangeValid)
             }
           />
@@ -532,6 +645,8 @@ const FixturePlannerModal = ({
 };
 
 const styles = StyleSheet.create({
+  sheetShadowLight: cardShadowLg(false),
+  sheetShadowDark: cardShadowLg(true),
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.45)',
@@ -595,6 +710,20 @@ const styles = StyleSheet.create({
     fontFamily: fontFamilies.semibold,
     fontSize: fontPixel(13),
   },
+  chipFullWidth: {
+    width: '100%',
+    borderWidth: 1,
+    borderRadius: widthPixel(14),
+    paddingVertical: heightPixel(12),
+    paddingHorizontal: widthPixel(14),
+    marginBottom: heightPixel(10),
+  },
+  chipSubText: {
+    marginTop: heightPixel(4),
+    fontSize: fontPixel(11),
+    lineHeight: fontPixel(16),
+    fontFamily: fontFamilies.medium,
+  },
   weekdaysRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -627,42 +756,37 @@ const styles = StyleSheet.create({
     lineHeight: fontPixel(17),
     fontFamily: fontFamilies.medium,
   },
-  optionRow: {
-    borderWidth: 1,
-    borderRadius: widthPixel(16),
-    padding: widthPixel(14),
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: heightPixel(10),
-  },
-  optionText: {
-    flex: 1,
-    paddingRight: widthPixel(12),
-  },
-  optionTitle: {
-    fontFamily: fontFamilies.semibold,
-    fontSize: fontPixel(14),
-  },
-  optionSub: {
-    marginTop: heightPixel(4),
-    fontSize: fontPixel(12),
-    lineHeight: fontPixel(17),
-  },
-  optionValue: {
-    fontFamily: fontFamilies.bold,
-    fontSize: fontPixel(12),
-  },
-  optionRowEnabled: {},
-  optionRowDisabled: {
-    opacity: 0.5,
-  },
   inlineError: {
     marginTop: -heightPixel(2),
     marginBottom: heightPixel(8),
     fontSize: fontPixel(12),
     lineHeight: fontPixel(17),
     fontFamily: fontFamilies.medium,
+  },
+  helperAfterInput: {
+    marginTop: heightPixel(6),
+    marginBottom: heightPixel(8),
+    fontSize: fontPixel(12),
+    lineHeight: fontPixel(17),
+    fontFamily: fontFamilies.medium,
+  },
+  knockoutRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: widthPixel(12),
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: widthPixel(14),
+    padding: widthPixel(14),
+    marginBottom: heightPixel(10),
+  },
+  knockoutTitle: {
+    fontFamily: fontFamilies.semibold,
+    fontSize: fontPixel(14),
+  },
+  knockoutSub: {
+    marginTop: heightPixel(4),
+    fontSize: fontPixel(12),
+    lineHeight: fontPixel(17),
   },
   cancel: {
     alignSelf: 'center',

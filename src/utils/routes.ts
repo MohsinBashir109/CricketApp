@@ -18,7 +18,9 @@ export const routes = {
   matchHistory: 'matchHistory',
   createTournament: 'createTournament',
   tournamentDetails: 'tournamentDetails',
+  tournamentTeamSquad: 'tournamentTeamSquad',
   tournamentMatchDetail: 'tournamentMatchDetail',
   uncompletedTournaments: 'uncompletedTournaments',
+  addFromSavedTeams: 'addFromSavedTeams',
   // home screens
 };

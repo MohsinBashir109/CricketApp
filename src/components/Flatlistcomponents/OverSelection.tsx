@@ -15,6 +15,7 @@ import {
   throphy,
 } from '../../assets/images';
 import { fontPixel, heightPixel, widthPixel } from '../../utils/constants';
+import { cardShadowSm } from '../../utils/cardShadow';
 
 import Button from '../themeButton';
 import ThemeInput from '../ThemeInput';
@@ -100,13 +101,8 @@ const OverSelection = ({ onSelect }: OverSelectionProps) => {
         borderColor: theme.primaryMuted,
         justifyContent: 'center',
         alignItems: 'center',
-        overflow: 'hidden',
         margin: widthPixel(5),
-        elevation: 3,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.07,
-        shadowRadius: 8,
+        ...(isDark ? cardShadowSm(true) : cardShadowSm(false)),
       }}
       onPress={() => handleSelectOvers(item)}
     >

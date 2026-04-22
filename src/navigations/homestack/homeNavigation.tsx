@@ -76,6 +76,10 @@ export const HomeNavigation = () => {
         component={Home.TournamentDetailsScreen}
       />
       <HomeStack.Screen
+        name={routes.tournamentTeamSquad}
+        component={Home.TournamentTeamSquadScreen}
+      />
+      <HomeStack.Screen
         name={routes.tournamentMatchDetail}
         component={Home.TournamentMatchDetailScreen}
       />
@@ -99,6 +103,10 @@ export const HomeNavigation = () => {
       <HomeStack.Screen
         name={routes.uncompletedTournaments}
         component={Home.UncompletedTournamentsScreen}
+      />
+      <HomeStack.Screen
+        name={routes.addFromSavedTeams}
+        component={Home.AddFromSavedTeamsScreen}
       />
     </HomeStack.Navigator>
   );

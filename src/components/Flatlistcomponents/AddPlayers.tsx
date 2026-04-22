@@ -2,6 +2,7 @@ import { MatchSetup, Team } from '../../types/Playertype';
 import React, { useMemo } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { fontPixel, heightPixel, widthPixel } from '../../utils/constants';
+import { cardShadowSm } from '../../utils/cardShadow';
 
 import Toss from './Toss';
 import ThemeText from '../ThemeText';
@@ -71,7 +72,13 @@ const AddPlayers = ({
         </ThemeText>
       </View>
 
-      <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+      <View
+        style={[
+          styles.card,
+          isDark ? styles.cardShadowDark : styles.cardShadowLight,
+          { backgroundColor: theme.surface, borderColor: theme.border },
+        ]}
+      >
         <ThemeText color="secondaryText" style={styles.cardLabel}>
           Teams
         </ThemeText>
@@ -185,6 +192,7 @@ const AddPlayers = ({
         <View
           style={[
             styles.tossPanel,
+            isDark ? styles.panelShadowDark : styles.panelShadowLight,
             { backgroundColor: theme.surface, borderColor: theme.border },
           ]}
         >
@@ -203,6 +211,10 @@ const AddPlayers = ({
 export default AddPlayers;
 
 const styles = StyleSheet.create({
+  cardShadowLight: cardShadowSm(false),
+  cardShadowDark: cardShadowSm(true),
+  panelShadowLight: cardShadowSm(false),
+  panelShadowDark: cardShadowSm(true),
   headerBlock: {
     paddingHorizontal: widthPixel(10),
     marginBottom: heightPixel(14),
@@ -223,11 +235,6 @@ const styles = StyleSheet.create({
     borderRadius: widthPixel(18),
     padding: widthPixel(14),
     borderWidth: StyleSheet.hairlineWidth,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
   },
   cardLabel: {
     fontFamily: fontFamilies.semibold,
@@ -305,10 +312,5 @@ const styles = StyleSheet.create({
     borderRadius: widthPixel(18),
     borderWidth: StyleSheet.hairlineWidth,
     padding: widthPixel(14),
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
   },
 });

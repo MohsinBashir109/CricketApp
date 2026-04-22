@@ -5,6 +5,7 @@ import { fontFamilies } from '../utils/fontfamilies';
 import { fontPixel, heightPixel, widthPixel } from '../utils/constants';
 import { useThemeContext } from '../theme/themeContext';
 import ThemeText from './ThemeText';
+import { cardShadowSm } from '../utils/cardShadow';
 
 type MatchCardProps = {
   teamAName?: string;
@@ -24,6 +25,7 @@ const MatchCard = ({ teamAName, teamBName, onPress, children, matchTypeLabel }: 
       disabled={!onPress}
       style={({ pressed }) => [
         styles.card,
+        isDark ? styles.cardShadowDark : styles.cardShadowLight,
         {
           backgroundColor: theme.surface,
           borderColor: theme.border,
@@ -65,13 +67,10 @@ const styles = StyleSheet.create({
     paddingVertical: heightPixel(14),
     borderRadius: widthPixel(16),
     borderWidth: StyleSheet.hairlineWidth,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
     position: 'relative',
   },
+  cardShadowLight: cardShadowSm(false),
+  cardShadowDark: cardShadowSm(true),
   cardTop: {
     flexDirection: 'row',
     alignItems: 'center',

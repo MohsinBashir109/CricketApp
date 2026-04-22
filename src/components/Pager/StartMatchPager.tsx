@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { fontPixel, heightPixel, widthPixel } from '../../utils/constants';
+import { cardShadowSm } from '../../utils/cardShadow';
 import { useDispatch } from 'react-redux';
 
 import AddPlayers from '../Flatlistcomponents/AddPlayers';
@@ -331,6 +332,7 @@ const StartMatchPager = () => {
             <View
               style={[
                 styles.reviewCard,
+                isDark ? cardShadowSm(true) : cardShadowSm(false),
                 {
                   backgroundColor: colors[isDark ? 'dark' : 'light'].surface,
                   borderColor: colors[isDark ? 'dark' : 'light'].border,

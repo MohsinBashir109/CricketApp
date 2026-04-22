@@ -17,6 +17,7 @@ import { backarrow } from '../../../assets/images';
 import { colors } from '../../../utils/colors';
 import { fontFamilies } from '../../../utils/fontfamilies';
 import { fontPixel, heightPixel, widthPixel } from '../../../utils/constants';
+import { cardShadowSm } from '../../../utils/cardShadow';
 import { useThemeContext } from '../../../theme/themeContext';
 import { useWindowDimensions } from 'react-native';
 import { selectAllTournaments } from '../../../features/tournament/tournamentSelectors';
@@ -100,6 +101,7 @@ const MatchHistoryScreen = () => {
         <View
           style={[
             styles.emptyCard,
+            isDark ? styles.cardShadowDark : styles.cardShadowLight,
             {
               backgroundColor: theme.surface,
               borderColor: theme.border,
@@ -127,6 +129,7 @@ const MatchHistoryScreen = () => {
             }
             style={({ pressed }) => [
               styles.tournamentCard,
+              isDark ? styles.cardShadowDark : styles.cardShadowLight,
               {
                 backgroundColor: theme.surface,
                 borderColor: theme.border,
@@ -155,7 +158,7 @@ const MatchHistoryScreen = () => {
                 : 'Open tournament'}
             </ThemeText>
             <ThemeText color="secondaryText" style={styles.tournamentMeta}>
-              {tournament.teamCount} teams • {tournament.competitionType}
+              {tournament.teamCount} teams
             </ThemeText>
           </Pressable>
         ))
@@ -216,6 +219,8 @@ const MatchHistoryScreen = () => {
 export default MatchHistoryScreen;
 
 const styles = StyleSheet.create({
+  cardShadowLight: cardShadowSm(false),
+  cardShadowDark: cardShadowSm(true),
   root: {
     flex: 1,
     width: '100%',

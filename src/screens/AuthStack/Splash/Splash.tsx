@@ -1,5 +1,12 @@
 import { CommonActions, useNavigation } from '@react-navigation/native';
-import { ImageBackground, Platform, StatusBar, StyleSheet } from 'react-native';
+import {
+  ActivityIndicator,
+  ImageBackground,
+  Platform,
+  StatusBar,
+  StyleSheet,
+  View,
+} from 'react-native';
 import React, { useEffect, useRef } from 'react';
 import { heightPixel, widthPixel } from '../../../utils/constants';
 
@@ -9,14 +16,18 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { routes } from '../../../utils/routes';
 import { setuser } from '../../../features/auth/authSlice';
 import { useDispatch } from 'react-redux';
-import { splashImage } from '../../../assets/images';
+import { lightmodesplash, splashImage } from '../../../assets/images';
+
+import { useThemeContext } from '../../../theme/themeContext';
+import { colors } from '../../../utils/colors';
 
 const Splash = () => {
   const navigation = useNavigation<any>();
-
+  useEffect(() => {}, []);
   const dispatch = useDispatch();
   const hasNavigatedRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { isDark } = useThemeContext();
 
   useEffect(() => {
     const goNext = (user: any) => {
@@ -47,7 +58,7 @@ const Splash = () => {
 
   return (
     <ImageBackground
-      source={splashImage}
+      source={isDark ? splashImage : lightmodesplash}
       style={[
         styles.container,
         {
@@ -55,18 +66,13 @@ const Splash = () => {
         },
       ]}
     >
-      {/* <StatusBar
-        barStyle={isDark ? 'light-content' : 'dark-content'}
-        backgroundColor="transparent"
-        translucent
-      /> */}
-
-      {/* <View style={styles.imageContainer}>
-        <Image source={logo} resizeMode="contain" style={styles.image} />
-        <ThemeText color="secondary" style={styles.loadingText}>
-          Loading the match…
-        </ThemeText>
-      </View> */}
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator
+          size="large"
+          color={colors[isDark ? 'dark' : 'light'].primary}
+          style={{ marginBottom: heightPixel(40) }}
+        />
+      </View>
     </ImageBackground>
   );
 };
@@ -75,6 +81,11 @@ export default Splash;
 
 const styles = StyleSheet.create({
   container: { flex: 1, alignItems: 'center' },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  },
   imageContainer: {
     paddingTop: heightPixel(100),
     justifyContent: 'center',

@@ -1,6 +1,10 @@
 import { StyleSheet, View } from 'react-native';
 import React, { useMemo } from 'react';
 import { fontPixel, heightPixel, widthPixel } from '../../utils/constants';
+import {
+  aggregateBowlingFromBalls,
+  formatBowlerOversFromLegalBalls,
+} from '../../utils/inningsStatsFromBalls';
 
 import ThemeText from '../ThemeText';
 import { colors } from '../../utils/colors';
@@ -10,6 +14,8 @@ import { useThemeContext } from '../../theme/themeContext';
 interface BowlerRowProps {
   innings?: any;
   currentMatch?: any;
+  /** When set, drives ball-only stats row (Super Over); when unset, uses currentInnings 3/4. */
+  useInningsBallsOnlyStats?: boolean;
 }
 
 const calcEcon = (runs?: number, oversVal?: string | number | null) => {
@@ -41,14 +47,31 @@ const hasBowled = (p: any) => {
   return typeof s === 'string' && s !== '0.0' && s !== '0' && s.trim() !== '';
 };
 
-const Bowlerow = ({ innings, currentMatch }: BowlerRowProps) => {
+const Bowlerow = ({
+  innings,
+  currentMatch,
+  useInningsBallsOnlyStats,
+}: BowlerRowProps) => {
   const { isDark } = useThemeContext();
   const theme = colors[isDark ? 'dark' : 'light'];
   const bowlingKey = innings?.bowlingTeam as 'teamA' | 'teamB' | undefined;
+  const ci = currentMatch?.currentInnings ?? 1;
+  const isSuperOverInnings =
+    useInningsBallsOnlyStats !== undefined
+      ? useInningsBallsOnlyStats
+      : ci === 3 || ci === 4;
 
   const bowlingPlayers = useMemo(() => {
     return bowlingKey ? currentMatch?.[bowlingKey]?.players ?? [] : [];
   }, [bowlingKey, currentMatch]);
+
+  const soBowlAgg = useMemo(
+    () =>
+      isSuperOverInnings
+        ? aggregateBowlingFromBalls(innings?.balls)
+        : null,
+    [isSuperOverInnings, innings?.balls],
+  );
 
   const currentBowler =
     bowlingPlayers.find(
@@ -56,6 +79,36 @@ const Bowlerow = ({ innings, currentMatch }: BowlerRowProps) => {
     ) ?? null;
 
   const bowlersData = useMemo(() => {
+    if (isSuperOverInnings && soBowlAgg) {
+      const map = new Map<string, any>();
+      for (const p of bowlingPlayers) {
+        const agg = soBowlAgg.get(p.id);
+        const isCurrent = String(p.id) === String(innings?.bowlerId);
+        if (!agg && !isCurrent) continue;
+        const legal = agg?.legalBallsBowled ?? 0;
+        const oversStr =
+          legal > 0 || isCurrent
+            ? formatBowlerOversFromLegalBalls(legal)
+            : '0.0';
+        map.set(String(p.id), {
+          ...p,
+          overs: oversStr,
+          maidens: 0,
+          conceded: agg?.conceded ?? 0,
+          wickets: agg?.wickets ?? 0,
+        });
+      }
+      const arr = Array.from(map.values());
+      arr.sort((a, b) =>
+        String(a.id) === String(innings?.bowlerId)
+          ? -1
+          : String(b.id) === String(innings?.bowlerId)
+            ? 1
+            : 0,
+      );
+      return arr;
+    }
+
     const previous = bowlingPlayers.filter(hasBowled);
 
     const map = new Map<string, any>();
@@ -76,7 +129,13 @@ const Bowlerow = ({ innings, currentMatch }: BowlerRowProps) => {
     );
 
     return arr;
-  }, [bowlingPlayers, currentBowler]);
+  }, [
+    bowlingPlayers,
+    currentBowler,
+    isSuperOverInnings,
+    soBowlAgg,
+    innings?.bowlerId,
+  ]);
 
   if (bowlersData.length === 0) {
     return (

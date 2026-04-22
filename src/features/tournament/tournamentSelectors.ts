@@ -1,7 +1,9 @@
 import { RootState } from '../store/rootReducer';
 import { MatchSetup } from '../../types/Playertype';
-import { TournamentFixtureEntity } from '../../types/TournamentTypes';
+import { TOURNAMENT_BYE_TEAM_ID, TournamentFixtureEntity } from '../../types/TournamentTypes';
 import dayjs from 'dayjs';
+import { applyManualOutcomeToRows } from './tournamentBracketProgress';
+import { computeTournamentStatsSections } from './tournamentStatsLeaderboards';
 
 export const selectTeamsState = (state: RootState) => state.teams;
 export const selectTournamentState = (state: RootState) => state.tournament;
@@ -60,9 +62,13 @@ export const selectTournamentFixturesByStatus = (
   status: TournamentFixtureEntity['status'],
 ) => selectTournamentFixtures(state, tournamentId).filter(f => f.status === status);
 
+export type PointsTableFormLetter = 'W' | 'L' | 'T' | 'NR';
+
 export type PointsRow = {
   teamId: string;
   teamName: string;
+  /** Short label for table (shortName or compact abbreviation). */
+  teamLabel: string;
   played: number;
   won: number;
   lost: number;
@@ -70,7 +76,63 @@ export type PointsRow = {
   noResult: number;
   points: number;
   nrr: number;
+  /** Up to five most recent results, oldest → newest; `null` pads when fewer than five. */
+  lastFive: (PointsTableFormLetter | null)[];
 };
+
+function abbrevTeamName(name: string): string {
+  const t = name.trim();
+  if (!t) return '?';
+  if (t.length <= 4) return t.toUpperCase();
+  const parts = t.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return parts
+      .map(p => p[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 4);
+  }
+  return t.slice(0, 3).toUpperCase();
+}
+
+function outcomeForTeamInFixture(
+  fixture: TournamentFixtureEntity,
+  teamId: string,
+  match: MatchSetup | undefined,
+): PointsTableFormLetter | null {
+  const aId = fixture.teamAId;
+  const bId = fixture.teamBId;
+  if (teamId !== aId && teamId !== bId) return null;
+  if (aId === TOURNAMENT_BYE_TEAM_ID || bId === TOURNAMENT_BYE_TEAM_ID) return null;
+  const isA = teamId === aId;
+
+  if (fixture.manualOutcome && !fixture.matchId) {
+    if (fixture.manualOutcome === 'tie') return 'T';
+    if (fixture.manualOutcome === 'teamA') return isA ? 'W' : 'L';
+    return isA ? 'L' : 'W';
+  }
+
+  if (fixture.status === 'abandoned') return 'T';
+
+  if (fixture.status === 'no_result' && !fixture.matchId) return 'NR';
+
+  if (!fixture.matchId) return null;
+
+  if (!match) return 'NR';
+
+  if (match.resultReason === 'TIE') return 'T';
+
+  if (
+    fixture.status === 'no_result' ||
+    match.resultReason === 'NO_RESULT' ||
+    match.winnerTeam == null
+  ) {
+    return 'NR';
+  }
+
+  if (match.winnerTeam === 'teamA') return isA ? 'W' : 'L';
+  return isA ? 'L' : 'W';
+}
 
 const ballsToOversFloat = (balls: number) => (balls <= 0 ? 0 : balls / 6);
 
@@ -89,16 +151,29 @@ export const selectTournamentPointsTable = (state: RootState, tournamentId: stri
 
   const teams = selectTournamentTeams(state, tournamentId);
   const scoredOrDecidedFixtures = selectTournamentFixtures(state, tournamentId).filter(
-    f => ['completed', 'no_result', 'abandoned'].includes(f.status) && !!f.matchId,
+    f =>
+      f.stage !== 'KNOCKOUT' &&
+      (f.stage == null || f.stage === 'GROUP') &&
+      ['completed', 'no_result', 'abandoned'].includes(f.status) &&
+      (!!f.matchId ||
+        (f.status === 'completed' && !!f.manualOutcome) ||
+        f.status === 'abandoned'),
   );
 
-  const rowsByTeam: Record<string, PointsRow & { runsFor: number; ballsFaced: number; runsAgainst: number; ballsBowled: number }> =
-    {};
+  type RowAcc = Omit<PointsRow, 'lastFive'> & {
+    runsFor: number;
+    ballsFaced: number;
+    runsAgainst: number;
+    ballsBowled: number;
+  };
+
+  const rowsByTeam: Record<string, RowAcc> = {};
 
   teams.forEach(team => {
     rowsByTeam[team.id] = {
       teamId: team.id,
       teamName: team.name,
+      teamLabel: (team.shortName && team.shortName.trim()) || abbrevTeamName(team.name),
       played: 0,
       won: 0,
       lost: 0,
@@ -116,20 +191,8 @@ export const selectTournamentPointsTable = (state: RootState, tournamentId: stri
   const pts = tournament.settings?.pointsSystem ?? { win: 2, tie: 1, loss: 0, noResult: 1 };
 
   scoredOrDecidedFixtures.forEach(fixture => {
-    const match = (state.match.history ?? []).find(m => m.matchId === fixture.matchId) as
-      | MatchSetup
-      | undefined;
-    if (!match) {
-      // Still count match as played/no-result if we have a decided fixture but no saved match payload.
-      const aRow = rowsByTeam[fixture.teamAId];
-      const bRow = rowsByTeam[fixture.teamBId];
-      if (!aRow || !bRow) return;
-      aRow.played += 1;
-      bRow.played += 1;
-      aRow.noResult += 1;
-      bRow.noResult += 1;
-      aRow.points += pts.noResult ?? 1;
-      bRow.points += pts.noResult ?? 1;
+    if (fixture.manualOutcome && !fixture.matchId) {
+      applyManualOutcomeToRows(fixture, rowsByTeam, pts);
       return;
     }
 
@@ -140,6 +203,30 @@ export const selectTournamentPointsTable = (state: RootState, tournamentId: stri
     const aRow = rowsByTeam[aId];
     const bRow = rowsByTeam[bId];
     if (!aRow || !bRow) return;
+
+    if (fixture.status === 'abandoned') {
+      aRow.played += 1;
+      bRow.played += 1;
+      aRow.tied += 1;
+      bRow.tied += 1;
+      aRow.points += pts.tie ?? 1;
+      bRow.points += pts.tie ?? 1;
+      return;
+    }
+
+    const match = (state.match.history ?? []).find(m => m.matchId === fixture.matchId) as
+      | MatchSetup
+      | undefined;
+    if (!match) {
+      // Still count match as played/no-result if we have a decided fixture but no saved match payload.
+      aRow.played += 1;
+      bRow.played += 1;
+      aRow.noResult += 1;
+      bRow.noResult += 1;
+      aRow.points += pts.noResult ?? 1;
+      bRow.points += pts.noResult ?? 1;
+      return;
+    }
 
     aRow.played += 1;
     bRow.played += 1;
@@ -162,9 +249,16 @@ export const selectTournamentPointsTable = (state: RootState, tournamentId: stri
       bRow.ballsBowled += teamAInnings.totalBalls ?? 0;
     }
 
+    if (match.resultReason === 'TIE') {
+      aRow.tied += 1;
+      bRow.tied += 1;
+      aRow.points += pts.tie ?? 1;
+      bRow.points += pts.tie ?? 1;
+      return;
+    }
+
     if (
       fixture.status === 'no_result' ||
-      fixture.status === 'abandoned' ||
       match.resultReason === 'NO_RESULT' ||
       match.winnerTeam == null
     ) {
@@ -172,14 +266,6 @@ export const selectTournamentPointsTable = (state: RootState, tournamentId: stri
       bRow.noResult += 1;
       aRow.points += pts.noResult ?? 1;
       bRow.points += pts.noResult ?? 1;
-      return;
-    }
-
-    if (match.resultReason === 'TIE') {
-      aRow.tied += 1;
-      bRow.tied += 1;
-      aRow.points += pts.tie ?? 1;
-      bRow.points += pts.tie ?? 1;
       return;
     }
 
@@ -197,7 +283,7 @@ export const selectTournamentPointsTable = (state: RootState, tournamentId: stri
     }
   });
 
-  const computed: PointsRow[] = Object.values(rowsByTeam).map(r => {
+  const computed: Omit<PointsRow, 'lastFive'>[] = Object.values(rowsByTeam).map(r => {
     const forOvers = ballsToOversFloat(r.ballsFaced);
     const againstOvers = ballsToOversFloat(r.ballsBowled);
     const nrr =
@@ -207,6 +293,7 @@ export const selectTournamentPointsTable = (state: RootState, tournamentId: stri
     return {
       teamId: r.teamId,
       teamName: r.teamName,
+      teamLabel: r.teamLabel,
       played: r.played,
       won: r.won,
       lost: r.lost,
@@ -222,7 +309,54 @@ export const selectTournamentPointsTable = (state: RootState, tournamentId: stri
     return b.nrr - a.nrr;
   });
 
-  return computed;
+  const outcomesByTeam: Record<string, PointsTableFormLetter[]> = {};
+  teams.forEach(t => {
+    outcomesByTeam[t.id] = [];
+  });
+
+  const chrono = [...scoredOrDecidedFixtures].sort((a, b) => {
+    const at =
+      a.scheduledAt && dayjs(a.scheduledAt).isValid() ? dayjs(a.scheduledAt).valueOf() : 0;
+    const bt =
+      b.scheduledAt && dayjs(b.scheduledAt).isValid() ? dayjs(b.scheduledAt).valueOf() : 0;
+    if (at !== bt) return at - bt;
+    return a.id.localeCompare(b.id);
+  });
+
+  chrono.forEach(f => {
+    const match = f.matchId
+      ? ((state.match.history ?? []).find(m => m.matchId === f.matchId) as MatchSetup | undefined)
+      : undefined;
+    [f.teamAId, f.teamBId].forEach(tid => {
+      if (!tid || !outcomesByTeam[tid]) return;
+      const letter = outcomeForTeamInFixture(f, tid, match);
+      if (letter) outcomesByTeam[tid].push(letter);
+    });
+  });
+
+  const paddedLastFive = (teamId: string): (PointsTableFormLetter | null)[] => {
+    const seq = outcomesByTeam[teamId] ?? [];
+    const last = seq.slice(-5);
+    const pad = Math.max(0, 5 - last.length);
+    return [...Array(pad).fill(null), ...last] as (PointsTableFormLetter | null)[];
+  };
+
+  return computed.map(row => ({
+    ...row,
+    lastFive: paddedLastFive(row.teamId),
+  }));
+};
+
+/** Completed tournament matches with saved scorecards (for Stats tab). */
+export const selectTournamentStatsSections = (state: RootState, tournamentId: string) => {
+  const matches = (state.match.history ?? []).filter(
+    m =>
+      m.tournamentId === tournamentId &&
+      m.isCompleted === true &&
+      !!m.teamA?.players &&
+      !!m.teamB?.players,
+  );
+  return computeTournamentStatsSections(matches);
 };
 
 export const selectFixtureResultSummary = (state: RootState, fixtureId: string) => {

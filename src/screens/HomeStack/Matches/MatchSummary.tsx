@@ -1,4 +1,7 @@
-import Innings1Route, { Innings2Route } from '../../../components/Scenes';
+import Innings1Route, {
+  Innings2Route,
+  SuperOverSummaryRoute,
+} from '../../../components/Scenes';
 import {
   Image,
   Platform,
@@ -7,7 +10,7 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { SceneMap, TabView } from 'react-native-tab-view';
 import { fontPixel, heightPixel, widthPixel } from '../../../utils/constants';
 
@@ -27,11 +30,22 @@ const MatchSummary = ({ route }: any) => {
 
   const { match } = route.params;
 
+  const hasSuperOver = !!(
+    match?.superOverInnings1 ||
+    match?.superOverInnings2 ||
+    (match?.superOverHistory && match.superOverHistory.length > 0)
+  );
+
+  const tabRoutes = useMemo(() => {
+    const r = [
+      { key: 'innings1', title: 'Innings 1' },
+      { key: 'innings2', title: 'Innings 2' },
+    ];
+    if (hasSuperOver) r.push({ key: 'superOver', title: 'Super Over' });
+    return r;
+  }, [hasSuperOver]);
+
   const [index, setIndex] = useState(0);
-  const [routes] = useState([
-    { key: 'innings1', title: 'Innings 1' },
-    { key: 'innings2', title: 'Innings 2' },
-  ]);
 
   const renderScene = ({ route: r }: any) => {
     switch (r.key) {
@@ -39,6 +53,8 @@ const MatchSummary = ({ route }: any) => {
         return <Innings1Route match={match?.innings1} fullMatch={match} />;
       case 'innings2':
         return <Innings2Route match={match?.innings2} fullMatch={match} />;
+      case 'superOver':
+        return <SuperOverSummaryRoute fullMatch={match} />;
       default:
         return null;
     }
@@ -121,7 +137,8 @@ const MatchSummary = ({ route }: any) => {
       </View>
 
       <TabView
-        navigationState={{ index, routes }}
+        key={match?.matchId ?? 'match-summary'}
+        navigationState={{ index, routes: tabRoutes }}
         renderScene={renderScene}
         onIndexChange={setIndex}
         renderTabBar={props => <CustomTabBar {...props} />}

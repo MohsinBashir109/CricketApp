@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { useDispatch, useSelector } from 'react-redux';
 import ThemeText from '../../../components/ThemeText';
+import { useDispatch, useSelector } from 'react-redux';
 import Button from '../../../components/themeButton';
 import { RootState } from '../../../features/store/rootReducer';
 import {
@@ -9,11 +9,13 @@ import {
   selectTournamentById,
   selectTournamentTeams,
 } from '../../../features/tournament/tournamentSelectors';
+import { isTournamentPlaceholderTeamId, TOURNAMENT_BYE_TEAM_ID } from '../../../types/TournamentTypes';
 import { setFixtureLive } from '../../../features/tournament/tournamentSlice';
 import { useThemeContext } from '../../../theme/themeContext';
 import { colors } from '../../../utils/colors';
 import { fontFamilies } from '../../../utils/fontfamilies';
 import { fontPixel, heightPixel, widthPixel } from '../../../utils/constants';
+import { cardShadowSm } from '../../../utils/cardShadow';
 import { routes } from '../../../utils/routes';
 import HomeWrapper from '../../../wrappers/HomeWrapper';
 
@@ -65,6 +67,21 @@ const TournamentMatchDetailScreen = ({ route, navigation }: any) => {
   const canStart =
     fixture.status === 'upcoming' || (fixture.status === 'live' && !!fixture.matchId);
 
+  const sideName = (side: 'A' | 'B') => {
+    const id = side === 'A' ? fixture.teamAId : fixture.teamBId;
+    const ph = side === 'A' ? fixture.teamAPlaceholder : fixture.teamBPlaceholder;
+    if (id === TOURNAMENT_BYE_TEAM_ID || ph === 'Bye') return 'Bye';
+    if (ph && isTournamentPlaceholderTeamId(id)) return ph;
+    const t = side === 'A' ? teamA : teamB;
+    return t?.name ?? `Team ${side}`;
+  };
+
+  const scorable =
+    !isTournamentPlaceholderTeamId(fixture.teamAId) &&
+    !isTournamentPlaceholderTeamId(fixture.teamBId) &&
+    fixture.teamAId !== TOURNAMENT_BYE_TEAM_ID &&
+    fixture.teamBId !== TOURNAMENT_BYE_TEAM_ID;
+
   return (
     <HomeWrapper>
       <ScrollView
@@ -74,11 +91,12 @@ const TournamentMatchDetailScreen = ({ route, navigation }: any) => {
         <View
           style={[
             styles.card,
+            isDark ? styles.cardShadowDark : styles.cardShadowLight,
             { backgroundColor: theme.surface, borderColor: theme.border },
           ]}
         >
           <ThemeText color="text" style={styles.title}>
-            {teamA?.name ?? 'Team A'} vs {teamB?.name ?? 'Team B'}
+            {sideName('A')} vs {sideName('B')}
           </ThemeText>
           <ThemeText color="secondaryText" style={styles.sub}>
             {tournament.name}
@@ -98,10 +116,26 @@ const TournamentMatchDetailScreen = ({ route, navigation }: any) => {
           </View>
         </View>
 
+        {!scorable && fixture.status === 'upcoming' ? (
+          <View
+            style={[
+              styles.card,
+              isDark ? styles.cardShadowDark : styles.cardShadowLight,
+              { backgroundColor: theme.surface, borderColor: theme.border },
+            ]}
+          >
+            <ThemeText color="secondaryText" style={styles.sub}>
+              This match will be available after group stage is completed and both teams are
+              confirmed.
+            </ThemeText>
+          </View>
+        ) : null}
+
         {fixture.status === 'completed' ? (
           <View
             style={[
               styles.card,
+              isDark ? styles.cardShadowDark : styles.cardShadowLight,
               { backgroundColor: theme.surface, borderColor: theme.border },
             ]}
           >
@@ -146,7 +180,7 @@ const TournamentMatchDetailScreen = ({ route, navigation }: any) => {
                   },
                 });
               }}
-              disabled={!canStart || !teamA || !teamB}
+              disabled={!canStart || !scorable || !teamA || !teamB}
             />
           )}
 
@@ -165,6 +199,8 @@ const TournamentMatchDetailScreen = ({ route, navigation }: any) => {
 };
 
 const styles = StyleSheet.create({
+  cardShadowLight: cardShadowSm(false),
+  cardShadowDark: cardShadowSm(true),
   content: {
     paddingTop: heightPixel(18),
     paddingBottom: heightPixel(36),

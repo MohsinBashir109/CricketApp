@@ -1,5 +1,6 @@
 import { StyleSheet, View } from 'react-native';
 import { fontPixel, heightPixel, widthPixel } from '../../utils/constants';
+import { cardShadowSm } from '../../utils/cardShadow';
 
 import { MatchSetup } from '../../types/Playertype';
 import React from 'react';
@@ -113,6 +114,7 @@ const MatchHistory = ({ history }: MatchHistoryProps) => {
       <View
         style={[
           styles.empty,
+          isDark ? styles.cardShadowDark : styles.cardShadowLight,
           {
             backgroundColor: theme.surfaceElevated,
             borderColor: theme.border,
@@ -141,6 +143,8 @@ const MatchHistory = ({ history }: MatchHistoryProps) => {
 export default MatchHistory;
 
 const styles = StyleSheet.create({
+  cardShadowLight: cardShadowSm(false),
+  cardShadowDark: cardShadowSm(true),
   list: {
     width: '100%',
   },

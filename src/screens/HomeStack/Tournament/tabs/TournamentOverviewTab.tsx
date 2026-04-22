@@ -11,6 +11,7 @@ import { useThemeContext } from '../../../../theme/themeContext';
 import { colors } from '../../../../utils/colors';
 import { fontFamilies } from '../../../../utils/fontfamilies';
 import { fontPixel, heightPixel, widthPixel } from '../../../../utils/constants';
+import { cardShadowSm } from '../../../../utils/cardShadow';
 
 const TournamentOverviewTab = ({ tournamentId, onOpenFixtures }: any) => {
   const { isDark } = useThemeContext();
@@ -30,7 +31,13 @@ const TournamentOverviewTab = ({ tournamentId, onOpenFixtures }: any) => {
 
   return (
     <View style={styles.root}>
-      <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+      <View
+        style={[
+          styles.card,
+          isDark ? styles.cardShadowDark : styles.cardShadowLight,
+          { backgroundColor: theme.surface, borderColor: theme.border },
+        ]}
+      >
         <ThemeText color="text" style={styles.sectionTitle}>
           Live / Next match
         </ThemeText>
@@ -58,7 +65,13 @@ const TournamentOverviewTab = ({ tournamentId, onOpenFixtures }: any) => {
         </Pressable>
       </View>
 
-      <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+      <View
+        style={[
+          styles.card,
+          isDark ? styles.cardShadowDark : styles.cardShadowLight,
+          { backgroundColor: theme.surface, borderColor: theme.border },
+        ]}
+      >
         <ThemeText color="text" style={styles.sectionTitle}>
           Standings snapshot
         </ThemeText>
@@ -70,7 +83,7 @@ const TournamentOverviewTab = ({ tournamentId, onOpenFixtures }: any) => {
           table.slice(0, 4).map((row, idx) => (
             <View key={row.teamId} style={[styles.row, { borderBottomColor: theme.border }]}>
               <ThemeText color="text" style={styles.rowText}>
-                {idx + 1}. {row.teamName}
+                {idx + 1}. {row.teamLabel}
               </ThemeText>
               <ThemeText color="secondaryText" style={styles.rowMeta}>
                 {row.points} pts · NRR {row.nrr}
@@ -84,6 +97,8 @@ const TournamentOverviewTab = ({ tournamentId, onOpenFixtures }: any) => {
 };
 
 const styles = StyleSheet.create({
+  cardShadowLight: cardShadowSm(false),
+  cardShadowDark: cardShadowSm(true),
   root: {
     paddingTop: heightPixel(20),
     paddingBottom: heightPixel(32),

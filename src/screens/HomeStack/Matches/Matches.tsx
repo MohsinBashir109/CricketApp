@@ -1,6 +1,7 @@
 import { useNavigation } from '@react-navigation/native';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { fontPixel, heightPixel, widthPixel } from '../../../utils/constants';
+import { cardShadowLg, cardShadowSm } from '../../../utils/cardShadow';
 import { matches } from '../../../assets/images';
 
 import Button from '../../../components/themeButton';
@@ -11,9 +12,10 @@ import ThemeText from '../../../components/ThemeText';
 import { colors } from '../../../utils/colors';
 import { fontFamilies } from '../../../utils/fontfamilies';
 import { routes } from '../../../utils/routes';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { useThemeContext } from '../../../theme/themeContext';
 import { RootState } from '../../../features/store/rootReducer';
+import { clearLastCompletedMatch } from '../../../features/match/matchSlice';
 
 const ballsToOvers = (balls: number) =>
   `${Math.floor((balls || 0) / 6)}.${(balls || 0) % 6}`;
@@ -21,6 +23,7 @@ const ballsToOvers = (balls: number) =>
 const Matches = () => {
   const match = useSelector((state: any) => state.match);
   const tournamentsById = useSelector((s: RootState) => s.tournament.tournamentsById);
+  const dispatch = useDispatch();
   const navigation = useNavigation();
   const { isDark } = useThemeContext();
   const theme = colors[isDark ? 'dark' : 'light'];
@@ -39,8 +42,13 @@ const Matches = () => {
 
   const tossWinnerKey = match?.currentMatch?.tossWinner;
   const currentMatch = match?.currentMatch;
+  const lastCompletedMatch = match?.lastCompletedMatch;
   const tournamentName =
     currentMatch?.tournamentId ? tournamentsById?.[currentMatch.tournamentId]?.name : null;
+  const lastTournamentName =
+    lastCompletedMatch?.tournamentId
+      ? tournamentsById?.[lastCompletedMatch.tournamentId]?.name
+      : null;
   const tossWinnerName =
     tossWinnerKey === 'teamA'
       ? currentMatch?.teamA?.name
@@ -52,6 +60,24 @@ const Matches = () => {
       ? currentMatch?.innings2
       : currentMatch?.innings1;
 
+  const lastResultLine = (() => {
+    const m = lastCompletedMatch;
+    if (!m) return '';
+    const w = m.winnerTeamName ?? '';
+    if (m.resultReason === 'TIE') return 'Match tied';
+    if (m.resultReason === 'NO_RESULT') return 'No result';
+    if (m.tieResolvedBy === 'super_over' && w) return `${w} won (Super Over)`;
+    if (m.tieResolvedBy === 'super_over_tied') return 'Match tied (Super Over tied)';
+    return w ? `${w} won` : 'Match finished';
+  })();
+
+  const openLastSummary = () => {
+    if (!lastCompletedMatch) return;
+    const snapshot = lastCompletedMatch;
+    dispatch(clearLastCompletedMatch());
+    (navigation as any).navigate(routes.matchsummary, { match: snapshot });
+  };
+
   return (
     <HomeWrapper headerShown={true}>
       <ScrollView
@@ -62,9 +88,17 @@ const Matches = () => {
       >
         <View style={[styles.section, styles.sectionFirst]}>
           <View style={styles.sectionTitleRow}>
-            <View style={[styles.liveDot, { backgroundColor: theme.accent }]} />
+            <View
+              style={[
+                styles.liveDot,
+                {
+                  backgroundColor:
+                    currentMatch !== null ? theme.accent : theme.primary,
+                },
+              ]}
+            />
             <ThemeText style={styles.sectionTitle} color="text">
-              Live match
+              {currentMatch !== null ? 'Live match' : 'Last result'}
             </ThemeText>
           </View>
 
@@ -123,10 +157,33 @@ const Matches = () => {
                 </View>
               </View>
             </MatchCard>
+          ) : lastCompletedMatch ? (
+            <MatchCard
+              teamAName={lastCompletedMatch?.teamA?.name}
+              teamBName={lastCompletedMatch?.teamB?.name}
+              onPress={openLastSummary}
+              matchTypeLabel={
+                lastTournamentName ??
+                (lastCompletedMatch?.tournamentId ? 'Tournament' : 'Simple match')
+              }
+            >
+              <ThemeText style={styles.lastResultText} color="secondaryText">
+                {lastResultLine}
+              </ThemeText>
+              <View style={styles.viewSummaryRowHome}>
+                <ThemeText style={styles.viewSummaryTextHome} color="primary">
+                  View summary
+                </ThemeText>
+                <ThemeText style={styles.viewSummaryArrowHome} color="primary">
+                  →
+                </ThemeText>
+              </View>
+            </MatchCard>
           ) : (
             <View
               style={[
                 styles.liveEmptyCard,
+                isDark ? styles.cardShadowDark : styles.cardShadowLight,
                 {
                   backgroundColor: theme.surfaceElevated,
                   borderColor: theme.border,
@@ -147,6 +204,7 @@ const Matches = () => {
         <View
           style={[
             styles.heroIntroCard,
+            isDark ? styles.heroShadowDark : styles.heroShadowLight,
             {
               backgroundColor: theme.surface,
               borderColor: theme.border,
@@ -175,6 +233,7 @@ const Matches = () => {
           <View
             style={[
               styles.recentHeroCard,
+              isDark ? styles.heroShadowDark : styles.heroShadowLight,
               {
                 backgroundColor: theme.surface,
                 borderColor: theme.border,
@@ -206,6 +265,10 @@ const Matches = () => {
 export default Matches;
 
 const styles = StyleSheet.create({
+  cardShadowLight: cardShadowSm(false),
+  cardShadowDark: cardShadowSm(true),
+  heroShadowLight: cardShadowLg(false),
+  heroShadowDark: cardShadowLg(true),
   scroll: { flex: 1, width: '100%' },
   content: {
     paddingTop: heightPixel(20),
@@ -232,11 +295,6 @@ const styles = StyleSheet.create({
   },
   primaryCta: {
     marginTop: heightPixel(16),
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
   },
   primaryCtaText: {
     fontFamily: fontFamilies.bold,
@@ -368,5 +426,26 @@ const styles = StyleSheet.create({
   },
   recentCta: {
     marginTop: heightPixel(14),
+  },
+  lastResultText: {
+    marginTop: heightPixel(8),
+    fontFamily: fontFamilies.medium,
+    fontSize: fontPixel(14),
+    lineHeight: fontPixel(20),
+  },
+  viewSummaryRowHome: {
+    marginTop: heightPixel(12),
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  viewSummaryTextHome: {
+    fontFamily: fontFamilies.bold,
+    fontSize: fontPixel(13),
+    letterSpacing: 0.3,
+  },
+  viewSummaryArrowHome: {
+    fontFamily: fontFamilies.bold,
+    fontSize: fontPixel(16),
   },
 });
