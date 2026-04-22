@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View, ViewStyle } from 'react-native';
 import DateTimePicker, {
   AndroidEvent,
   DateTimePickerEvent,
@@ -8,6 +8,8 @@ import ThemeInput from '../ThemeInput';
 
 type Props = {
   title: string;
+  /** Optional info button shown next to the title. */
+  titleInfoPress?: () => void;
   placeholder?: string;
   leftIcon: any;
   mode: 'date' | 'time';
@@ -23,10 +25,15 @@ type Props = {
   androidDisplay?: 'default' | 'spinner' | 'calendar' | 'clock';
   /** Pre-formatted string to display inside the field (keeps UI stable). */
   displayValue: string;
+  /** Applied to the outer wrapper (e.g. `flex: 1` in a two-column row). */
+  style?: ViewStyle;
+  /** Forwarded to `ThemeInput` outer container. */
+  containerStyleOuter?: ViewStyle;
 };
 
 const DateTimeField = ({
   title,
+  titleInfoPress,
   placeholder,
   leftIcon,
   mode,
@@ -38,6 +45,8 @@ const DateTimeField = ({
   iosDisplay = 'spinner',
   androidDisplay = 'default',
   displayValue,
+  style,
+  containerStyleOuter,
 }: Props) => {
   const [open, setOpen] = useState(false);
 
@@ -74,13 +83,15 @@ const DateTimeField = ({
   );
 
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, style]}>
       <ThemeInput
         title={title}
+        titleInfoPress={titleInfoPress}
         placeholder={placeholder}
         leftIcon={leftIcon}
         value={displayValue}
         editable={false}
+        containerStyleOuter={containerStyleOuter}
       />
       <Pressable style={styles.overlay} onPress={openPicker} disabled={disabled} />
 

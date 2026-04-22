@@ -21,6 +21,19 @@ import { fontFamilies } from '../../../utils/fontfamilies';
 import { useThemeContext } from '../../../theme/themeContext';
 import { useNavigation } from '@react-navigation/native';
 import { useWindowDimensions } from 'react-native';
+import type { MatchSettingsReasonChip } from '../../../types/Playertype';
+
+const matchSettingsReasonText = (r?: MatchSettingsReasonChip) => {
+  if (!r) return '';
+  const map: Record<MatchSettingsReasonChip, string> = {
+    RAIN: 'Rain',
+    BAD_LIGHT: 'Bad light',
+    TEAM_LEFT: 'Team left',
+    TECHNICAL: 'Technical issue',
+    OTHER: 'Other',
+  };
+  return map[r] ?? r;
+};
 
 const MatchSummary = ({ route }: any) => {
   const { isDark } = useThemeContext();
@@ -133,6 +146,22 @@ const MatchSummary = ({ route }: any) => {
           >
             {match?.teamA?.name} vs {match?.teamB?.name}
           </ThemeText>
+          {match?.matchSettingsReason || match?.matchSettingsNote ? (
+            <ThemeText
+              style={styles.adminMeta}
+              color="secondaryText"
+              numberOfLines={2}
+            >
+              {[
+                match?.matchSettingsReason
+                  ? `Recorded: ${matchSettingsReasonText(match.matchSettingsReason)}`
+                  : null,
+                match?.matchSettingsNote ? match.matchSettingsNote : null,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </ThemeText>
+          ) : null}
         </View>
       </View>
 
@@ -178,6 +207,13 @@ const styles = StyleSheet.create({
     fontFamily: fontFamilies.medium,
     fontSize: fontPixel(13),
     marginTop: heightPixel(2),
+  },
+  adminMeta: {
+    fontFamily: fontFamilies.medium,
+    fontSize: fontPixel(11),
+    marginTop: heightPixel(6),
+    lineHeight: fontPixel(16),
+    opacity: 0.9,
   },
   tabBar: {
     flexDirection: 'row',

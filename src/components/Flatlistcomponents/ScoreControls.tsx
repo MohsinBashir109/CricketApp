@@ -1,21 +1,23 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 import { fontPixel, heightPixel, widthPixel } from '../../utils/constants';
 
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import ThemeText from '../ThemeText';
 import { colors } from '../../utils/colors';
 import { fontFamilies } from '../../utils/fontfamilies';
 import { useThemeContext } from '../../theme/themeContext';
 
 type Run = 0 | 1 | 2 | 3 | 4 | 6;
+type ExtraRun = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 type ExtraType = 'wide' | 'noball' | 'bye' | 'legbye';
 
 type Props = {
   onRunPress?: (runs: Run) => void;
-  onExtraPress?: (type: ExtraType) => void;
+  onExtraPick?: (payload: { type: ExtraType; value: ExtraRun }) => void;
   onWicketPress?: () => void;
   onUndoPress?: () => void;
   onEndOverPress?: () => void;
+  onEditOversPress?: () => void;
   /** Blocks runs and extras (e.g. match paused or openers not set). */
   ballEntryDisabled?: boolean;
   /** Disables undo when there is nothing to undo. */
@@ -24,16 +26,26 @@ type Props = {
 
 const ScoreControls: React.FC<Props> = ({
   onRunPress,
-  onExtraPress,
+  onExtraPick,
   onWicketPress,
   onUndoPress,
   onEndOverPress,
+  onEditOversPress,
   ballEntryDisabled = false,
   undoDisabled = false,
 }) => {
   const { isDark } = useThemeContext();
   const theme = colors[isDark ? 'dark' : 'light'];
   const lockEntry = ballEntryDisabled;
+  const [extraPickerType, setExtraPickerType] = useState<ExtraType | null>(null);
+
+  const extraPickerLabel = useMemo(() => {
+    if (!extraPickerType) return '';
+    if (extraPickerType === 'wide') return 'Wide runs';
+    if (extraPickerType === 'noball') return 'No-ball runs (bat)';
+    if (extraPickerType === 'bye') return 'Bye runs';
+    return 'Leg-bye runs';
+  }, [extraPickerType]);
 
   return (
     <View style={styles.container}>
@@ -87,6 +99,53 @@ const ScoreControls: React.FC<Props> = ({
       <ThemeText style={styles.extrasLabel} color="secondaryText">
         Extras
       </ThemeText>
+
+      {extraPickerType ? (
+        <View style={[styles.extraPicker, { backgroundColor: theme.surfaceElevated, borderColor: theme.border }]}>
+          <ThemeText style={[styles.extraPickerTitle, { color: theme.secondaryText }]} color="secondaryText">
+            {extraPickerLabel}
+          </ThemeText>
+          <View style={styles.extraPickerRow}>
+            {([0, 1, 2, 3, 4, 5, 6] as const).map(v => (
+              <Pressable
+                key={v}
+                onPress={() => {
+                  onExtraPick?.({ type: extraPickerType, value: v });
+                  setExtraPickerType(null);
+                }}
+                style={({ pressed }) => [
+                  styles.extraPickBtn,
+                  {
+                    backgroundColor: theme.background,
+                    borderColor: theme.border,
+                    opacity: pressed ? 0.88 : 1,
+                  },
+                ]}
+              >
+                <ThemeText style={styles.extraPickText} color="text">
+                  {v}
+                </ThemeText>
+              </Pressable>
+            ))}
+            <Pressable
+              onPress={() => setExtraPickerType(null)}
+              style={({ pressed }) => [
+                styles.extraPickBtn,
+                {
+                  backgroundColor: theme.primaryMuted,
+                  borderColor: theme.border,
+                  opacity: pressed ? 0.88 : 1,
+                },
+              ]}
+            >
+              <ThemeText style={styles.extraPickText} color="secondaryText">
+                ✕
+              </ThemeText>
+            </Pressable>
+          </View>
+        </View>
+      ) : null}
+
       <View style={styles.extrasRow}>
         {(
           [
@@ -98,7 +157,7 @@ const ScoreControls: React.FC<Props> = ({
         ).map(([type, label]) => (
           <Pressable
             key={type}
-            onPress={() => onExtraPress?.(type)}
+            onPress={() => setExtraPickerType(type)}
             style={({ pressed }) => [
               styles.extraChip,
               {
@@ -167,6 +226,23 @@ const ScoreControls: React.FC<Props> = ({
             Next ov.
           </ThemeText>
         </Pressable>
+
+        <Pressable
+          onPress={onEditOversPress}
+          disabled={lockEntry}
+          style={({ pressed }) => [
+            styles.secondaryBtn,
+            {
+              borderColor: theme.border,
+              backgroundColor: theme.surfaceElevated,
+              opacity: lockEntry ? 0.35 : pressed ? 0.9 : 1,
+            },
+          ]}
+        >
+          <ThemeText style={styles.secondaryText} color="text">
+            Edit
+          </ThemeText>
+        </Pressable>
       </View>
     </View>
   );
@@ -212,6 +288,35 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: widthPixel(8),
+  },
+  extraPicker: {
+    marginBottom: heightPixel(10),
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: widthPixel(14),
+    padding: widthPixel(10),
+  },
+  extraPickerTitle: {
+    fontFamily: fontFamilies.medium,
+    fontSize: fontPixel(12),
+    marginBottom: heightPixel(8),
+  },
+  extraPickerRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: widthPixel(8),
+  },
+  extraPickBtn: {
+    minWidth: widthPixel(44),
+    paddingVertical: heightPixel(10),
+    paddingHorizontal: widthPixel(12),
+    borderRadius: widthPixel(12),
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  extraPickText: {
+    fontFamily: fontFamilies.bold,
+    fontSize: fontPixel(14),
   },
   extraChip: {
     paddingVertical: heightPixel(10),

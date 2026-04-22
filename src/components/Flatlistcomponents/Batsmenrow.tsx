@@ -1,4 +1,4 @@
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import React, { useMemo } from 'react';
 import { fontPixel, heightPixel, widthPixel } from '../../utils/constants';
 import { aggregateBattingFromBalls } from '../../utils/inningsStatsFromBalls';
@@ -13,6 +13,8 @@ interface BatsmenRowProps {
   currentMatch?: any;
   /** When set, drives ball-only stats row (Super Over); when unset, uses currentInnings 3/4. */
   useInningsBallsOnlyStats?: boolean;
+  onPressAdd?: () => void;
+  computed?: any;
 }
 
 const calcStrikeRate = (runs?: number, balls?: number) => {
@@ -82,6 +84,8 @@ const Batsmenrow = ({
   innings,
   currentMatch,
   useInningsBallsOnlyStats,
+  onPressAdd,
+  computed,
 }: BatsmenRowProps) => {
   const { isDark } = useThemeContext();
   const theme = colors[isDark ? 'dark' : 'light'];
@@ -156,9 +160,19 @@ const Batsmenrow = ({
 
   if (batsmenData.length === 0) {
     return (
-      <View style={styles.empty}>
+      <Pressable
+        onPress={onPressAdd}
+        disabled={!onPressAdd}
+        style={styles.empty}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      >
         <ThemeText color="secondaryText">No batsmen yet</ThemeText>
-      </View>
+        {onPressAdd ? (
+          <ThemeText color="primary" style={styles.emptyLinkText}>
+            + Add batsmen
+          </ThemeText>
+        ) : null}
+      </Pressable>
     );
   }
 
@@ -167,12 +181,13 @@ const Batsmenrow = ({
       {batsmenData.map((item: any) => {
         const isStriker = item.id === strikerId;
         const aggRow = soBatAgg?.get(item.id);
+        const computedRow = !isSuperOverInnings ? computed?.batting?.get?.(item.id) : null;
         const dispRuns = isSuperOverInnings
           ? (aggRow?.runs ?? 0)
-          : (item?.runs ?? 0);
+          : (computedRow?.runs ?? item?.runs ?? 0);
         const dispBalls = isSuperOverInnings
           ? (aggRow?.balls ?? 0)
-          : (item?.balls ?? 0);
+          : (computedRow?.balls ?? item?.balls ?? 0);
         const outLine = isSuperOverInnings
           ? getSuperOverOutText(item.id, innings, currentMatch, bowlingKey)
           : getOutText(item, currentMatch, innings, battingKey);
@@ -267,5 +282,10 @@ const styles = StyleSheet.create({
   empty: {
     paddingHorizontal: widthPixel(14),
     paddingVertical: heightPixel(16),
+  },
+  emptyLinkText: {
+    marginTop: heightPixel(6),
+    fontFamily: fontFamilies.semibold,
+    fontSize: fontPixel(12),
   },
 });

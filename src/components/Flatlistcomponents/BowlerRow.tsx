@@ -1,4 +1,4 @@
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import React, { useMemo } from 'react';
 import { fontPixel, heightPixel, widthPixel } from '../../utils/constants';
 import {
@@ -16,6 +16,8 @@ interface BowlerRowProps {
   currentMatch?: any;
   /** When set, drives ball-only stats row (Super Over); when unset, uses currentInnings 3/4. */
   useInningsBallsOnlyStats?: boolean;
+  onPressAdd?: () => void;
+  computed?: any;
 }
 
 const calcEcon = (runs?: number, oversVal?: string | number | null) => {
@@ -51,6 +53,8 @@ const Bowlerow = ({
   innings,
   currentMatch,
   useInningsBallsOnlyStats,
+  onPressAdd,
+  computed,
 }: BowlerRowProps) => {
   const { isDark } = useThemeContext();
   const theme = colors[isDark ? 'dark' : 'light'];
@@ -139,9 +143,19 @@ const Bowlerow = ({
 
   if (bowlersData.length === 0) {
     return (
-      <View style={styles.empty}>
+      <Pressable
+        onPress={onPressAdd}
+        disabled={!onPressAdd}
+        style={styles.empty}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      >
         <ThemeText color="secondaryText">No bowler selected</ThemeText>
-      </View>
+        {onPressAdd ? (
+          <ThemeText color="primary" style={styles.emptyLinkText}>
+            + Add bowler
+          </ThemeText>
+        ) : null}
+      </Pressable>
     );
   }
 
@@ -149,6 +163,10 @@ const Bowlerow = ({
     <View style={styles.list}>
       {bowlersData.map((item: any) => {
         const isCurrent = String(item?.id) === String(currentBowler?.id);
+        const computedRow = !isSuperOverInnings ? computed?.bowling?.get?.(item.id) : null;
+        const dispOvers = isSuperOverInnings ? item?.overs : (computedRow?.overs ?? item?.overs);
+        const dispConceded = isSuperOverInnings ? item?.conceded : (computedRow?.conceded ?? item?.conceded);
+        const dispWickets = isSuperOverInnings ? item?.wickets : (computedRow?.wickets ?? item?.wickets);
         return (
           <View
             key={String(item.id)}
@@ -174,19 +192,19 @@ const Bowlerow = ({
 
             <View style={styles.right}>
               <ThemeText style={styles.cell} color="text">
-                {item?.overs ?? '0.0'}
+                {dispOvers ?? '0.0'}
               </ThemeText>
               <ThemeText style={styles.cell} color="text">
                 {item?.maidens ?? 0}
               </ThemeText>
               <ThemeText style={styles.cell} color="text">
-                {item?.conceded ?? 0}
+                {dispConceded ?? 0}
               </ThemeText>
               <ThemeText style={styles.cell} color="text">
-                {item?.wickets ?? 0}
+                {dispWickets ?? 0}
               </ThemeText>
               <ThemeText style={styles.econ} color="desText">
-                {calcEcon(item?.conceded ?? 0, item?.overs)}
+                {calcEcon(dispConceded ?? 0, dispOvers)}
               </ThemeText>
             </View>
           </View>
@@ -235,5 +253,10 @@ const styles = StyleSheet.create({
   empty: {
     paddingHorizontal: widthPixel(14),
     paddingVertical: heightPixel(16),
+  },
+  emptyLinkText: {
+    marginTop: heightPixel(6),
+    fontFamily: fontFamilies.semibold,
+    fontSize: fontPixel(12),
   },
 });

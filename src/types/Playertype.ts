@@ -1,9 +1,27 @@
 export type PlayerRole = 'batsman' | 'bowler' | 'allrounder' | 'wicketkeeper';
 
+export type PlayerStatus =
+  | 'AVAILABLE'
+  | 'BATTING'
+  | 'OUT'
+  | 'BOWLING'
+  | 'FIELDING'
+  | 'SUBSTITUTE'
+  | 'USED';
+
 export interface Player {
   id: number;
   name: string;
   role?: PlayerRole;
+  /** Optional metadata for live player-management (UI + validations). */
+  canBat?: boolean;
+  canBowl?: boolean;
+  canField?: boolean;
+  isSubstitute?: boolean;
+  lateAdded?: boolean;
+  jerseyNumber?: number;
+  /** Optional UI-only status; match engine still uses innings + `isOut`. */
+  status?: PlayerStatus;
   // Batting
   runs: number | null;
   balls: number | null;
@@ -57,11 +75,24 @@ export interface Ball {
   bowlerId: number | null;
 }
 
+/** Reasons recorded from Match Settings (interruption or admin result). */
+export type MatchSettingsReasonChip =
+  | 'RAIN'
+  | 'BAD_LIGHT'
+  | 'TEAM_LEFT'
+  | 'TECHNICAL'
+  | 'OTHER';
+
 export interface MatchSetup {
   matchId: string;
   /** Optional linkage when match is scored inside a tournament fixture. */
   tournamentId?: string;
   fixtureId?: string;
+  /** Fixture-level limit: max players allowed per team. */
+  playersPerTeam?: number | null;
+  /** Source saved team ids (for persisting late-added players back to teams). */
+  sourceTeamAId?: string;
+  sourceTeamBId?: string;
   teamA: Team | null;
   teamB: Team | null;
   tossWinner?: 'teamA' | 'teamB' | '';
@@ -91,6 +122,9 @@ export interface MatchSetup {
   winnerTeamName?: string;
   /** When true, scoring actions are blocked (live match paused). */
   isScoringPaused?: boolean;
+  /** Match Settings: last saved interruption / admin context (optional). */
+  matchSettingsReason?: MatchSettingsReasonChip;
+  matchSettingsNote?: string;
 }
 
 /** Immutable snapshot of one finished Super Over round (two mini-innings). */

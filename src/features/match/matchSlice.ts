@@ -1,6 +1,7 @@
 import {
   Ball,
   Innings,
+  MatchSettingsReasonChip,
   MatchSetup,
   SetOpenersAndBowlerPayload,
   SuperOverRoundSnapshot,
@@ -8,6 +9,41 @@ import {
 import { PayloadAction, createSlice, current } from '@reduxjs/toolkit';
 import { ballsToOvers, oversToBalls } from '../../utils/constants';
 import { PlayerRole } from '../../types/Playertype';
+
+type EditInningsKey =
+  | 'innings1'
+  | 'innings2'
+  | 'superOverInnings1'
+  | 'superOverInnings2';
+
+function renumberBalls(innings: Innings) {
+  const balls = innings.balls ?? [];
+  let legalInOver = 0;
+  let over = 1;
+  for (let i = 0; i < balls.length; i++) {
+    const b = balls[i] as any;
+    b.ballNumber = i + 1;
+    const isWide = b.extra === 'wide';
+    const isNoBall = b.extra === 'noball';
+    const isLegal = !isWide && !isNoBall;
+    if (isLegal) {
+      legalInOver += 1;
+      b.ballInOver = legalInOver;
+    } else {
+      b.ballInOver = 0;
+    }
+    b.over = over;
+    if (isLegal && legalInOver === 6) {
+      over += 1;
+      legalInOver = 0;
+    }
+  }
+}
+
+function getEditableInnings(match: MatchSetup, key: EditInningsKey): Innings | null {
+  const inn = (match as any)?.[key] as Innings | null | undefined;
+  return inn ?? null;
+}
 
 function cloneMatchForUndo(match: MatchSetup): MatchSetup {
   return JSON.parse(JSON.stringify(match)) as MatchSetup;
@@ -77,6 +113,39 @@ function clearAllScorerModals(match: MatchSetup) {
   match.superOverInnings2 && (match.superOverInnings2.activeModal = null);
 }
 
+/** Shared path when a live match is finished and moved to history (matches `resolveTieAsDraw` / auto-complete). */
+function archiveFinishedMatch(state: MatchState, match: MatchSetup) {
+  clearAllScorerModals(match);
+  match.isScoringPaused = false;
+  state.lastCompletedMatch = match;
+  state.history.push(match);
+  state.currentMatch = null;
+  state.preBallSnapshots = [];
+}
+
+export type ApplyMatchSettingsPayload =
+  | {
+      kind: 'interruption';
+      reason: MatchSettingsReasonChip;
+      note?: string;
+    }
+  | {
+      kind: 'no_result';
+      reason: MatchSettingsReasonChip;
+      note?: string;
+    }
+  | {
+      kind: 'tie';
+      reason: MatchSettingsReasonChip;
+      note?: string;
+    }
+  | {
+      kind: 'manual_winner';
+      winner: 'teamA' | 'teamB';
+      reason: MatchSettingsReasonChip;
+      note?: string;
+    };
+
 interface MatchState {
   currentMatch: MatchSetup | null;
   history: MatchSetup[];
@@ -128,6 +197,12 @@ const matchSlice = createSlice({
         teamKey: 'teamA' | 'teamB';
         name: string;
         role?: PlayerRole;
+        canBat?: boolean;
+        canBowl?: boolean;
+        canField?: boolean;
+        isSubstitute?: boolean;
+        lateAdded?: boolean;
+        jerseyNumber?: number;
       }>,
     ) {
       const match = state.currentMatch;
@@ -136,6 +211,8 @@ const matchSlice = createSlice({
 
       const team = action.payload.teamKey === 'teamA' ? match.teamA : match.teamB;
       if (!team) return;
+      const cap = match.playersPerTeam;
+      if (typeof cap === 'number' && cap > 0 && (team.players?.length ?? 0) >= cap) return;
 
       const name = (action.payload.name ?? '').trim();
       if (!name) return;
@@ -146,10 +223,37 @@ const matchSlice = createSlice({
       if (exists) return;
 
       const id = Date.now() + Math.floor(Math.random() * 1000);
+      const isSubstitute = !!action.payload.isSubstitute;
+      const canBat =
+        typeof action.payload.canBat === 'boolean'
+          ? action.payload.canBat
+          : isSubstitute
+            ? false
+            : true;
+      const canBowl =
+        typeof action.payload.canBowl === 'boolean'
+          ? action.payload.canBowl
+          : isSubstitute
+            ? false
+            : true;
+      const canField =
+        typeof action.payload.canField === 'boolean'
+          ? action.payload.canField
+          : true;
+      const lateAdded = !!action.payload.lateAdded;
       const next = {
         id,
         name,
         role: action.payload.role,
+        canBat,
+        canBowl,
+        canField,
+        isSubstitute,
+        lateAdded,
+        jerseyNumber:
+          typeof action.payload.jerseyNumber === 'number'
+            ? action.payload.jerseyNumber
+            : undefined,
         runs: 0,
         balls: 0,
         fours: 0,
@@ -165,6 +269,225 @@ const matchSlice = createSlice({
 
       if (!team.players) team.players = [];
       team.players.push(next as any);
+    },
+
+    addMultipleLivePlayersToTeam(
+      state,
+      action: PayloadAction<{
+        teamKey: 'teamA' | 'teamB';
+        names: string[];
+        role?: PlayerRole;
+        /** Defaults applied to each created player (can be overridden later). */
+        defaults?: {
+          canBat?: boolean;
+          canBowl?: boolean;
+          canField?: boolean;
+          isSubstitute?: boolean;
+          lateAdded?: boolean;
+        };
+      }>,
+    ) {
+      const match = state.currentMatch;
+      if (!match) return;
+      if (match.isCompleted) return;
+
+      const team = action.payload.teamKey === 'teamA' ? match.teamA : match.teamB;
+      if (!team) return;
+      if (!team.players) team.players = [];
+      const cap = match.playersPerTeam;
+
+      const existingLower = new Set(
+        (team.players ?? []).map(p => (p.name ?? '').trim().toLowerCase()),
+      );
+
+      const defaults = action.payload.defaults ?? {};
+      const isSubstitute = !!defaults.isSubstitute;
+      const canBat =
+        typeof defaults.canBat === 'boolean' ? defaults.canBat : isSubstitute ? false : true;
+      const canBowl =
+        typeof defaults.canBowl === 'boolean' ? defaults.canBowl : isSubstitute ? false : true;
+      const canField = typeof defaults.canField === 'boolean' ? defaults.canField : true;
+      const lateAdded = !!defaults.lateAdded;
+
+      const uniqueNames: string[] = [];
+      for (const raw of action.payload.names ?? []) {
+        const nm = (raw ?? '').trim().replace(/\s+/g, ' ');
+        if (!nm) continue;
+        const key = nm.toLowerCase();
+        if (existingLower.has(key)) continue;
+        if (uniqueNames.some(x => x.toLowerCase() === key)) continue;
+        uniqueNames.push(nm);
+      }
+
+      for (const nm of uniqueNames) {
+        if (typeof cap === 'number' && cap > 0 && (team.players?.length ?? 0) >= cap) break;
+        const id = Date.now() + Math.floor(Math.random() * 1000) + uniqueNames.indexOf(nm);
+        team.players.push({
+          id,
+          name: nm,
+          role: action.payload.role,
+          canBat,
+          canBowl,
+          canField,
+          isSubstitute,
+          lateAdded,
+          runs: 0,
+          balls: 0,
+          fours: 0,
+          sixes: 0,
+          isOut: false,
+          overs: 0,
+          maidens: 0,
+          conceded: 0,
+          wickets: 0,
+          wides: 0,
+          noBalls: 0,
+        } as any);
+        existingLower.add(nm.toLowerCase());
+      }
+    },
+
+    updateLivePlayerRole(
+      state,
+      action: PayloadAction<{
+        teamKey: 'teamA' | 'teamB';
+        playerId: number;
+        role?: PlayerRole;
+      }>,
+    ) {
+      const match = state.currentMatch;
+      if (!match) return;
+      if (match.isCompleted) return;
+      const team = action.payload.teamKey === 'teamA' ? match.teamA : match.teamB;
+      if (!team?.players) return;
+      const p = team.players.find(x => Number(x.id) === Number(action.payload.playerId));
+      if (!p) return;
+      p.role = action.payload.role;
+    },
+
+    editBall(
+      state,
+      action: PayloadAction<{
+        inningsKey: EditInningsKey;
+        ballIndex: number;
+        patch: Partial<Pick<Ball, 'runs' | 'extra' | 'extraRuns' | 'runsOffBat'>>;
+      }>,
+    ) {
+      const match = state.currentMatch;
+      if (!match) return;
+      const innings = getEditableInnings(match, action.payload.inningsKey);
+      if (!innings?.balls) return;
+      const idx = action.payload.ballIndex;
+      if (idx < 0 || idx >= innings.balls.length) return;
+
+      const b = innings.balls[idx] as any;
+      // Scope A: do not allow editing wicket/ids.
+      b.runs = action.payload.patch.runs ?? b.runs;
+      b.extra = action.payload.patch.extra ?? b.extra;
+      b.extraRuns =
+        action.payload.patch.extraRuns !== undefined ? action.payload.patch.extraRuns : b.extraRuns;
+      b.runsOffBat =
+        action.payload.patch.runsOffBat !== undefined ? action.payload.patch.runsOffBat : b.runsOffBat;
+
+      renumberBalls(innings);
+    },
+
+    deleteBall(
+      state,
+      action: PayloadAction<{ inningsKey: EditInningsKey; ballIndex: number }>,
+    ) {
+      const match = state.currentMatch;
+      if (!match) return;
+      const innings = getEditableInnings(match, action.payload.inningsKey);
+      if (!innings?.balls) return;
+      const idx = action.payload.ballIndex;
+      if (idx < 0 || idx >= innings.balls.length) return;
+      innings.balls.splice(idx, 1);
+      renumberBalls(innings);
+    },
+
+    insertBall(
+      state,
+      action: PayloadAction<{
+        inningsKey: EditInningsKey;
+        afterBallIndex: number;
+        ball: Pick<Ball, 'runs' | 'extra' | 'extraRuns' | 'runsOffBat' | 'strikerId' | 'bowlerId'>;
+      }>,
+    ) {
+      const match = state.currentMatch;
+      if (!match) return;
+      const innings = getEditableInnings(match, action.payload.inningsKey);
+      if (!innings) return;
+      if (!innings.balls) innings.balls = [];
+
+      const insertAt = Math.min(
+        Math.max(action.payload.afterBallIndex + 1, 0),
+        innings.balls.length,
+      );
+
+      const base: Ball = {
+        ballNumber: 0,
+        over: 0,
+        ballInOver: 0,
+        runs: action.payload.ball.runs ?? 0,
+        extra: action.payload.ball.extra ?? null,
+        extraRuns: action.payload.ball.extraRuns,
+        runsOffBat: action.payload.ball.runsOffBat ?? 0,
+        wicket: false,
+        dismissedBatsmanId: null,
+        strikerId: action.payload.ball.strikerId ?? null,
+        bowlerId: action.payload.ball.bowlerId ?? null,
+      };
+
+      innings.balls.splice(insertAt, 0, base);
+      renumberBalls(innings);
+    },
+
+    annotateLastDismissal(
+      state,
+      action: PayloadAction<{
+        outType:
+          | 'bowled'
+          | 'caught'
+          | 'lbw'
+          | 'runout'
+          | 'stumped'
+          | 'hitwicket'
+          | 'retired'
+          | '';
+        outByBowlerId?: number | string | null;
+        outByFielderId?: number | string | null;
+      }>,
+    ) {
+      const match = state.currentMatch;
+      if (!match) return;
+      if (match.isCompleted) return;
+      const key = getScoringInningsKey(match);
+      if (!key) return;
+      const innings = match[key];
+      if (!innings) return;
+
+      // Find last dismissed batter from balls history.
+      let dismissedId: number | null = null;
+      for (let i = (innings.balls?.length ?? 0) - 1; i >= 0; i--) {
+        const b = innings.balls[i];
+        if (b?.dismissedBatsmanId != null) {
+          dismissedId = b.dismissedBatsmanId ?? null;
+          break;
+        }
+      }
+      if (dismissedId == null) return;
+
+      const batTeam = match[innings.battingTeam];
+      if (!batTeam) return;
+      const p = batTeam.players?.find(x => x.id === dismissedId);
+      if (!p) return;
+
+      p.outType = action.payload.outType;
+      p.outByBowlerId =
+        action.payload.outByBowlerId == null ? null : String(action.payload.outByBowlerId);
+      p.outByFielderId =
+        action.payload.outByFielderId == null ? null : String(action.payload.outByFielderId);
     },
     // addStrikerAndBowlerInnings(state, action: PayloadAction<any>) {
     //   const match = state.currentMatch;
@@ -604,13 +927,7 @@ const matchSlice = createSlice({
           : match.teamB?.name ?? '';
       match.resultReason = resultReason;
 
-      clearAllScorerModals(match);
-      match.isScoringPaused = false;
-
-      state.lastCompletedMatch = match;
-      state.history.push(match);
-      state.currentMatch = null;
-      state.preBallSnapshots = [];
+      archiveFinishedMatch(state, match);
     },
 
     resolveTieAsDraw(state) {
@@ -630,12 +947,7 @@ const matchSlice = createSlice({
       match.resultReason = 'TIE';
       match.tieResolvedBy = hadCompletedSuperOver ? 'super_over_tied' : 'draw';
 
-      clearAllScorerModals(match);
-
-      state.lastCompletedMatch = match;
-      state.history.push(match);
-      state.currentMatch = null;
-      state.preBallSnapshots = [];
+      archiveFinishedMatch(state, match);
     },
 
     beginSuperOver(state) {
@@ -762,13 +1074,67 @@ const matchSlice = createSlice({
       match.resultReason = resultReason;
       match.tieResolvedBy = 'super_over';
 
-      clearAllScorerModals(match);
-      match.isScoringPaused = false;
+      archiveFinishedMatch(state, match);
+    },
 
-      state.lastCompletedMatch = match;
-      state.history.push(match);
-      state.currentMatch = null;
-      state.preBallSnapshots = [];
+    applyMatchSettingsDecision(state, action: PayloadAction<ApplyMatchSettingsPayload>) {
+      const match = state.currentMatch;
+      if (!match || match.isCompleted) return;
+
+      const payload = action.payload;
+      const noteTrim = (payload.note ?? '').trim();
+      const reason = payload.reason;
+
+      const writeMeta = () => {
+        match.matchSettingsReason = reason;
+        match.matchSettingsNote = noteTrim || undefined;
+      };
+
+      if (payload.kind === 'interruption') {
+        writeMeta();
+        return;
+      }
+
+      writeMeta();
+      match.pendingTieResolution = false;
+
+      if (payload.kind === 'no_result') {
+        match.isCompleted = true;
+        match.winnerTeam = null;
+        match.winnerTeamName = '';
+        match.resultReason = 'NO_RESULT';
+        match.tieResolvedBy = undefined;
+        archiveFinishedMatch(state, match);
+        return;
+      }
+
+      if (payload.kind === 'tie') {
+        const hadCompletedSuperOver =
+          (match.superOverHistory?.length ?? 0) > 0 ||
+          (!!match.superOverInnings1?.isCompleted &&
+            !!match.superOverInnings2?.isCompleted);
+        match.isCompleted = true;
+        match.winnerTeam = null;
+        match.winnerTeamName = '';
+        match.resultReason = 'TIE';
+        match.tieResolvedBy = hadCompletedSuperOver ? 'super_over_tied' : 'draw';
+        archiveFinishedMatch(state, match);
+        return;
+      }
+
+      if (payload.kind === 'manual_winner') {
+        const w = payload.winner;
+        const hadCompletedSuperOver =
+          !!match.superOverInnings1?.isCompleted &&
+          !!match.superOverInnings2?.isCompleted;
+        match.isCompleted = true;
+        match.winnerTeam = w;
+        match.winnerTeamName =
+          w === 'teamA' ? match.teamA?.name ?? '' : match.teamB?.name ?? '';
+        match.resultReason = 'DEFENDED';
+        match.tieResolvedBy = hadCompletedSuperOver ? 'super_over' : undefined;
+        archiveFinishedMatch(state, match);
+      }
     },
 
     undoLastBall(state) {
@@ -814,6 +1180,12 @@ export const {
   setmatch,
   updateMatch,
   addLivePlayerToTeam,
+  addMultipleLivePlayersToTeam,
+  updateLivePlayerRole,
+  annotateLastDismissal,
+  editBall,
+  deleteBall,
+  insertBall,
   endMatch,
   clearHistory,
   clearLastCompletedMatch,
@@ -830,6 +1202,7 @@ export const {
   beginSuperOver,
   startSuperOverSecondInnings,
   completeSuperOverIfNeeded,
+  applyMatchSettingsDecision,
   setHistory,
 } = matchSlice.actions;
 export default matchSlice.reducer;

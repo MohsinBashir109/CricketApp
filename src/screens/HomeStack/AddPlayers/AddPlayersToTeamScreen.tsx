@@ -3,7 +3,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   View,
 } from 'react-native';
@@ -14,6 +13,10 @@ import {
 import { fontPixel, heightPixel, widthPixel } from '../../../utils/constants';
 import { useThemeContext } from '../../../theme/themeContext';
 import { cardShadowLg } from '../../../utils/cardShadow';
+import ThemeText from '../../../components/ThemeText';
+import Button from '../../../components/themeButton';
+import { colors } from '../../../utils/colors';
+import { fontFamilies } from '../../../utils/fontfamilies';
 
 export type TeamRoleLabel =
   | 'Batsman'
@@ -33,15 +36,6 @@ const ROLES: TeamRoleLabel[] = [
   'All-Rounder',
   'Wicketkeeper',
 ];
-
-const PRIMARY = '#0F6B4E';
-const PRIMARY_SOFT = '#E6F4EF';
-const BG = '#F6F7F5';
-const SURFACE = '#FFFFFF';
-const TEXT = '#1A1F1C';
-const TEXT_MUTED = '#6B7280';
-const BORDER = '#E5E8E6';
-const ERROR = '#DC2626';
 
 type Props = {
   /** Team display name, e.g. "Tg" → title becomes "Add Players to Team Tg" */
@@ -78,6 +72,7 @@ const AddPlayersToTeamScreen: React.FC<Props> = ({
   const [inputError, setInputError] = useState<string | null>(null);
   const insets = useSafeAreaInsets();
   const { isDark } = useThemeContext();
+  const theme = colors[isDark ? 'dark' : 'light'];
 
   const title = useMemo(
     () => `Add Players to Team ${teamDisplayName}`,
@@ -159,25 +154,32 @@ const AddPlayersToTeamScreen: React.FC<Props> = ({
   const addDisabled = !canAdd;
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-      <View style={styles.root}>
-        <View style={styles.header}>
+    <SafeAreaView
+      style={[styles.safe, { backgroundColor: theme.background }]}
+      edges={['top', 'left', 'right']}
+    >
+      <View style={[styles.root, { backgroundColor: theme.background }]}>
+        <View style={[styles.header, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
           <Pressable
             onPress={onBack}
             hitSlop={12}
-            style={styles.backBtn}
+            style={[styles.backBtn, { backgroundColor: theme.primaryMuted }]}
             accessibilityRole="button"
             accessibilityLabel="Go back"
           >
-            <Text style={styles.backArrow}>‹</Text>
+            <ThemeText color="primary" style={styles.backArrow}>
+              ‹
+            </ThemeText>
           </Pressable>
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{initialsFromName(teamDisplayName)}</Text>
+          <View style={[styles.badge, { backgroundColor: theme.primary }]}>
+            <ThemeText color="white" style={styles.badgeText}>
+              {initialsFromName(teamDisplayName)}
+            </ThemeText>
           </View>
           <View style={styles.headerTextBlock}>
-            <Text style={styles.title} numberOfLines={2}>
+            <ThemeText color="text" style={styles.title} numberOfLines={2}>
               {title}
-            </Text>
+            </ThemeText>
           </View>
         </View>
 
@@ -187,19 +189,25 @@ const AddPlayersToTeamScreen: React.FC<Props> = ({
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.intro}>
+          <ThemeText color="secondaryText" style={styles.intro}>
             Enter player details to build your team lineup.
-          </Text>
+          </ThemeText>
 
           <View style={isDark ? styles.cardShadowWrapDark : styles.cardShadowWrapLight}>
-            <View style={styles.card}>
+            <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             <View
               style={[
                 styles.inputShell,
                 inputError ? styles.inputShellError : null,
+                {
+                  borderColor: inputError ? theme.error : theme.border,
+                  backgroundColor: inputError ? theme.errorMuted : theme.surfaceElevated,
+                },
               ]}
             >
-              <Text style={styles.inputIcon}>◎</Text>
+              <ThemeText color="primary" style={styles.inputIcon}>
+                ◎
+              </ThemeText>
               <TextInput
                 value={playerName}
                 onChangeText={t => {
@@ -207,17 +215,21 @@ const AddPlayersToTeamScreen: React.FC<Props> = ({
                   if (inputError) setInputError(null);
                 }}
                 placeholder="Player Name"
-                placeholderTextColor={TEXT_MUTED}
-                style={styles.input}
+                placeholderTextColor={theme.secondaryText}
+                style={[styles.input, { color: theme.text }]}
                 autoCapitalize="words"
                 autoCorrect={false}
               />
             </View>
             {inputError ? (
-              <Text style={styles.errorText}>{inputError}</Text>
+              <ThemeText color="error" style={styles.errorText}>
+                {inputError}
+              </ThemeText>
             ) : null}
 
-            <Text style={styles.sectionLabel}>Select Role</Text>
+            <ThemeText color="text" style={styles.sectionLabel}>
+              Select Role
+            </ThemeText>
             <View style={styles.roleWrap}>
               {ROLES.map(role => {
                 const selected = selectedRole === role;
@@ -230,54 +242,44 @@ const AddPlayersToTeamScreen: React.FC<Props> = ({
                     }}
                     style={({ pressed }) => [
                       styles.roleChip,
-                      selected ? styles.roleChipOn : styles.roleChipOff,
+                      {
+                        borderColor: selected ? theme.primary : theme.border,
+                        backgroundColor: selected ? theme.primaryMuted : theme.surface,
+                      },
                       pressed && !selected && styles.roleChipPressed,
                     ]}
                   >
-                    <Text
-                      style={[
-                        styles.roleChipText,
-                        selected && styles.roleChipTextOn,
-                      ]}
-                    >
+                    <ThemeText color={selected ? 'primary' : 'text'} style={styles.roleChipText}>
                       {role}
-                    </Text>
+                    </ThemeText>
                   </Pressable>
                 );
               })}
             </View>
 
-            <Pressable
-              onPress={handleAddOrUpdate}
-              disabled={addDisabled}
-              style={({ pressed }) => [
-                styles.primaryBtn,
-                addDisabled && styles.primaryBtnDisabled,
-                pressed && !addDisabled && styles.primaryBtnPressed,
-              ]}
-            >
-              <Text style={styles.primaryBtnText}>{primaryCtaLabel}</Text>
-            </Pressable>
+            <Button title={primaryCtaLabel} onPress={handleAddOrUpdate} disabled={addDisabled} />
             </View>
           </View>
 
-          <Text style={styles.listHeading}>Squad</Text>
+          <ThemeText color="secondaryText" style={styles.listHeading}>
+            Squad
+          </ThemeText>
           <View style={isDark ? styles.cardShadowWrapDark : styles.cardShadowWrapLight}>
-            <View style={styles.listCard}>
-            <View style={styles.listHeaderRow}>
-              <Text style={[styles.colIdx, styles.listHeaderText]}>#</Text>
-              <Text style={[styles.colName, styles.listHeaderText]}>
+            <View style={[styles.listCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+            <View style={[styles.listHeaderRow, { backgroundColor: theme.surfaceElevated, borderBottomColor: theme.border }]}>
+              <ThemeText color="secondaryText" style={[styles.colIdx, styles.listHeaderText]}>#</ThemeText>
+              <ThemeText color="secondaryText" style={[styles.colName, styles.listHeaderText]}>
                 Player Name
-              </Text>
-              <Text style={[styles.colRole, styles.listHeaderText]}>Role</Text>
-              <Text style={[styles.colAct, styles.listHeaderText]}> </Text>
+              </ThemeText>
+              <ThemeText color="secondaryText" style={[styles.colRole, styles.listHeaderText]}>Role</ThemeText>
+              <ThemeText color="secondaryText" style={[styles.colAct, styles.listHeaderText]}> </ThemeText>
             </View>
 
             {players.length === 0 ? (
-              <Text style={styles.empty}>
+              <ThemeText color="secondaryText" style={styles.empty}>
                 No players added yet. Start by entering a player name and
                 selecting a role.
-              </Text>
+              </ThemeText>
             ) : (
               players.map((p, index) => (
                 <View
@@ -285,37 +287,38 @@ const AddPlayersToTeamScreen: React.FC<Props> = ({
                   style={[
                     styles.row,
                     index === players.length - 1 && styles.rowLast,
+                    { borderBottomColor: theme.border },
                   ]}
                 >
-                  <Text style={[styles.colIdx, styles.rowText]}>{index + 1}</Text>
-                  <Text
-                    style={[styles.colName, styles.rowTextBold]}
-                    numberOfLines={1}
-                  >
+                  <ThemeText color="secondaryText" style={[styles.colIdx, styles.rowText]}>
+                    {index + 1}
+                  </ThemeText>
+                  <ThemeText color="text" style={[styles.colName, styles.rowTextBold]} numberOfLines={1}>
                     {p.name}
-                  </Text>
-                  <Text
-                    style={[styles.colRole, styles.rowTextMuted]}
-                    numberOfLines={1}
-                  >
+                  </ThemeText>
+                  <ThemeText color="secondaryText" style={[styles.colRole, styles.rowTextMuted]} numberOfLines={1}>
                     {p.role}
-                  </Text>
+                  </ThemeText>
                   <View style={styles.colAct}>
                     <Pressable
                       onPress={() => startEdit(p)}
-                      style={styles.iconBtn}
+                      style={[styles.iconBtn, { backgroundColor: theme.primaryMuted }]}
                       hitSlop={8}
                       accessibilityLabel={`Edit ${p.name}`}
                     >
-                      <Text style={styles.iconBtnText}>Edit</Text>
+                      <ThemeText color="primary" style={styles.iconBtnText}>
+                        Edit
+                      </ThemeText>
                     </Pressable>
                     <Pressable
                       onPress={() => removePlayer(p.id)}
-                      style={styles.iconBtnDanger}
+                      style={[styles.iconBtnDanger, { backgroundColor: theme.errorMuted }]}
                       hitSlop={8}
                       accessibilityLabel={`Remove ${p.name}`}
                     >
-                      <Text style={styles.iconBtnDangerText}>Del</Text>
+                      <ThemeText color="error" style={styles.iconBtnDangerText}>
+                        Del
+                      </ThemeText>
                     </Pressable>
                   </View>
                 </View>
@@ -329,19 +332,10 @@ const AddPlayersToTeamScreen: React.FC<Props> = ({
           style={[
             styles.footer,
             { paddingBottom: Math.max(insets.bottom, heightPixel(12)) },
+            { backgroundColor: theme.surface, borderTopColor: theme.border },
           ]}
         >
-          <Pressable
-            onPress={handleSaveTeam}
-            disabled={players.length === 0}
-            style={({ pressed }) => [
-              styles.saveBtn,
-              players.length === 0 && styles.saveBtnDisabled,
-              pressed && players.length > 0 && styles.saveBtnPressed,
-            ]}
-          >
-            <Text style={styles.saveBtnText}>Save Team</Text>
-          </Pressable>
+          <Button title="Save Team" onPress={handleSaveTeam} disabled={players.length === 0} />
         </View>
       </View>
     </SafeAreaView>
@@ -355,41 +349,34 @@ const styles = StyleSheet.create({
   cardShadowWrapDark: cardShadowLg(true),
   safe: {
     flex: 1,
-    backgroundColor: BG,
   },
   root: {
     flex: 1,
-    backgroundColor: BG,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: widthPixel(16),
     paddingVertical: heightPixel(14),
-    backgroundColor: SURFACE,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: BORDER,
     gap: widthPixel(12),
   },
   backBtn: {
     width: widthPixel(40),
     height: widthPixel(40),
     borderRadius: widthPixel(12),
-    backgroundColor: PRIMARY_SOFT,
     alignItems: 'center',
     justifyContent: 'center',
   },
   backArrow: {
     fontSize: fontPixel(28),
-    color: PRIMARY,
     marginTop: -heightPixel(4),
-    fontWeight: '600',
+    fontFamily: fontFamilies.semibold,
   },
   badge: {
     width: widthPixel(44),
     height: widthPixel(44),
     borderRadius: widthPixel(14),
-    backgroundColor: PRIMARY,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -399,9 +386,8 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   badgeText: {
-    color: '#FFFFFF',
     fontSize: fontPixel(14),
-    fontWeight: '700',
+    fontFamily: fontFamilies.bold,
     letterSpacing: 0.5,
   },
   headerTextBlock: {
@@ -410,8 +396,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: fontPixel(17),
-    fontWeight: '700',
-    color: TEXT,
+    fontFamily: fontFamilies.bold,
     letterSpacing: -0.2,
   },
   scroll: {
@@ -424,54 +409,42 @@ const styles = StyleSheet.create({
   },
   intro: {
     fontSize: fontPixel(14),
-    color: TEXT_MUTED,
     lineHeight: fontPixel(20),
     marginBottom: heightPixel(18),
   },
   card: {
-    backgroundColor: SURFACE,
     borderRadius: widthPixel(18),
     padding: widthPixel(18),
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: BORDER,
   },
   inputShell: {
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: widthPixel(14),
     borderWidth: 1,
-    borderColor: BORDER,
-    backgroundColor: '#FAFBFA',
     paddingHorizontal: widthPixel(14),
     minHeight: heightPixel(52),
   },
-  inputShellError: {
-    borderColor: ERROR,
-    backgroundColor: '#FEF2F2',
-  },
+  inputShellError: {},
   inputIcon: {
     fontSize: fontPixel(18),
-    color: PRIMARY,
     marginRight: widthPixel(10),
   },
   input: {
     flex: 1,
     fontSize: fontPixel(16),
-    color: TEXT,
     paddingVertical: heightPixel(12),
   },
   errorText: {
     marginTop: heightPixel(8),
     fontSize: fontPixel(13),
-    color: ERROR,
-    fontWeight: '500',
+    fontFamily: fontFamilies.medium,
   },
   sectionLabel: {
     marginTop: heightPixel(20),
     marginBottom: heightPixel(10),
     fontSize: fontPixel(13),
-    fontWeight: '700',
-    color: TEXT,
+    fontFamily: fontFamilies.semibold,
     letterSpacing: 0.3,
   },
   roleWrap: {
@@ -485,64 +458,26 @@ const styles = StyleSheet.create({
     borderRadius: widthPixel(999),
     borderWidth: 1,
   },
-  roleChipOff: {
-    backgroundColor: SURFACE,
-    borderColor: BORDER,
-  },
-  roleChipOn: {
-    backgroundColor: PRIMARY,
-    borderColor: PRIMARY,
-  },
+  roleChipOff: {},
+  roleChipOn: {},
   roleChipPressed: {
     opacity: 0.92,
   },
   roleChipText: {
     fontSize: fontPixel(13),
-    fontWeight: '600',
-    color: TEXT,
-  },
-  roleChipTextOn: {
-    color: '#FFFFFF',
-  },
-  primaryBtn: {
-    marginTop: heightPixel(22),
-    backgroundColor: PRIMARY,
-    borderRadius: widthPixel(14),
-    paddingVertical: heightPixel(16),
-    alignItems: 'center',
-    shadowColor: PRIMARY,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  primaryBtnDisabled: {
-    backgroundColor: '#A8B5AF',
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  primaryBtnPressed: {
-    opacity: 0.92,
-  },
-  primaryBtnText: {
-    color: '#FFFFFF',
-    fontSize: fontPixel(16),
-    fontWeight: '700',
+    fontFamily: fontFamilies.semibold,
   },
   listHeading: {
     marginTop: heightPixel(28),
     marginBottom: heightPixel(10),
     fontSize: fontPixel(13),
-    fontWeight: '700',
-    color: TEXT_MUTED,
+    fontFamily: fontFamilies.semibold,
     textTransform: 'uppercase',
     letterSpacing: 0.8,
   },
   listCard: {
-    backgroundColor: SURFACE,
     borderRadius: widthPixel(18),
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: BORDER,
     overflow: 'hidden',
   },
   listHeaderRow: {
@@ -550,14 +485,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: heightPixel(12),
     paddingHorizontal: widthPixel(14),
-    backgroundColor: '#F3F5F4',
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: BORDER,
   },
   listHeaderText: {
     fontSize: fontPixel(11),
-    fontWeight: '700',
-    color: TEXT_MUTED,
+    fontFamily: fontFamilies.bold,
     textTransform: 'uppercase',
     letterSpacing: 0.4,
   },
@@ -579,7 +511,6 @@ const styles = StyleSheet.create({
   empty: {
     padding: widthPixel(20),
     fontSize: fontPixel(14),
-    color: TEXT_MUTED,
     lineHeight: fontPixel(21),
     textAlign: 'center',
   },
@@ -589,69 +520,42 @@ const styles = StyleSheet.create({
     paddingVertical: heightPixel(14),
     paddingHorizontal: widthPixel(14),
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: BORDER,
   },
   rowLast: {
     borderBottomWidth: 0,
   },
   rowText: {
     fontSize: fontPixel(14),
-    color: TEXT_MUTED,
   },
   rowTextBold: {
     fontSize: fontPixel(15),
-    fontWeight: '600',
-    color: TEXT,
+    fontFamily: fontFamilies.semibold,
   },
   rowTextMuted: {
     fontSize: fontPixel(13),
-    color: TEXT_MUTED,
   },
   iconBtn: {
     paddingVertical: heightPixel(6),
     paddingHorizontal: widthPixel(8),
     borderRadius: widthPixel(8),
-    backgroundColor: PRIMARY_SOFT,
     marginRight: widthPixel(6),
   },
   iconBtnText: {
     fontSize: fontPixel(12),
-    fontWeight: '700',
-    color: PRIMARY,
+    fontFamily: fontFamilies.bold,
   },
   iconBtnDanger: {
     paddingVertical: heightPixel(6),
     paddingHorizontal: widthPixel(8),
     borderRadius: widthPixel(8),
-    backgroundColor: '#FEF2F2',
   },
   iconBtnDangerText: {
     fontSize: fontPixel(12),
-    fontWeight: '700',
-    color: ERROR,
+    fontFamily: fontFamilies.bold,
   },
   footer: {
     paddingHorizontal: widthPixel(16),
     paddingTop: heightPixel(10),
-    backgroundColor: SURFACE,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: BORDER,
-  },
-  saveBtn: {
-    backgroundColor: PRIMARY,
-    borderRadius: widthPixel(14),
-    paddingVertical: heightPixel(16),
-    alignItems: 'center',
-  },
-  saveBtnDisabled: {
-    backgroundColor: '#C5CDC8',
-  },
-  saveBtnPressed: {
-    opacity: 0.92,
-  },
-  saveBtnText: {
-    color: '#FFFFFF',
-    fontSize: fontPixel(16),
-    fontWeight: '700',
   },
 });

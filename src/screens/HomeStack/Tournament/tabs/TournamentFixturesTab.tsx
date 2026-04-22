@@ -2,6 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import {
   Alert,
   Image,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -30,6 +31,7 @@ import {
   deleteTournamentFixture,
   generateFullTournamentSchedule,
   generateTournamentFixtures,
+  setFixtureLive,
   updateTournamentFixture,
 } from '../../../../features/tournament/tournamentSlice';
 import { computeKnockoutFillFromGroupStage } from '../../../../features/tournament/tournamentBracketSync';
@@ -92,6 +94,11 @@ const ScheduleMatchCard = ({
 }) => {
   const na = fixtureSideName(f, 'A', teamsById);
   const nb = fixtureSideName(f, 'B', teamsById);
+  const scorable =
+    !isTournamentPlaceholderTeamId(f.teamAId) &&
+    !isTournamentPlaceholderTeamId(f.teamBId) &&
+    f.teamAId !== TOURNAMENT_BYE_TEAM_ID &&
+    f.teamBId !== TOURNAMENT_BYE_TEAM_ID;
   const metaParts: string[] = [];
   if (f.overs) metaParts.push(`T${f.overs}`);
   if (f.roundLabel) metaParts.push(f.roundLabel);
@@ -128,12 +135,6 @@ const ScheduleMatchCard = ({
   const showHighlightsSlot =
     ['completed', 'no_result', 'abandoned'].includes(f.status) && (canSummary || !!f.resultSummary);
 
-  const isMatchDayOrPast = (iso: string) => {
-    const d = dayjs(iso);
-    if (!d.isValid()) return false;
-    return d.startOf('day').valueOf() <= dayjs().startOf('day').valueOf();
-  };
-
   return (
     <View
       style={[
@@ -166,10 +167,14 @@ const ScheduleMatchCard = ({
           <Text style={[styles.scoreCell, { color: theme.text }]}>{scoreB}</Text>
         </View>
 
-        {f.status === 'upcoming' && f.scheduledAt && isMatchDayOrPast(f.scheduledAt) ? (
+        {f.status === 'upcoming' ? (
           <View style={styles.liveHintRow}>
-            <ThemeText color="primary" style={styles.liveHintText} numberOfLines={1}>
-              Match day — tap to start scoring
+            <ThemeText
+              color={scorable ? 'primary' : 'secondaryText'}
+              style={styles.liveHintText}
+              numberOfLines={1}
+            >
+              {scorable ? 'Press to start the match' : 'Teams TBC — cannot start yet'}
             </ThemeText>
           </View>
         ) : null}
@@ -341,6 +346,7 @@ const TournamentFixturesTab = ({ tournamentId, navigation }: any) => {
   const [innerIndex, setInnerIndex] = useState(0);
   const [plannerOpen, setPlannerOpen] = useState(false);
   const [editingFixtureId, setEditingFixtureId] = useState<string | null>(null);
+  const [startFixtureId, setStartFixtureId] = useState<string | null>(null);
   const [outerRoutes] = useState([
     { key: 'full', title: 'Full' },
     { key: 'group', title: 'Groups' },
@@ -473,16 +479,33 @@ const TournamentFixturesTab = ({ tournamentId, navigation }: any) => {
     [knockoutFixtures],
   );
 
-  const navToFixture = (fixtureId: string) =>
-    navigation.navigate(appRoutes.tournamentMatchDetail, {
-      tournamentId,
-      fixtureId,
-    });
+  const openStartModal = (fixtureId: string) => setStartFixtureId(fixtureId);
 
   const editingFixture = useMemo(() => {
     if (!editingFixtureId) return null;
     return fixtures.find((f: any) => f.id === editingFixtureId) ?? null;
   }, [editingFixtureId, fixtures]);
+
+  const startFixture = useMemo(() => {
+    if (!startFixtureId) return null;
+    return fixtures.find((f: any) => f.id === startFixtureId) ?? null;
+  }, [startFixtureId, fixtures]);
+
+  const startTeamA = useMemo(() => {
+    if (!startFixture) return null;
+    return teams.find(t => t.id === startFixture.teamAId) ?? null;
+  }, [teams, startFixture]);
+  const startTeamB = useMemo(() => {
+    if (!startFixture) return null;
+    return teams.find(t => t.id === startFixture.teamBId) ?? null;
+  }, [teams, startFixture]);
+
+  const startScorable =
+    !!startFixture &&
+    !isTournamentPlaceholderTeamId(startFixture.teamAId) &&
+    !isTournamentPlaceholderTeamId(startFixture.teamBId) &&
+    startFixture.teamAId !== TOURNAMENT_BYE_TEAM_ID &&
+    startFixture.teamBId !== TOURNAMENT_BYE_TEAM_ID;
 
   const renderInnerScene = ({ route }: any) => {
     switch (route.key) {
@@ -491,7 +514,7 @@ const TournamentFixturesTab = ({ tournamentId, navigation }: any) => {
           <FixturesList
             fixtures={upcoming}
             teamsById={teamsById}
-            onOpenFixture={(fixtureId: string) => navToFixture(fixtureId)}
+            onOpenFixture={(fixtureId: string) => openStartModal(fixtureId)}
             onEditFixture={(fixtureId: string) => {
               const f = fixtures.find((item: any) => item.id === fixtureId);
               if (!f) return;
@@ -504,7 +527,7 @@ const TournamentFixturesTab = ({ tournamentId, navigation }: any) => {
               }
               setEditingFixtureId(fixtureId);
             }}
-            onStartFixture={(fixtureId: string) => navToFixture(fixtureId)}
+            onStartFixture={(fixtureId: string) => openStartModal(fixtureId)}
             onDeleteFixture={(fixtureId: string) => {
               const f = fixtures.find(item => item.id === fixtureId);
               if (!f) return;
@@ -537,7 +560,7 @@ const TournamentFixturesTab = ({ tournamentId, navigation }: any) => {
           <FixturesList
             fixtures={live}
             teamsById={teamsById}
-            onOpenFixture={(fixtureId: string) => navToFixture(fixtureId)}
+            onOpenFixture={(fixtureId: string) => openStartModal(fixtureId)}
             onEditFixture={() => {}}
             onStartFixture={() => {}}
             onDeleteFixture={() => {}}
@@ -554,7 +577,7 @@ const TournamentFixturesTab = ({ tournamentId, navigation }: any) => {
           <FixturesList
             fixtures={completed}
             teamsById={teamsById}
-            onOpenFixture={(fixtureId: string) => navToFixture(fixtureId)}
+            onOpenFixture={(fixtureId: string) => openStartModal(fixtureId)}
             onViewSummary={openFixtureSummary}
             onEditFixture={() => {}}
             onStartFixture={() => {}}
@@ -695,7 +718,7 @@ const TournamentFixturesTab = ({ tournamentId, navigation }: any) => {
               <FixturesList
                 fixtures={groupFixtures.filter((f: any) => f.groupId === g.id)}
                 teamsById={teamsById}
-                onOpenFixture={navToFixture}
+                onOpenFixture={openStartModal}
                 onEditFixture={(fixtureId: string) => {
                   const f = fixtures.find((item: any) => item.id === fixtureId);
                   if (!f) return;
@@ -708,7 +731,7 @@ const TournamentFixturesTab = ({ tournamentId, navigation }: any) => {
                   }
                   setEditingFixtureId(fixtureId);
                 }}
-                onStartFixture={navToFixture}
+                onStartFixture={openStartModal}
                 onDeleteFixture={(fixtureId: string) => {
                   const f = fixtures.find(item => item.id === fixtureId);
                   if (!f) return;
@@ -748,7 +771,7 @@ const TournamentFixturesTab = ({ tournamentId, navigation }: any) => {
       <FixturesList
         fixtures={knockoutSorted}
         teamsById={teamsById}
-        onOpenFixture={navToFixture}
+        onOpenFixture={openStartModal}
         onEditFixture={() => {}}
         onStartFixture={() => {}}
         onDeleteFixture={() => {}}
@@ -886,6 +909,7 @@ const TournamentFixturesTab = ({ tournamentId, navigation }: any) => {
                 generateFullTournamentSchedule({
                   tournamentId,
                   overs: payload.overs,
+                  playersPerTeam: payload.playersPerTeam,
                   doubleRoundRobin: payload.doubleRoundRobin,
                   startAtIso: payload.startAtIso,
                   matchesPerDayMode: payload.matchesPerDayMode,
@@ -906,6 +930,7 @@ const TournamentFixturesTab = ({ tournamentId, navigation }: any) => {
                   tournamentId,
                   mode: payload.mode,
                   overs: payload.overs,
+                  playersPerTeam: payload.playersPerTeam,
                   doubleRoundRobin: payload.doubleRoundRobin,
                   startAtIso: payload.startAtIso,
                   matchesPerDayMode: payload.matchesPerDayMode,
@@ -932,6 +957,7 @@ const TournamentFixturesTab = ({ tournamentId, navigation }: any) => {
           teamBId,
           scheduledAtIso,
           overs,
+          playersPerTeam,
           status,
           resultSummary,
           completeWithoutScoring,
@@ -944,6 +970,7 @@ const TournamentFixturesTab = ({ tournamentId, navigation }: any) => {
               teamBId,
               scheduledAt: scheduledAtIso,
               overs,
+              playersPerTeam,
               status,
               resultSummary,
             }),
@@ -972,6 +999,80 @@ const TournamentFixturesTab = ({ tournamentId, navigation }: any) => {
           }
         }}
       />
+
+      <Modal visible={!!startFixtureId} transparent animationType="fade" onRequestClose={() => setStartFixtureId(null)}>
+        <View style={styles.startWrap}>
+          <Pressable style={styles.startBackdrop} onPress={() => setStartFixtureId(null)} />
+          <View
+            style={[
+              styles.startSheet,
+              isDark ? styles.cardShadowDark : styles.cardShadowLight,
+              { backgroundColor: theme.surface, borderColor: theme.border },
+            ]}
+          >
+            <ThemeText color="text" style={styles.startTitle}>
+              {startFixture?.status === 'live' ? 'Resume scoring' : 'Start scoring'}
+            </ThemeText>
+            <ThemeText color="secondaryText" style={styles.startBody}>
+              {(startTeamA?.name ?? 'Team A') + ' vs ' + (startTeamB?.name ?? 'Team B')}
+            </ThemeText>
+
+            {!startScorable && startFixture?.status === 'upcoming' ? (
+              <ThemeText color="secondaryText" style={styles.startHint}>
+                Teams are not confirmed yet. You can start scoring once both sides are set.
+              </ThemeText>
+            ) : null}
+
+            {startFixture?.status === 'completed' ||
+            startFixture?.status === 'no_result' ||
+            startFixture?.status === 'abandoned' ? (
+              <Button
+                title="View summary"
+                onPress={() => {
+                  if (startFixtureId) openFixtureSummary(startFixtureId);
+                  setStartFixtureId(null);
+                }}
+              />
+            ) : startFixture?.status === 'live' && startFixture?.matchId ? (
+              <Button
+                title="Resume scoring"
+                onPress={() => {
+                  setStartFixtureId(null);
+                  navigation.navigate(appRoutes.matchscoring);
+                }}
+              />
+            ) : (
+              <Button
+                title="Start scoring"
+                disabled={!startScorable || !startTeamA || !startTeamB}
+                onPress={() => {
+                  if (!startFixtureId || !startFixture || !startTeamA || !startTeamB) return;
+                  const matchId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+                  dispatch(setFixtureLive({ tournamentId, fixtureId: startFixtureId, matchId }));
+                  setStartFixtureId(null);
+                  navigation.navigate(appRoutes.startMatch, {
+                    presetMatch: {
+                      tournamentId,
+                      fixtureId: startFixtureId,
+                      matchId,
+                      teamA: startTeamA,
+                      teamB: startTeamB,
+                      overs: startFixture.overs,
+                      playersPerTeam: startFixture.playersPerTeam ?? null,
+                    },
+                  });
+                }}
+              />
+            )}
+
+            <Pressable style={styles.startCancel} onPress={() => setStartFixtureId(null)}>
+              <ThemeText color="secondaryText" style={styles.startCancelText}>
+                Cancel
+              </ThemeText>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -1312,6 +1413,45 @@ const styles = StyleSheet.create({
     paddingHorizontal: widthPixel(12),
     paddingTop: heightPixel(10),
     paddingBottom: heightPixel(14),
+  },
+  startWrap: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: widthPixel(16),
+  },
+  startBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  startSheet: {
+    borderWidth: 1,
+    borderRadius: widthPixel(18),
+    padding: widthPixel(18),
+  },
+  startTitle: {
+    fontFamily: fontFamilies.bold,
+    fontSize: fontPixel(18),
+    marginBottom: heightPixel(6),
+  },
+  startBody: {
+    fontSize: fontPixel(13),
+    lineHeight: fontPixel(19),
+    marginBottom: heightPixel(10),
+    fontFamily: fontFamilies.medium,
+  },
+  startHint: {
+    fontSize: fontPixel(12),
+    lineHeight: fontPixel(18),
+    marginBottom: heightPixel(10),
+  },
+  startCancel: {
+    alignSelf: 'center',
+    marginTop: heightPixel(10),
+    paddingVertical: heightPixel(8),
+  },
+  startCancelText: {
+    fontFamily: fontFamilies.semibold,
+    fontSize: fontPixel(14),
   },
 });
 

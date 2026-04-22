@@ -1,5 +1,6 @@
 import {
   Image,
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -25,6 +26,8 @@ type TextInputField = {
   onChangeText?: (text: string) => void;
   editable?: boolean;
   title?: string;
+  /** Optional info button shown next to the title (does not replace the title). */
+  titleInfoPress?: () => void;
   secureTextEntry?: boolean;
   leftIcon?: any;
   rightIcon?: any;
@@ -42,17 +45,28 @@ type TextInputField = {
 
 const ThemeInput = (props: TextInputField) => {
   const { isDark } = useThemeContext();
+  const palette = colors[isDark ? 'dark' : 'light'];
   return (
     <View style={[style.containerOuter, props.containerStyleOuter]}>
-      {props.title && (
-        <Text
-          style={[
-            style.title,
-            { color: colors[isDark ? 'dark' : 'light'].text },
-          ]}
-        >
-          {props.title}
-        </Text>
+      {(!!props.title || !!props.titleInfoPress) && (
+        <View style={style.titleRow}>
+          {!!props.title && (
+            <Text style={[style.title, { color: palette.text, flex: 1, minWidth: 0 }]}>
+              {props.title}
+            </Text>
+          )}
+          {!!props.titleInfoPress && (
+            <Pressable
+              onPress={props.titleInfoPress}
+              hitSlop={10}
+              style={style.titleInfoHit}
+              accessibilityRole="button"
+              accessibilityLabel="Info"
+            >
+              <Text style={[style.titleInfo, { color: palette.primary }]}>ⓘ</Text>
+            </Pressable>
+          )}
+        </View>
       )}
 
       <View
@@ -144,11 +158,27 @@ const style = StyleSheet.create({
     height: widthPixel(20),
     marginHorizontal: widthPixel(10),
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: heightPixel(5),
+    paddingHorizontal: widthPixel(2),
+  },
   title: {
     fontFamily: fontFamilies.bold,
     fontSize: fontPixel(14),
     marginLeft: widthPixel(5),
-    marginBottom: heightPixel(5),
+    marginBottom: 0,
+  },
+  titleInfoHit: {
+    marginLeft: widthPixel(4),
+    paddingHorizontal: widthPixel(4),
+    paddingVertical: heightPixel(2),
+  },
+  titleInfo: {
+    fontFamily: fontFamilies.bold,
+    fontSize: fontPixel(14),
+    lineHeight: fontPixel(18),
   },
   mainConatiner: {
     flexDirection: 'row',

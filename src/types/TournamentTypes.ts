@@ -35,11 +35,18 @@ export interface TeamPlayer {
   role: PlayerRole;
 }
 
+export type TeamPlayerAddTiming = 'now' | 'during_match';
+
 export interface TeamEntity {
   id: string;
   name: string;
   shortName?: string;
   players: TeamPlayer[];
+  /**
+   * When "during_match", the team can be saved with an empty squad and players
+   * are expected to be added later (e.g. at match time).
+   */
+  playerAddTiming?: TeamPlayerAddTiming;
   createdAt: string;
   updatedAt: string;
   isArchived?: boolean;
@@ -97,6 +104,8 @@ export interface TournamentFixtureEntity {
   teamAId: string;
   teamBId: string;
   overs: number | null;
+  /** Max players allowed per team for this fixture (used for add-during-match). */
+  playersPerTeam?: number | null;
   status: TournamentMatchStatus;
   scheduledAt: string | null;
   venue: string | null;
