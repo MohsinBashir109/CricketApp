@@ -160,6 +160,28 @@ export interface TournamentDraftGroup {
   teamIds: string[];
 }
 
+/** Transient payload from `TournamentStructureScreen` → `CreateTournamentFlow` (Redux, then cleared). */
+export type TournamentStructureDraftResult = {
+  formatType: TournamentFormatType;
+  groupCountInput: string;
+  groupsPreview: TournamentDraftGroup[];
+  groupSeed: string | null;
+  generatedSignature: string | null;
+};
+
+/** Params for `TournamentReviewScreen` (stack navigation, serializable). */
+export type TournamentWizardReviewParams = {
+  tournamentName: string;
+  teamCount: number;
+  selectedTeamIds: string[];
+  formatType: TournamentFormatType;
+  /** Parsed group count; use `0` when format is open (maps to `null` in create payload). */
+  groupCount: number;
+  groupSeed: string | null;
+  groupsPreview: TournamentDraftGroup[];
+  generatedSignature: string | null;
+};
+
 export interface CreateTournamentPayload {
   id?: string;
   name: string;

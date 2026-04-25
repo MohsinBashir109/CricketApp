@@ -24,9 +24,12 @@ interface Score {
   overs?: string;
   innings1?: any;
   currentInnings?: number;
+  /** Optional override for target display (e.g. Super Over chase target = SO1 + 1). */
+  targetRuns?: number | null;
   isPaused?: boolean;
   onTogglePause?: () => void;
   onOpenMatchSettings?: () => void;
+  onOpenSummary?: () => void;
   computed?: any;
 }
 
@@ -38,8 +41,8 @@ const ballsToOversDecimal = (balls: number) =>
 
 const formatThisOverBall = (b: any) => {
   if (b?.wicket) return 'W';
-  if (b?.extra === 'wide') return `Wd${b?.runs > 1 ? b.runs : ''}`;
-  if (b?.extra === 'noball') return `Nb${b?.runs > 1 ? b.runs : ''}`;
+  if (b?.extra === 'wide') return `Wd${Math.max(Number(b?.runs ?? 1), 1)}`;
+  if (b?.extra === 'noball') return `Nb${Math.max(Number(b?.runs ?? 1), 1)}`;
   if (b?.extra === 'bye') return `B${b?.runs || 1}`;
   if (b?.extra === 'legbye') return `Lb${b?.runs || 1}`;
   return b?.runs === 0 ? '•' : String(b?.runs ?? 0);
@@ -51,9 +54,11 @@ const ScoringHeader = ({
   overs,
   innings1,
   currentInnings,
+  targetRuns,
   isPaused = false,
   onTogglePause,
   onOpenMatchSettings,
+  onOpenSummary,
   computed,
 }: Score) => {
   const navigation = useNavigation<any>();
@@ -126,6 +131,13 @@ const ScoringHeader = ({
             </ThemeText>
           </View>
           <View style={styles.toolbarRight}>
+            {onOpenSummary ? (
+              <Pressable hitSlop={16} onPress={() => onOpenSummary()}>
+                <ThemeText style={styles.summaryIcon} color="white">
+                  ⎘
+                </ThemeText>
+              </Pressable>
+            ) : null}
             {onOpenMatchSettings ? (
               <Pressable hitSlop={16} onPress={() => onOpenMatchSettings()}>
                 <ThemeText style={styles.gearIcon} color="white">
@@ -174,9 +186,9 @@ const ScoringHeader = ({
         </View>
 
         <View style={styles.targetRow}>
-          {innings1?.isCompleted ? (
+          {((currentInnings === 2 || currentInnings === 4) && innings1?.isCompleted) ? (
             <ThemeText style={styles.targetText} color="white">
-              Target {innings1?.totalRuns}
+              Target {typeof targetRuns === 'number' ? targetRuns : (Number(innings1?.totalRuns ?? 0) + 1)}
             </ThemeText>
           ) : (
             <ThemeText style={styles.targetText} color="white">
@@ -231,6 +243,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: widthPixel(14),
+  },
+  summaryIcon: {
+    fontSize: fontPixel(18),
+    lineHeight: fontPixel(22),
+    opacity: 0.95,
   },
   gearIcon: {
     fontSize: fontPixel(20),

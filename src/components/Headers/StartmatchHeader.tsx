@@ -1,4 +1,4 @@
-import { Image, Pressable, StyleSheet, View } from 'react-native';
+import { Image, ImageBackground, Pressable, StyleSheet, View } from 'react-native';
 import { fontPixel, heightPixel, widthPixel } from '../../utils/constants';
 
 import DashesProgressBar from '../progressBars/DashesProgressBar';

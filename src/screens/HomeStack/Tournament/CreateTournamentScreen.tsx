@@ -16,11 +16,7 @@ const CreateTournamentScreen = ({ navigation }: any) => {
         contentContainerStyle={styles.content}
       >
         <View>
-          <CreateTournamentFlow
-            navigation={navigation}
-            expanded
-            onCollapse={() => navigation.goBack()}
-          />
+          <CreateTournamentFlow navigation={navigation} expanded />
         </View>
       </ScrollView>
     </HomeWrapper>

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { InteractionManager, ScrollView, StyleSheet, View } from 'react-native';
 import {
   addStrikerAndBowlerInnings,
+  archiveCompletedMatch,
   beginSuperOver,
   completeMatchIfNeeded,
   completeSuperOverIfNeeded,
@@ -40,6 +41,12 @@ import { recomputeInningsFromBalls } from '../../../utils/recomputeFromBalls';
 import EditOversModal from '../../../components/Modals/EditOversModal';
 import MatchSettingsModal from '../../../components/Modals/MatchSettingsModal';
 import { deleteBall, editBall } from '../../../features/match/matchSlice';
+import MatchCompleteModal from '../../../components/Modals/MatchCompleteModal';
+import InningsCompleteModal from '../../../components/Modals/InningsCompleteModal';
+import { routes } from '../../../utils/routes';
+import { getMatchResultFromMatch } from '../../../utils/matchResult';
+import type { MatchResult } from '../../../utils/matchResult';
+import { ballsToOvers } from '../../../utils/constants';
 
 const MatchScoring = () => {
   const { isDark } = useThemeContext();
@@ -55,6 +62,13 @@ const MatchScoring = () => {
   /** Auto-open OPENERS only once per innings start until set. */
   const openersPromptedRef = useRef(false);
   const openersStartStepRef = useRef<'BATTERS' | 'BOWLER'>('BATTERS');
+  /** Ensures the match-complete UI is shown only once per match id. */
+  const matchCompleteShownForMatchIdRef = useRef<string | null>(null);
+  const [matchCompleteModalVisible, setMatchCompleteModalVisible] = useState(false);
+  const [matchCompleteResult, setMatchCompleteResult] = useState<MatchResult | null>(null);
+  /** Innings break: show once when innings1 completes (before starting innings2). */
+  const innings1BreakShownForMatchIdRef = useRef<string | null>(null);
+  const [innings1BreakModalVisible, setInnings1BreakModalVisible] = useState(false);
 
   const innings = useMemo(() => {
     if (!currentMatch) return undefined;
@@ -188,16 +202,29 @@ const MatchScoring = () => {
     if (currentMatch.currentInnings !== 1) return;
 
     if (currentMatch.innings1?.isCompleted) {
-      dispatch(startSecondInnings());
+      const id = currentMatch.matchId;
+      if (innings1BreakShownForMatchIdRef.current !== id) {
+        innings1BreakShownForMatchIdRef.current = id;
+        setInnings1BreakModalVisible(true);
+        return;
+      }
+      if (!innings1BreakModalVisible) {
+        dispatch(startSecondInnings());
+      }
     }
   }, [
     dispatch,
     currentMatch?.currentInnings,
     currentMatch?.innings1?.isCompleted,
+    currentMatch?.matchId,
+    innings1BreakModalVisible,
   ]);
 
   useEffect(() => {
     if (!currentMatch) return;
+    if (currentMatch.isCompleted) return;
+    if (currentMatch.pendingTieResolution) return;
+    if ((currentMatch.currentInnings ?? 1) > 2) return;
 
     const bothDone =
       !!currentMatch.innings1?.isCompleted &&
@@ -208,8 +235,12 @@ const MatchScoring = () => {
     }
   }, [
     dispatch,
+    currentMatch,
+    currentMatch?.currentInnings,
     currentMatch?.innings1?.isCompleted,
     currentMatch?.innings2?.isCompleted,
+    currentMatch?.isCompleted,
+    currentMatch?.pendingTieResolution,
   ]);
 
   useEffect(() => {
@@ -235,13 +266,23 @@ const MatchScoring = () => {
   ]);
 
   useEffect(() => {
-    if (currentMatch || !lastCompletedMatch) return;
-    const id = lastCompletedMatch.matchId;
+    if (!currentMatch?.isCompleted) return;
+    const id = currentMatch.matchId;
     if (!id) return;
+    if (matchCompleteShownForMatchIdRef.current === id) return;
+    matchCompleteShownForMatchIdRef.current = id;
+    setMatchCompleteResult(getMatchResultFromMatch(currentMatch));
+    setMatchCompleteModalVisible(true);
+  }, [currentMatch]);
 
-    const matchSnapshot = lastCompletedMatch;
+  const finalizeCompletedMatchAndLeave = useMemo(() => {
+    return (
+      matchSnapshot: any,
+      opts?: { navigateToSummary?: boolean; replaceToSummary?: boolean },
+    ) => {
+      const id = matchSnapshot?.matchId;
+      if (!matchSnapshot || !id) return;
 
-    const runHandoff = () => {
       if (summaryHandoffForMatchIdRef.current === id) return;
       summaryHandoffForMatchIdRef.current = id;
 
@@ -294,14 +335,21 @@ const MatchScoring = () => {
           );
         }
       }
-      // One tap "View summary" on Matches (or back stack); avoids extra auto-navigation.
+
+      if (opts?.navigateToSummary) {
+        // Uses existing route in `src/utils/routes.ts`. If you later add a dedicated scorecard screen,
+        // you can switch this to that route.
+        if (opts?.replaceToSummary) {
+          navigation.replace(routes.matchsummary, { match: matchSnapshot });
+        } else {
+          navigation.navigate(routes.matchsummary, { match: matchSnapshot });
+        }
+        return;
+      }
+
       navigation.goBack();
     };
-
-    InteractionManager.runAfterInteractions(() => {
-      requestAnimationFrame(runHandoff);
-    });
-  }, [currentMatch, lastCompletedMatch, navigation, dispatch]);
+  }, [dispatch, navigation]);
 
   if (!isReady) {
     return (
@@ -336,16 +384,33 @@ const MatchScoring = () => {
       ? 1
       : currentMatch.overs;
 
+  const targetInningsForHeader =
+    currentMatch.currentInnings === 4
+      ? currentMatch.superOverInnings1
+      : currentMatch.innings1;
+
+  const targetRunsForHeader =
+    currentMatch.currentInnings === 4
+      ? (currentMatch.superOverInnings1?.totalRuns ?? 0) + 1
+      : currentMatch.currentInnings === 2
+        ? (currentMatch.innings1?.totalRuns ?? 0) + 1
+        : null;
+
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <ScoringHeader
         innings={safeInnings}
         overs={oversForHeader}
-        innings1={currentMatch?.innings1}
+        innings1={targetInningsForHeader}
+        targetRuns={targetRunsForHeader}
         currentInnings={headerInningsChip}
         isPaused={isPaused}
         onTogglePause={() => dispatch(setScoringPaused(!isPaused))}
         onOpenMatchSettings={() => setShowMatchSettings(true)}
+        onOpenSummary={() => {
+          // Replace so back goes to fixtures/matches list (not back into scoring).
+          navigation.replace(routes.matchsummary, { match: currentMatch });
+        }}
         computed={computed}
       />
 
@@ -408,8 +473,10 @@ const MatchScoring = () => {
           onRunPress={runs => dispatch(recordBall({ runsOffBat: runs }))}
           onExtraPick={({ type, value }) => {
             if (type === 'wide') {
-              // Wide: extras only (0–6 as picked).
-              dispatch(recordBall({ extra: 'wide', extraRuns: value, runsOffBat: 0 }));
+              // Wide: always +1, plus any additional runs picked (0–6).
+              dispatch(
+                recordBall({ extra: 'wide', extraRuns: (Number(value) + 1) as any, runsOffBat: 0 }),
+              );
               return;
             }
             if (type === 'noball') {
@@ -506,6 +573,57 @@ const MatchScoring = () => {
         onClose={() => setShowMatchSettings(false)}
         teamAName={currentMatch.teamA?.name ?? 'Team A'}
         teamBName={currentMatch.teamB?.name ?? 'Team B'}
+      />
+
+      <InningsCompleteModal
+        visible={innings1BreakModalVisible}
+        inningsLabel="Innings 1"
+        battingTeamName={
+          currentMatch.innings1?.battingTeam === 'teamA'
+            ? currentMatch.teamA?.name ?? 'Team A'
+            : currentMatch.teamB?.name ?? 'Team B'
+        }
+        scoreText={`${currentMatch.innings1?.totalRuns ?? 0}/${currentMatch.innings1?.totalWickets ?? 0} (${ballsToOvers(
+          Number(currentMatch.innings1?.totalBalls ?? 0),
+        )} ov)`}
+        onClose={() => setInnings1BreakModalVisible(false)}
+        onPressContinue={() => {
+          setInnings1BreakModalVisible(false);
+          InteractionManager.runAfterInteractions(() => {
+            requestAnimationFrame(() => dispatch(startSecondInnings()));
+          });
+        }}
+      />
+
+      <MatchCompleteModal
+        visible={matchCompleteModalVisible}
+        result={matchCompleteResult}
+        onClose={() => {
+          setMatchCompleteModalVisible(false);
+        }}
+        onPressViewScorecard={() => {
+          setMatchCompleteModalVisible(false);
+          const snap = currentMatch;
+          if (!snap) return;
+          dispatch(archiveCompletedMatch());
+          InteractionManager.runAfterInteractions(() => {
+            requestAnimationFrame(() =>
+              finalizeCompletedMatchAndLeave(snap, {
+                navigateToSummary: true,
+                replaceToSummary: true,
+              }),
+            );
+          });
+        }}
+        onPressFinish={() => {
+          setMatchCompleteModalVisible(false);
+          const snap = currentMatch;
+          if (!snap) return;
+          dispatch(archiveCompletedMatch());
+          InteractionManager.runAfterInteractions(() => {
+            requestAnimationFrame(() => finalizeCompletedMatchAndLeave(snap));
+          });
+        }}
       />
     </View>
   );

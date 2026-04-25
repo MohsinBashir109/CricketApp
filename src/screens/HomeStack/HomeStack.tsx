@@ -12,6 +12,10 @@ import TournamentTeamSquadScreen from './Tournament/TournamentTeamSquadScreen';
 import TournamentsHome from './Tournament/TournamentsHome';
 import UncompletedTournamentsScreen from './Tournament/UncompletedTournamentsScreen';
 import AddFromSavedTeamsScreen from './Tournament/AddFromSavedTeamsScreen';
+import ChooseTeamsScreen from './Tournament/ChooseTeamsScreen';
+import AddNewTeamForTournamentScreen from './Tournament/AddNewTeamForTournamentScreen';
+import TournamentStructureScreen from './Tournament/TournamentStructureScreen';
+import TournamentReviewScreen from './Tournament/TournamentReviewScreen';
 
 export {
   Profile,
@@ -28,4 +32,8 @@ export {
   TournamentTeamSquadScreen,
   UncompletedTournamentsScreen,
   AddFromSavedTeamsScreen,
+  ChooseTeamsScreen,
+  AddNewTeamForTournamentScreen,
+  TournamentStructureScreen,
+  TournamentReviewScreen,
 };

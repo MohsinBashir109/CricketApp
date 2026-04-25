@@ -1,32 +1,39 @@
 import { useNavigation } from '@react-navigation/native';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import {
+  ImageBackground,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+} from 'react-native';
 import { fontPixel, heightPixel, widthPixel } from '../../../utils/constants';
 import { cardShadowLg, cardShadowSm } from '../../../utils/cardShadow';
-import { matches } from '../../../assets/images';
-
-import Button from '../../../components/themeButton';
+import { live, matches, singlematch } from '../../../assets/images';
 import HomeWrapper from '../../../wrappers/HomeWrapper';
-import MatchCard from '../../../components/MatchCard';
 import React from 'react';
 import ThemeText from '../../../components/ThemeText';
+import {
+  ActiveMatchesCard,
+  MatchHistoryCard,
+  MatchRow,
+} from '../../../components/MatchDashboard';
 import { colors } from '../../../utils/colors';
 import { fontFamilies } from '../../../utils/fontfamilies';
 import { routes } from '../../../utils/routes';
-import { useDispatch, useSelector } from 'react-redux';
+import { useSelector } from 'react-redux';
 import { useThemeContext } from '../../../theme/themeContext';
 import { RootState } from '../../../features/store/rootReducer';
-import { clearLastCompletedMatch } from '../../../features/match/matchSlice';
-
-const ballsToOvers = (balls: number) =>
-  `${Math.floor((balls || 0) / 6)}.${(balls || 0) % 6}`;
 
 const Matches = () => {
   const match = useSelector((state: any) => state.match);
-  const tournamentsById = useSelector((s: RootState) => s.tournament.tournamentsById);
-  const dispatch = useDispatch();
+  const tournamentsById = useSelector(
+    (s: RootState) => s.tournament.tournamentsById,
+  );
   const navigation = useNavigation();
   const { isDark } = useThemeContext();
   const theme = colors[isDark ? 'dark' : 'light'];
+  const [filterOpen, setFilterOpen] = React.useState(false);
+  const [activeFilter, setActiveFilter] = React.useState<'all' | 'live'>('all');
 
   const StartMatch = () => {
     navigation.navigate(routes.startMatch as never);
@@ -40,43 +47,25 @@ const Matches = () => {
     navigation.navigate(routes.matchHistory as never);
   };
 
-  const tossWinnerKey = match?.currentMatch?.tossWinner;
   const currentMatch = match?.currentMatch;
-  const lastCompletedMatch = match?.lastCompletedMatch;
-  const tournamentName =
-    currentMatch?.tournamentId ? tournamentsById?.[currentMatch.tournamentId]?.name : null;
-  const lastTournamentName =
-    lastCompletedMatch?.tournamentId
-      ? tournamentsById?.[lastCompletedMatch.tournamentId]?.name
-      : null;
-  const tossWinnerName =
-    tossWinnerKey === 'teamA'
-      ? currentMatch?.teamA?.name
-      : tossWinnerKey === 'teamB'
-      ? currentMatch?.teamB?.name
-      : '';
+  const tournamentName = currentMatch?.tournamentId
+    ? tournamentsById?.[currentMatch.tournamentId]?.name
+    : null;
+  // legacy UI removed; keep current match bits only for progress + navigation
   const innings =
     currentMatch?.currentInnings === 2
       ? currentMatch?.innings2
       : currentMatch?.innings1;
 
-  const lastResultLine = (() => {
-    const m = lastCompletedMatch;
-    if (!m) return '';
-    const w = m.winnerTeamName ?? '';
-    if (m.resultReason === 'TIE') return 'Match tied';
-    if (m.resultReason === 'NO_RESULT') return 'No result';
-    if (m.tieResolvedBy === 'super_over' && w) return `${w} won (Super Over)`;
-    if (m.tieResolvedBy === 'super_over_tied') return 'Match tied (Super Over tied)';
-    return w ? `${w} won` : 'Match finished';
-  })();
+  const liveProgressPct =
+    currentMatch?.overs && innings?.totalBalls != null
+      ? Math.max(
+          0,
+          Math.min(100, (innings.totalBalls / (currentMatch.overs * 6)) * 100),
+        )
+      : 0;
 
-  const openLastSummary = () => {
-    if (!lastCompletedMatch) return;
-    const snapshot = lastCompletedMatch;
-    dispatch(clearLastCompletedMatch());
-    (navigation as any).navigate(routes.matchsummary, { match: snapshot });
-  };
+  // legacy "last result" section removed (history remains accessible via Match History).
 
   return (
     <HomeWrapper headerShown={true}>
@@ -86,176 +75,149 @@ const Matches = () => {
         showsVerticalScrollIndicator={false}
         nestedScrollEnabled
       >
-        <View style={[styles.section, styles.sectionFirst]}>
-          <View style={styles.sectionTitleRow}>
-            <View
-              style={[
-                styles.liveDot,
-                {
-                  backgroundColor:
-                    currentMatch !== null ? theme.accent : theme.primary,
-                },
-              ]}
-            />
-            <ThemeText style={styles.sectionTitle} color="text">
-              {currentMatch !== null ? 'Live match' : 'Last result'}
-            </ThemeText>
-          </View>
+        {filterOpen ? (
+          <Pressable
+            onPress={() => setFilterOpen(false)}
+            style={styles.dropdownBackdrop}
+          />
+        ) : null}
 
-          {currentMatch !== null ? (
-            <MatchCard
-              teamAName={currentMatch?.teamA?.name}
-              teamBName={currentMatch?.teamB?.name}
-              onPress={openLiveMatch}
-              matchTypeLabel={
-                tournamentName ?? (currentMatch?.tournamentId ? 'Tournament' : 'Simple match')
-              }
-            >
-              <View style={styles.liveMetaRow}>
-                {/* kept row for spacing; overs moved beside score */}
-              </View>
-
-              {innings && (
-                <View style={styles.scoreRow}>
-                  <ThemeText style={styles.bigScore} color="primary">
-                    {innings.totalRuns}
-                    <ThemeText style={styles.wkts} color="secondaryText">
-                      {' '}
-                      / {innings.totalWickets}
-                    </ThemeText>
-                  </ThemeText>
-                  <ThemeText
-                    style={[styles.oversMetaSmall, styles.oversRight]}
-                    color="desText"
-                  >
-                    {ballsToOvers(innings.totalBalls)} / T{currentMatch?.overs}{' '}
-                    overs
-                  </ThemeText>
-                </View>
-              )}
-
-              <View style={styles.tossRow}>
-                <ThemeText
-                  style={styles.tossLine}
-                  color="desText"
-                  numberOfLines={2}
-                >
-                  {tossWinnerName
-                    ? `${tossWinnerName} won the toss and chose to ${currentMatch?.electedTo}.`
-                    : 'Tap to continue scoring.'}
-                </ThemeText>
-
-                <View
-                  style={[
-                    styles.continuePillInline,
-                    { backgroundColor: theme.primaryMuted },
-                  ]}
-                >
-                  <ThemeText style={styles.continueText} color="primary">
-                    Continue →
-                  </ThemeText>
-                </View>
-              </View>
-            </MatchCard>
-          ) : lastCompletedMatch ? (
-            <MatchCard
-              teamAName={lastCompletedMatch?.teamA?.name}
-              teamBName={lastCompletedMatch?.teamB?.name}
-              onPress={openLastSummary}
-              matchTypeLabel={
-                lastTournamentName ??
-                (lastCompletedMatch?.tournamentId ? 'Tournament' : 'Simple match')
-              }
-            >
-              <ThemeText style={styles.lastResultText} color="secondaryText">
-                {lastResultLine}
+        <Pressable
+          onPress={StartMatch}
+          style={[
+            styles.heroImageCard,
+            isDark ? styles.heroShadowDark : styles.heroShadowLight,
+          ]}
+        >
+          <ImageBackground
+            source={singlematch}
+            resizeMode="cover"
+            style={styles.heroImageBg}
+            imageStyle={styles.heroImageBgImage}
+          >
+            <View style={styles.heroImageContent}>
+              <ThemeText color="white" style={styles.heroImageTitle}>
+                Create{'\n'}Single Match
               </ThemeText>
-              <View style={styles.viewSummaryRowHome}>
-                <ThemeText style={styles.viewSummaryTextHome} color="primary">
-                  View summary
-                </ThemeText>
-                <ThemeText style={styles.viewSummaryArrowHome} color="primary">
-                  →
+              <ThemeText color="white" style={styles.heroImageSubtitle}>
+                Create a quick match and start scoring in minutes.
+              </ThemeText>
+              <View style={styles.heroImageCta}>
+                <ThemeText color="white" style={styles.heroImageCtaText}>
+                  Create match
                 </ThemeText>
               </View>
-            </MatchCard>
-          ) : (
-            <View
+            </View>
+          </ImageBackground>
+        </Pressable>
+
+        <View
+          style={[
+            styles.panelCardShell,
+            isDark ? styles.heroShadowDark : styles.heroShadowLight,
+            { backgroundColor: theme.surface, borderColor: theme.border },
+          ]}
+        >
+          <ActiveMatchesCard
+            title="Active Matches"
+            subtitle="Continue where you left off"
+            headerIcon={live}
+            headerIconTint="#21C16B"
+            headerIconBg="#E7F7EE"
+            countLabel={`${currentMatch ? 1 : 0} Ongoing`}
+            countBg={theme.primaryMuted}
+            countFg={theme.primary}
+            isDark={isDark}
+            onPressCount={() => setFilterOpen(v => !v)}
+            dropdownOpen={filterOpen}
+            dropdownItems={[
+              {
+                id: 'all',
+                label: 'All',
+                onPress: () => {
+                  setActiveFilter('all');
+                  setFilterOpen(false);
+                },
+              },
+              {
+                id: 'live',
+                label: 'Live',
+                onPress: () => {
+                  setActiveFilter('live');
+                  setFilterOpen(false);
+                },
+              },
+            ]}
+          >
+            {currentMatch &&
+            (activeFilter === 'all' || activeFilter === 'live') ? (
+              <MatchRow
+                title={`${currentMatch?.teamA?.name ?? '-'} vs ${
+                  currentMatch?.teamB?.name ?? '-'
+                }`}
+                subtitle={
+                  tournamentName ??
+                  (currentMatch?.tournamentId ? 'Tournament' : 'Simple match')
+                }
+                leftIcon={matches}
+                leftIconTint={theme.white}
+                statusLabel="Live"
+                statusBg="#E7F7EE"
+                statusFg="#21C16B"
+                progressPct={liveProgressPct}
+                progressTrackColor={theme.gray3}
+                borderColor={theme.border}
+                backgroundColor={theme.surface}
+                isDark={isDark}
+                onPress={openLiveMatch}
+              />
+            ) : !currentMatch ? (
+              <View style={styles.emptyInline}>
+                <ThemeText color="text" style={styles.emptyInlineTitle}>
+                  No match in progress
+                </ThemeText>
+                <ThemeText color="secondaryText" style={styles.emptyInlineSub}>
+                  Start a match to score ball-by-ball.
+                </ThemeText>
+              </View>
+            ) : null}
+
+            <Pressable
+              onPress={openHistory}
               style={[
-                styles.liveEmptyCard,
-                isDark ? styles.cardShadowDark : styles.cardShadowLight,
+                styles.panelButtonRow,
                 {
-                  backgroundColor: theme.surfaceElevated,
+                  backgroundColor: theme.background,
                   borderColor: theme.border,
                 },
               ]}
             >
-              <ThemeText style={styles.emptyTitle} color="text">
-                No match in progress
+              <ThemeText color="primary" style={styles.panelButtonText}>
+                View match history
               </ThemeText>
-              <ThemeText style={styles.emptyBody} color="secondaryText">
-                Start a match to score ball-by-ball. Your live card will appear
-                here.
+              <ThemeText color="primary" style={styles.panelButtonArrow}>
+                →
               </ThemeText>
-            </View>
-          )}
+            </Pressable>
+          </ActiveMatchesCard>
         </View>
 
         <View
           style={[
-            styles.heroIntroCard,
-            isDark ? styles.heroShadowDark : styles.heroShadowLight,
-            {
-              backgroundColor: theme.surface,
-              borderColor: theme.border,
-            },
+            styles.historyCardShell,
+            isDark ? styles.cardShadowDark : styles.cardShadowLight,
           ]}
         >
-          <ThemeText style={styles.heroTitle} color="text">
-            Matches & scoring
-          </ThemeText>
-          <ThemeText style={styles.heroText} color="secondaryText">
-            Start a fresh match, manage teams, and continue live scoring all
-            from one place.
-          </ThemeText>
-
-          <Button
-            title="Start new match"
-            onPress={StartMatch}
-            buttonStyle={styles.primaryCta}
-            titleStyle={styles.primaryCtaText}
-            leftIcon={matches}
-            leftIconTintColor={theme.white}
+          <MatchHistoryCard
+            title="Match History"
+            subtitle="View completed and saved matches"
+            iconGlyph="↻"
+            iconBg="#F1EAFE"
+            iconColor="#6D28D9"
+            borderColor={theme.border}
+            backgroundColor={theme.surface}
+            onPress={openHistory}
           />
-        </View>
-
-        <View style={styles.section}>
-          <View
-            style={[
-              styles.recentHeroCard,
-              isDark ? styles.heroShadowDark : styles.heroShadowLight,
-              {
-                backgroundColor: theme.surface,
-                borderColor: theme.border,
-              },
-            ]}
-          >
-            <View style={styles.recentTitleRow}>
-              <ThemeText style={styles.sectionTitle} color="text">
-                Recent matches
-              </ThemeText>
-            </View>
-
-            <ThemeText style={styles.recentSubText} color="secondaryText">
-              Browse completed matches and open full scorecards anytime.
-            </ThemeText>
-
-            <Button
-              title="View match history"
-              onPress={openHistory}
-              buttonStyle={styles.recentCta}
-            />
-          </View>
         </View>
       </ScrollView>
     </HomeWrapper>
@@ -273,6 +235,114 @@ const styles = StyleSheet.create({
   content: {
     paddingTop: heightPixel(20),
     paddingBottom: heightPixel(32),
+  },
+  dropdownBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.12)',
+    zIndex: 40,
+  },
+  panelCardShell: {
+    borderWidth: 1,
+    borderRadius: widthPixel(18),
+    overflow: 'hidden',
+    zIndex: 41,
+    marginTop: heightPixel(24),
+  },
+  historyCardShell: {
+    marginTop: heightPixel(14),
+  },
+  panelButtonRow: {
+    marginTop: heightPixel(12),
+    borderWidth: 1,
+    borderRadius: widthPixel(14),
+    paddingVertical: heightPixel(12),
+    paddingHorizontal: widthPixel(14),
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  panelButtonText: {
+    fontFamily: fontFamilies.semibold,
+    fontSize: fontPixel(13),
+  },
+  panelButtonArrow: {
+    fontFamily: fontFamilies.bold,
+    fontSize: fontPixel(16),
+  },
+  emptyInline: {
+    paddingVertical: heightPixel(10),
+    paddingHorizontal: widthPixel(4),
+  },
+  emptyInlineTitle: {
+    fontFamily: fontFamilies.bold,
+    fontSize: fontPixel(14),
+  },
+  emptyInlineSub: {
+    marginTop: heightPixel(4),
+    fontFamily: fontFamilies.medium,
+    fontSize: fontPixel(11),
+    lineHeight: fontPixel(14),
+  },
+  heroImageCard: {
+    marginTop: 0,
+    borderRadius: widthPixel(22),
+    overflow: 'hidden',
+  },
+  heroImageBg: {
+    minHeight: heightPixel(170),
+    padding: widthPixel(18),
+    justifyContent: 'center',
+  },
+  heroImageBgImage: {
+    borderRadius: widthPixel(22),
+  },
+  heroImageContent: {
+    width: '60%',
+    maxWidth: widthPixel(260),
+    minWidth: 0,
+    gap: heightPixel(6),
+  },
+  heroImageTitle: {
+    fontSize: fontPixel(28),
+    lineHeight: fontPixel(34),
+    fontFamily: fontFamilies.bold,
+  },
+  heroImageSubtitle: {
+    fontSize: fontPixel(14),
+    lineHeight: fontPixel(20),
+    opacity: 0.95,
+    fontFamily: fontFamilies.medium,
+  },
+  heroImageCta: {
+    marginTop: heightPixel(10),
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F5B73A',
+    paddingVertical: heightPixel(10),
+    paddingHorizontal: widthPixel(14),
+    borderRadius: widthPixel(10),
+    gap: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.14,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  heroImageCtaIcon: {
+    width: widthPixel(30),
+    height: widthPixel(30),
+    borderRadius: widthPixel(999),
+    backgroundColor: '#0B1D3A',
+  },
+  heroImageCtaText: {
+    fontSize: fontPixel(14),
+    fontFamily: fontFamilies.semibold,
+  },
+  heroImageCtaArrow: {
+    fontSize: fontPixel(16),
+    fontFamily: fontFamilies.bold,
+    marginLeft: widthPixel(4),
   },
   heroIntroCard: {
     marginTop: heightPixel(24),

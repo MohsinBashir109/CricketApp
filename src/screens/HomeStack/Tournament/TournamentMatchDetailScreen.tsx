@@ -18,11 +18,14 @@ import { fontPixel, heightPixel, widthPixel } from '../../../utils/constants';
 import { cardShadowSm } from '../../../utils/cardShadow';
 import { routes } from '../../../utils/routes';
 import HomeWrapper from '../../../wrappers/HomeWrapper';
+import { getReadableError } from '../../../utils/getReadableError';
+import { showErrorToast, showSuccessToast, showWarningToast } from '../../../utils/toast';
 
 const TournamentMatchDetailScreen = ({ route, navigation }: any) => {
   const dispatch = useDispatch();
   const { isDark } = useThemeContext();
   const theme = colors[isDark ? 'dark' : 'light'];
+  const [isStarting, setIsStarting] = React.useState(false);
 
   const tournamentId = route?.params?.tournamentId as string;
   const fixtureId = route?.params?.fixtureId as string;
@@ -98,7 +101,10 @@ const TournamentMatchDetailScreen = ({ route, navigation }: any) => {
           <ThemeText color="text" style={styles.title}>
             {sideName('A')} vs {sideName('B')}
           </ThemeText>
-          <ThemeText color="secondaryText" style={styles.sub}>
+          <ThemeText
+            color="secondaryText"
+            style={[styles.sub, { color: '#FFFFFF', opacity: 0.85 }]}
+          >
             {tournament.name}
           </ThemeText>
 
@@ -164,23 +170,35 @@ const TournamentMatchDetailScreen = ({ route, navigation }: any) => {
           ) : (
             <Button
               title="Start scoring"
+              loading={isStarting}
               onPress={() => {
-                // Mark fixture live now (the matchId will be created inside StartMatchPager)
-                // We generate a stable matchId here so tournament linkage is consistent.
-                const matchId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-                dispatch(setFixtureLive({ tournamentId, fixtureId, matchId }));
-                navigation.navigate(routes.startMatch, {
-                  presetMatch: {
-                    tournamentId,
-                    fixtureId,
-                    matchId,
-                    teamA,
-                    teamB,
-                    overs: fixture.overs,
-                  },
-                });
+                if (isStarting) return;
+                if (!canStart || !scorable || !teamA || !teamB) {
+                  showWarningToast('Cannot start', 'Confirm teams and fixture status before starting.');
+                  return;
+                }
+                try {
+                  setIsStarting(true);
+                  const matchId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+                  dispatch(setFixtureLive({ tournamentId, fixtureId, matchId }));
+                  navigation.navigate(routes.startMatch, {
+                    presetMatch: {
+                      tournamentId,
+                      fixtureId,
+                      matchId,
+                      teamA,
+                      teamB,
+                      overs: fixture.overs,
+                    },
+                  });
+                  showSuccessToast('Match started', 'Scoring is ready.');
+                } catch (e) {
+                  showErrorToast('Failed to start match', getReadableError(e));
+                } finally {
+                  setIsStarting(false);
+                }
               }}
-              disabled={!canStart || !scorable || !teamA || !teamB}
+              disabled={!canStart || !scorable || !teamA || !teamB || isStarting}
             />
           )}
 

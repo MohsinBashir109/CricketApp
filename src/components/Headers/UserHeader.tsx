@@ -1,10 +1,12 @@
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { fontPixel, heightPixel, widthPixel } from '../../utils/constants';
 
 import ThemeText from '../ThemeText';
 import { fontFamilies } from '../../utils/fontfamilies';
 import { useSelector } from 'react-redux';
 import { useThemeContext } from '../../theme/themeContext';
+import { useNavigation } from '@react-navigation/native';
+import { colors } from '../../utils/colors';
 
 const formatDate = () => {
   try {
@@ -18,12 +20,38 @@ const formatDate = () => {
   }
 };
 
-export const UserHeader = () => {
+type UserHeaderProps = {
+  /** When true, back sits in the header row (left of greeting). HomeWrapper sets this when the stack can go back. */
+  showBackButton?: boolean;
+};
+
+export const UserHeader = ({ showBackButton = false }: UserHeaderProps) => {
   const { user } = useSelector((state: any) => state.auth);
   const { isDark } = useThemeContext();
+  const navigation = useNavigation<any>();
+  const palette = colors[isDark ? 'dark' : 'light'];
 
   return (
     <View style={styles.container}>
+      {showBackButton ? (
+        <Pressable
+          onPress={() => navigation.goBack()}
+          hitSlop={12}
+          style={[
+            styles.backChip,
+            {
+              backgroundColor: palette.white,
+              borderColor: palette.border,
+            },
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+        >
+          <ThemeText color="primary" style={styles.backArrow}>
+            ‹
+          </ThemeText>
+        </Pressable>
+      ) : null}
       <View style={styles.textBlock}>
         <ThemeText style={styles.kicker} color="secondaryText">
           Dashboard
@@ -62,8 +90,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: '100%',
   },
+  backChip: {
+    width: widthPixel(40),
+    height: widthPixel(40),
+    borderRadius: widthPixel(12),
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: widthPixel(12),
+    flexShrink: 0,
+  },
+  backArrow: {
+    fontSize: fontPixel(28),
+    marginTop: -heightPixel(4),
+    fontFamily: fontFamilies.semibold,
+  },
   textBlock: {
     flexShrink: 1,
+    minWidth: 0,
   },
   kicker: {
     fontFamily: fontFamilies.semibold,

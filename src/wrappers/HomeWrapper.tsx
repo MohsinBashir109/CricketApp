@@ -24,7 +24,8 @@ const HomeWrapper = ({ children, headerShown, backButtonShown = true }: props) =
   const { isDark } = useThemeContext();
   const palette = colors[isDark ? 'dark' : 'light'];
   const navigation = useNavigation<any>();
-  const canGoBack = backButtonShown && navigation?.canGoBack?.();
+  const canGoBack = Boolean(backButtonShown && navigation?.canGoBack?.());
+  const showBackInHeader = Boolean(headerShown && canGoBack);
   return (
     <ImageBackground
       source={isDark ? darkmode : lightmode3}
@@ -46,14 +47,14 @@ const HomeWrapper = ({ children, headerShown, backButtonShown = true }: props) =
         backgroundColor="transparent"
         barStyle={isDark ? 'light-content' : 'dark-content'}
       />
-      {canGoBack ? (
+      {canGoBack && !showBackInHeader ? (
         <Pressable
           onPress={() => navigation.goBack()}
           hitSlop={12}
           style={[
             styles.backBtn,
             {
-              backgroundColor: palette.primaryMuted,
+              backgroundColor: palette.white,
               borderColor: palette.border,
             },
           ]}
@@ -65,7 +66,7 @@ const HomeWrapper = ({ children, headerShown, backButtonShown = true }: props) =
           </ThemeText>
         </Pressable>
       ) : null}
-      {headerShown && <UserHeader />}
+      {headerShown ? <UserHeader showBackButton={showBackInHeader} /> : null}
 
       {children}
     </ImageBackground>

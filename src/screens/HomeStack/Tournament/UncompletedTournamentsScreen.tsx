@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import {
   Image,
-  Platform,
+  ImageBackground,
   Pressable,
   ScrollView,
   StatusBar,
@@ -17,7 +17,7 @@ import { fontFamilies } from '../../../utils/fontfamilies';
 import { fontPixel, heightPixel, widthPixel } from '../../../utils/constants';
 import { routes } from '../../../utils/routes';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { backarrow } from '../../../assets/images';
+import { backarrow, historybackgroung } from '../../../assets/images';
 
 const UncompletedTournamentsScreen = ({ navigation }: any) => {
   const tournaments = useSelector(selectAllTournaments);
@@ -31,35 +31,50 @@ const UncompletedTournamentsScreen = ({ navigation }: any) => {
   );
 
   return (
-    <View style={[styles.root, { backgroundColor: theme.background, paddingTop: insets.top }]}>
-      <StatusBar
-        translucent
-        backgroundColor="transparent"
-        barStyle={isDark ? 'light-content' : 'dark-content'}
-      />
+    <ImageBackground
+      source={historybackgroung}
+      style={styles.root}
+      resizeMode="cover"
+      imageStyle={[styles.bgImage, isDark ? styles.bgImageDark : styles.bgImageLight]}
+    >
       <View
+        pointerEvents="none"
         style={[
-          styles.topBar,
-          {
-            backgroundColor: theme.surface,
-            borderBottomColor: theme.border,
-          },
+          StyleSheet.absoluteFillObject,
+          isDark ? styles.scrimDark : styles.scrimLight,
         ]}
-      >
-        <Pressable hitSlop={16} onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Image source={backarrow} style={styles.backIcon} tintColor={theme.text} />
-        </Pressable>
-        <View style={styles.topTitles}>
-          <ThemeText style={styles.screenTitle} color="text">
-            Active tournaments
-          </ThemeText>
-          <ThemeText style={styles.screenSub} color="secondaryText">
-            Upcoming and ongoing
-          </ThemeText>
+      />
+      <View style={[styles.contentShell, { paddingTop: insets.top }]}>
+        <StatusBar
+          translucent
+          backgroundColor="transparent"
+          barStyle={isDark ? 'light-content' : 'dark-content'}
+        />
+        <View
+          style={[
+            styles.topBar,
+            {
+              backgroundColor: isDark
+                ? 'rgba(20, 26, 24, 0.92)'
+                : 'rgba(255, 255, 255, 0.94)',
+              borderBottomColor: theme.border,
+            },
+          ]}
+        >
+          <Pressable hitSlop={16} onPress={() => navigation.goBack()} style={styles.backBtn}>
+            <Image source={backarrow} style={styles.backIcon} tintColor={theme.text} />
+          </Pressable>
+          <View style={styles.topTitles}>
+            <ThemeText style={styles.screenTitle} color="text">
+              Active tournaments
+            </ThemeText>
+            <ThemeText style={styles.screenSub} color="secondaryText">
+              Upcoming and ongoing
+            </ThemeText>
+          </View>
         </View>
-      </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
 
         {activeTournaments.length === 0 ? (
           <View
@@ -110,13 +125,33 @@ const UncompletedTournamentsScreen = ({ navigation }: any) => {
             </Pressable>
           ))
         )}
-      </ScrollView>
-    </View>
+        </ScrollView>
+      </View>
+    </ImageBackground>
   );
 };
 
 const styles = StyleSheet.create({
   root: {
+    flex: 1,
+    width: '100%',
+  },
+  bgImage: {
+    transform: [{ scale: 1.04 }],
+  },
+  bgImageLight: {
+    opacity: 0.5,
+  },
+  bgImageDark: {
+    opacity: 0.4,
+  },
+  scrimLight: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  scrimDark: {
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  },
+  contentShell: {
     flex: 1,
     width: '100%',
   },

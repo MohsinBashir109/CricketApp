@@ -1,49 +1,46 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Image, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import ThemeText from '../ThemeText';
-import Button from '../themeButton';
+import CreateTournamentStepper from './CreateTournamentStepper';
 import { useThemeContext } from '../../theme/themeContext';
 import { colors } from '../../utils/colors';
 import { fontFamilies } from '../../utils/fontfamilies';
 import { fontPixel, heightPixel, widthPixel } from '../../utils/constants';
 import { cardShadowSm } from '../../utils/cardShadow';
-import { selectActiveTeams } from '../../features/tournament/tournamentSelectors';
+import { players, throphy } from '../../assets/images';
 import {
-  clearPickFromSavedTeamsResult,
-  createTournament,
+  clearConfirmChooseTeamsResult,
+  clearTournamentStructureResult,
 } from '../../features/tournament/tournamentSlice';
-import type { RootState } from '../../features/store/rootReducer';
-import {
-  createGroupingSeed,
-  generateBalancedGroups,
-  getBalancedGroupSizes,
-} from '../../features/tournament/grouping';
 import { TournamentDraftGroup, TournamentFormatType } from '../../types/TournamentTypes';
-import ChooseTeamsModal from '../Modals/ChooseTeamsModal';
 import { routes } from '../../utils/routes';
+import type { RootState } from '../../features/store/rootReducer';
 
 const normalizeName = (value: string) => value.trim().replace(/\s+/g, ' ');
 
-const formatOptions: { label: string; value: TournamentFormatType }[] = [
-  { label: 'Multiple Groups', value: 'groupBased' },
-  { label: 'Open Group', value: 'open' },
-];
+/** Keep step labels/order in sync with structure/review screens (Structure = 2, Review = 3). */
+const WIZARD_STEPS = [
+  'Create tournament',
+  'Choose teams',
+  'Structure',
+  'Review',
+] as const;
 
 type Props = {
   /** Used to navigate to tournament details after save. */
   navigation: any;
   /** When false, renders nothing (parent supplies the create CTA). */
   expanded: boolean;
-  /** Optional callback to collapse after save/cancel. */
-  onCollapse?: () => void;
 };
 
-const CreateTournamentFlow: React.FC<Props> = ({ navigation, expanded, onCollapse }) => {
+const CreateTournamentFlow: React.FC<Props> = ({ navigation, expanded }) => {
   const dispatch = useDispatch();
-  const teams = useSelector(selectActiveTeams);
-  const pickFromSavedResult = useSelector(
-    (s: RootState) => s.tournament.pickFromSavedTeamsResult ?? null,
+  const confirmChooseTeamsResult = useSelector(
+    (s: RootState) => s.tournament.confirmChooseTeamsResult ?? null,
+  );
+  const tournamentStructureResult = useSelector(
+    (s: RootState) => s.tournament.tournamentStructureResult ?? null,
   );
   const { isDark } = useThemeContext();
   const theme = colors[isDark ? 'dark' : 'light'];
@@ -52,8 +49,7 @@ const CreateTournamentFlow: React.FC<Props> = ({ navigation, expanded, onCollaps
   const [name, setName] = useState('');
   const [teamCountInput, setTeamCountInput] = useState('');
 
-  // Step 2: choose teams modal
-  const [teamsModalOpen, setTeamsModalOpen] = useState(false);
+  // Step 2: choose teams (full-screen stack route)
   const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
   const [teamsConfirmed, setTeamsConfirmed] = useState(false);
 
@@ -69,11 +65,6 @@ const CreateTournamentFlow: React.FC<Props> = ({ navigation, expanded, onCollaps
 
   const normalizedTournamentName = useMemo(() => normalizeName(name), [name]);
   const basicValid = normalizedTournamentName.length > 0 && teamCount >= 3;
-
-  const selectedTeams = useMemo(
-    () => teams.filter(t => selectedTeamIds.includes(t.id)),
-    [teams, selectedTeamIds],
-  );
 
   const selectionComplete = teamCount >= 3 && selectedTeamIds.length === teamCount;
 
@@ -93,7 +84,6 @@ const CreateTournamentFlow: React.FC<Props> = ({ navigation, expanded, onCollaps
     if (!basicValid) {
       setTeamsConfirmed(false);
       setSelectedTeamIds([]);
-      setTeamsModalOpen(false);
       setFormatType('open');
       setGroupCountInput('');
       setGroupsPreview([]);
@@ -126,324 +116,222 @@ const CreateTournamentFlow: React.FC<Props> = ({ navigation, expanded, onCollaps
   }, [generatedSignature, signature]);
 
   useEffect(() => {
-    if (!expanded) setTeamsModalOpen(false);
-  }, [expanded]);
+    if (confirmChooseTeamsResult == null) return;
+    setSelectedTeamIds(Array.from(new Set([...confirmChooseTeamsResult])));
+    setTeamsConfirmed(true);
+    dispatch(clearConfirmChooseTeamsResult());
+  }, [confirmChooseTeamsResult, dispatch]);
 
   useEffect(() => {
-    if (pickFromSavedResult == null) return;
-    setSelectedTeamIds(pickFromSavedResult);
-    dispatch(clearPickFromSavedTeamsResult());
-    setTeamsModalOpen(true);
-  }, [pickFromSavedResult, dispatch]);
+    if (tournamentStructureResult == null) return;
+    setFormatType(tournamentStructureResult.formatType);
+    setGroupCountInput(tournamentStructureResult.groupCountInput);
+    setGroupsPreview(tournamentStructureResult.groupsPreview);
+    setGroupSeed(tournamentStructureResult.groupSeed);
+    setGeneratedSignature(tournamentStructureResult.generatedSignature);
+    dispatch(clearTournamentStructureResult());
+  }, [tournamentStructureResult, dispatch]);
 
-  const groupSizePreview =
-    formatType === 'groupBased' &&
-    groupCount > 0 &&
-    groupCount <= Math.max(selectedTeamIds.length, 1)
-      ? getBalancedGroupSizes(selectedTeamIds.length || teamCount, groupCount).join(' - ')
-      : null;
+  const groupsReady =
+    formatType === 'groupBased'
+      ? groupCount >= 1 &&
+        groupCount <= selectedTeamIds.length &&
+        groupsPreview.length > 0 &&
+        generatedSignature === signature
+      : true;
 
-  const handleGenerateGroups = () => {
-    if (!teamsConfirmed || !selectionComplete) {
-      Alert.alert('Choose teams first', 'Confirm your team selection before generating groups.');
-      return;
-    }
-    if (groupCount < 1 || groupCount > selectedTeamIds.length) {
-      Alert.alert(
-        'Invalid groups',
-        'Group count must be at least 1 and cannot exceed the selected team count.',
-      );
-      return;
-    }
-    const seed = createGroupingSeed();
-    const groups = generateBalancedGroups({ teamIds: selectedTeamIds, groupCount, seed });
-    setGroupsPreview(groups);
-    setGroupSeed(seed);
-    setGeneratedSignature(signature);
-  };
-
-  const handleSaveTournament = () => {
-    if (!normalizedTournamentName) {
-      Alert.alert('Missing name', 'Tournament name is required.');
-      return;
-    }
-    if (teamCount < 3) {
-      Alert.alert('Invalid team count', 'Use at least three teams for a proper league schedule.');
-      return;
-    }
-    if (!teamsConfirmed || !selectionComplete) {
-      Alert.alert('Choose teams', 'Select and confirm exactly the required number of teams.');
-      return;
-    }
-    if (new Set(selectedTeamIds).size !== selectedTeamIds.length) {
-      Alert.alert('Duplicate team', 'The same team cannot be selected twice.');
-      return;
-    }
-    if (formatType === 'groupBased') {
-      if (groupCount < 1 || groupCount > selectedTeamIds.length) {
-        Alert.alert('Invalid groups', 'Group count must be valid before saving.');
-        return;
-      }
-      if (!groupsPreview.length || generatedSignature !== signature) {
-        Alert.alert('Generate groups', 'Generate or regenerate groups before saving.');
-        return;
-      }
-    }
-
-    const tournamentId = `tournament-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    dispatch(
-      createTournament({
-        id: tournamentId,
-        name: normalizedTournamentName,
-        competitionType: 'league',
-        formatType,
-        teamCount,
-        selectedTeamIds,
-        groupCount: formatType === 'groupBased' ? groupCount : null,
-        seed: formatType === 'groupBased' ? groupSeed : null,
-        groups: formatType === 'groupBased' ? groupsPreview : [],
-        settings: {
-          roundRobinLegs: 1,
-          knockoutEnabled: true,
-          tournamentScheduleFormat: formatType === 'open' ? 'OPEN_GROUP' : 'MULTIPLE_GROUPS',
-        },
-      }),
-    );
-
-    onCollapse?.();
-    navigation.replace(routes.tournamentDetails, { tournamentId });
-  };
+  /**
+   * This screen is always the "Create tournament" hub. When teams are confirmed, do not drive
+   * the stepper to step 4 (that makes every circle look filled after popping back from review).
+   */
+  const stepperActiveIndex =
+    teamsConfirmed && selectionComplete ? 0 : !basicValid ? 0 : 1;
 
   if (!expanded) {
     return null;
   }
 
+  const accent = theme.accent;
+  const iconTint = accent;
+
   return (
     <View>
-      {/* Step 1 */}
-      <ThemeText color="text" style={styles.sectionTitle}>
+      <CreateTournamentStepper
+        steps={WIZARD_STEPS}
+        activeIndex={stepperActiveIndex}
+        isDark={isDark}
+        theme={theme}
+      />
+
+      <ThemeText color="text" style={styles.heroTitle}>
         Create tournament
       </ThemeText>
-      <ThemeText color="secondaryText" style={styles.helperText}>
+      <ThemeText color="secondaryText" style={styles.heroSubtitle}>
         Fill in the basics, then choose teams.
       </ThemeText>
+      <View style={[styles.goldAccent, { backgroundColor: accent }]} />
 
-      <ThemeText color="text" style={styles.label}>
-        Tournament name
-      </ThemeText>
-      <TextInput
-        value={name}
-        onChangeText={setName}
-        placeholder="e.g. Summer Cup"
-        placeholderTextColor={theme.secondaryText}
+      <View
         style={[
-          styles.input,
-          { color: theme.text, borderColor: theme.border, backgroundColor: theme.surfaceElevated },
+          styles.formCard,
+          isDark ? styles.formCardShadowDark : styles.formCardShadowLight,
+          { backgroundColor: theme.surface, borderColor: theme.border },
         ]}
-      />
-
-      <ThemeText color="text" style={styles.label}>
-        Number of teams
-      </ThemeText>
-      <TextInput
-        value={teamCountInput}
-        onChangeText={setTeamCountInput}
-        keyboardType="number-pad"
-        placeholder="Enter team count"
-        placeholderTextColor={theme.secondaryText}
-        style={[
-          styles.input,
-          { color: theme.text, borderColor: theme.border, backgroundColor: theme.surfaceElevated },
-        ]}
-      />
-      <ThemeText color="secondaryText" style={styles.helperText}>
-        Enter how many teams will participate.
-      </ThemeText>
-
-      {/* Step 2 — only after name + team count are valid */}
-      {basicValid ? (
-        <View style={styles.stepBlock}>
-          <ThemeText color="text" style={styles.stepTitle}>
-            Teams
-          </ThemeText>
-          <ThemeText color="secondaryText" style={styles.helperText}>
-            {teamsConfirmed
-              ? `${selectedTeamIds.length} of ${teamCount} teams confirmed.`
-              : `Choose exactly ${teamCount} teams to continue.`}
-          </ThemeText>
-          <Button
-            title={teamsConfirmed ? 'Edit teams' : 'Next: Choose teams'}
-            onPress={() => setTeamsModalOpen(true)}
+      >
+        <View style={styles.fieldBlock}>
+          <View style={styles.fieldLabelRow}>
+            <Image
+              source={throphy}
+              style={styles.fieldIcon}
+              resizeMode="contain"
+              tintColor={iconTint}
+            />
+            <ThemeText color="text" style={styles.fieldLabel}>
+              Tournament name
+            </ThemeText>
+          </View>
+          <TextInput
+            value={name}
+            onChangeText={setName}
+            placeholder="e.g. Summer Cup"
+            placeholderTextColor={theme.secondaryText}
+            style={[
+              styles.input,
+              {
+                color: theme.text,
+                borderColor: theme.border,
+                backgroundColor: theme.surfaceElevated,
+              },
+            ]}
           />
         </View>
-      ) : (
-        <ThemeText color="secondaryText" style={styles.helperText}>
-          Enter a tournament name and a team count above 1 to continue.
-        </ThemeText>
-      )}
 
-      <ChooseTeamsModal
-        visible={teamsModalOpen}
-        teamCount={teamCount}
-        selectedTeamIds={selectedTeamIds}
-        onClose={() => setTeamsModalOpen(false)}
-        onConfirm={ids => {
-          setSelectedTeamIds(ids);
-          setTeamsConfirmed(true);
-          setTeamsModalOpen(false);
-        }}
-        onOpenSavedTeams={currentIds => {
-          setTeamsModalOpen(false);
-          navigation.navigate(routes.addFromSavedTeams, {
-            teamCount,
-            selectedTeamIds: currentIds,
-          });
-        }}
-      />
-
-      {/* Step 3 + 4 gated */}
-      {teamsConfirmed && selectionComplete ? (
-        <>
-          <View style={styles.divider} />
-
-          <ThemeText color="text" style={styles.sectionTitle}>
-            Tournament structure
-          </ThemeText>
-          <View style={styles.optionWrap}>
-            {formatOptions.map(option => {
-              const selected = formatType === option.value;
-              return (
-                <Pressable
-                  key={option.value}
-                  onPress={() => setFormatType(option.value)}
-                  style={[
-                    styles.structureCard,
-                    {
-                      borderColor: selected ? theme.primary : theme.border,
-                      backgroundColor: selected ? theme.primaryMuted : theme.surface,
-                    },
-                  ]}
-                >
-                  <ThemeText color={selected ? 'primary' : 'text'} style={styles.listTitle}>
-                    {option.label}
-                  </ThemeText>
-                  <ThemeText color="secondaryText" style={styles.listMeta}>
-                    {option.value === 'groupBased'
-                      ? 'Create balanced groups (Group A, Group B…) before fixtures.'
-                      : 'All selected teams stay in one open pool.'}
-                  </ThemeText>
-                </Pressable>
-              );
-            })}
+        <View style={styles.fieldBlock}>
+          <View style={styles.fieldLabelRow}>
+            <Image
+              source={players}
+              style={styles.fieldIcon}
+              resizeMode="contain"
+              tintColor={iconTint}
+            />
+            <ThemeText color="text" style={styles.fieldLabel}>
+              Number of teams
+            </ThemeText>
           </View>
-
-          {formatType === 'groupBased' ? (
-            <>
-              <ThemeText color="text" style={styles.label}>
-                Number of groups
-              </ThemeText>
-              <TextInput
-                value={groupCountInput}
-                onChangeText={setGroupCountInput}
-                keyboardType="number-pad"
-                placeholder="Enter group count"
-                placeholderTextColor={theme.secondaryText}
-                style={[
-                  styles.input,
-                  { color: theme.text, borderColor: theme.border, backgroundColor: theme.surfaceElevated },
-                ]}
-              />
-              <ThemeText color="secondaryText" style={styles.helperText}>
-                Balanced sizes: {groupSizePreview ?? 'waiting for valid numbers'}.
-              </ThemeText>
-              <Button
-                title={groupsPreview.length > 0 ? 'Regenerate groups' : 'Generate groups'}
-                onPress={handleGenerateGroups}
-                disabled={groupCount < 1}
-              />
-            </>
-          ) : null}
-
-          <View style={styles.divider} />
-
-          <ThemeText color="text" style={styles.sectionTitle}>
-            Review
-          </ThemeText>
-          <View
+          <TextInput
+            value={teamCountInput}
+            onChangeText={setTeamCountInput}
+            keyboardType="number-pad"
+            placeholder="e.g. 4"
+            placeholderTextColor={theme.secondaryText}
             style={[
-              styles.reviewCard,
-              isDark ? styles.reviewShadowDark : styles.reviewShadowLight,
-              { backgroundColor: theme.surface, borderColor: theme.border },
+              styles.input,
+              {
+                color: theme.text,
+                borderColor: theme.border,
+                backgroundColor: theme.surfaceElevated,
+              },
             ]}
-          >
-            <View style={styles.reviewHeader}>
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <ThemeText color="text" style={styles.reviewTitle}>
-                  Selected teams
-                </ThemeText>
-                <ThemeText color="secondaryText" style={styles.reviewSub}>
-                  Double-check before saving.
-                </ThemeText>
-              </View>
-              <View
-                style={[
-                  styles.countPill,
-                  { backgroundColor: theme.primaryMuted, borderColor: theme.border },
-                ]}
-              >
-                <ThemeText color="primary" style={styles.countPillText}>
-                  {selectedTeams.length}
-                </ThemeText>
-              </View>
-            </View>
+          />
+          <ThemeText color="secondaryText" style={styles.fieldHelper}>
+            Enter how many teams will participate (at least three).
+          </ThemeText>
+        </View>
 
-            {selectedTeams.map((t, idx) => {
-              const count = t.players?.length ?? 0;
-              return (
-                <View
-                  key={t.id}
-                  style={[
-                    styles.reviewTeamRow,
-                    idx > 0 ? { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.border } : null,
-                  ]}
-                >
-                  <ThemeText color="text" style={styles.reviewTeamName} numberOfLines={1}>
-                    {t.name}
-                  </ThemeText>
-                  <ThemeText color="secondaryText" style={styles.reviewTeamMeta}>
-                    {count === 0 ? 'No players' : `${count} player${count === 1 ? '' : 's'}`}
-                  </ThemeText>
-                </View>
-              );
-            })}
-          </View>
-
-          <Button title="Save tournament" onPress={handleSaveTournament} />
-        </>
-      ) : null}
+        <Pressable
+          onPress={() =>
+            basicValid &&
+            navigation.navigate(routes.chooseTeamsForTournament, {
+              teamCount,
+              selectedTeamIds,
+              tournamentName: normalizedTournamentName,
+            })
+          }
+          disabled={!basicValid}
+          style={({ pressed }) => [
+            styles.primaryCta,
+            { backgroundColor: theme.primary, opacity: !basicValid ? 0.45 : pressed ? 0.92 : 1 },
+          ]}
+        >
+          <ThemeText color="white" style={styles.primaryCtaText}>
+            {teamsConfirmed ? 'Edit teams' : 'Next: Choose teams'}
+          </ThemeText>
+          <ThemeText color="white" style={styles.primaryCtaChevron}>
+            ›
+          </ThemeText>
+        </Pressable>
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  reviewShadowLight: cardShadowSm(false),
-  reviewShadowDark: cardShadowSm(true),
-  sectionTitle: {
-    fontSize: fontPixel(16),
+  formCardShadowLight: cardShadowSm(false),
+  formCardShadowDark: cardShadowSm(true),
+  heroTitle: {
+    fontSize: fontPixel(24),
     fontFamily: fontFamilies.bold,
-    marginTop: heightPixel(6),
+    marginTop: heightPixel(2),
   },
-  helperText: {
+  heroSubtitle: {
+    marginTop: heightPixel(8),
+    fontSize: fontPixel(14),
+    lineHeight: fontPixel(21),
+    fontFamily: fontFamilies.medium,
+  },
+  goldAccent: {
+    width: widthPixel(40),
+    height: heightPixel(3),
+    borderRadius: widthPixel(2),
+    marginTop: heightPixel(10),
+    marginBottom: heightPixel(16),
+  },
+  formCard: {
+    borderWidth: 1,
+    borderRadius: widthPixel(18),
+    padding: widthPixel(18),
+    marginBottom: heightPixel(8),
+  },
+  fieldBlock: {
+    marginBottom: heightPixel(14),
+  },
+  fieldLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: widthPixel(10),
+    marginBottom: heightPixel(8),
+  },
+  fieldIcon: {
+    width: widthPixel(20),
+    height: widthPixel(20),
+  },
+  fieldLabel: {
+    fontSize: fontPixel(14),
+    fontFamily: fontFamilies.bold,
+  },
+  fieldHelper: {
+    marginTop: heightPixel(6),
     fontSize: fontPixel(12),
     lineHeight: fontPixel(18),
-    marginTop: heightPixel(6),
-    marginBottom: heightPixel(10),
   },
-  label: {
-    marginTop: heightPixel(12),
-    marginBottom: heightPixel(8),
-    fontSize: fontPixel(13),
+  primaryCta: {
+    marginTop: heightPixel(18),
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: widthPixel(8),
+    minHeight: heightPixel(52),
+    borderRadius: widthPixel(14),
+    paddingHorizontal: widthPixel(18),
+  },
+  primaryCtaText: {
+    fontSize: fontPixel(16),
     fontFamily: fontFamilies.semibold,
+  },
+  primaryCtaChevron: {
+    fontSize: fontPixel(22),
+    fontFamily: fontFamilies.bold,
+    marginTop: -heightPixel(2),
   },
   input: {
     borderWidth: 1,
@@ -451,84 +339,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: widthPixel(14),
     paddingVertical: heightPixel(12),
     fontSize: fontPixel(15),
-    marginBottom: heightPixel(6),
-  },
-  stepBlock: {
-    marginTop: heightPixel(10),
-    padding: widthPixel(12),
-    borderRadius: widthPixel(16),
-  },
-  stepTitle: {
-    fontSize: fontPixel(14),
-    fontFamily: fontFamilies.bold,
-  },
-  divider: {
-    height: heightPixel(12),
-  },
-  optionWrap: {
-    gap: widthPixel(10),
-  },
-  structureCard: {
-    flexBasis: '100%',
-    borderWidth: 1,
-    borderRadius: widthPixel(16),
-    padding: widthPixel(14),
-  },
-  listTitle: {
-    fontSize: fontPixel(15),
-    fontFamily: fontFamilies.semibold,
-  },
-  listMeta: {
-    marginTop: heightPixel(4),
-    fontSize: fontPixel(12),
-    lineHeight: fontPixel(18),
-  },
-  reviewCard: {
-    borderWidth: 1,
-    borderRadius: widthPixel(18),
-    padding: widthPixel(14),
-    marginTop: heightPixel(6),
-    marginBottom: heightPixel(10),
-  },
-  reviewHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: widthPixel(12),
-    paddingBottom: heightPixel(10),
-  },
-  reviewTitle: {
-    fontSize: fontPixel(15),
-    fontFamily: fontFamilies.bold,
-  },
-  reviewSub: {
-    marginTop: heightPixel(2),
-    fontSize: fontPixel(12),
-    lineHeight: fontPixel(18),
-  },
-  countPill: {
-    minWidth: widthPixel(38),
-    paddingHorizontal: widthPixel(12),
-    height: heightPixel(34),
-    borderRadius: widthPixel(999),
-    borderWidth: StyleSheet.hairlineWidth,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  countPillText: {
-    fontSize: fontPixel(14),
-    fontFamily: fontFamilies.bold,
-  },
-  reviewTeamRow: {
-    paddingVertical: heightPixel(10),
-  },
-  reviewTeamName: {
-    fontSize: fontPixel(14),
-    fontFamily: fontFamilies.semibold,
-  },
-  reviewTeamMeta: {
-    marginTop: heightPixel(2),
-    fontSize: fontPixel(12),
-    lineHeight: fontPixel(18),
+    marginBottom: 0,
   },
 });
 
