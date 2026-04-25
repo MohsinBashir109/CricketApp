@@ -164,6 +164,13 @@ const matchSlice = createSlice({
   name: 'match',
   initialState,
   reducers: {
+    /** Move an already-completed match into history (UI can show completion modal before calling this). */
+    archiveCompletedMatch(state) {
+      const match = state.currentMatch;
+      if (!match) return;
+      if (!match.isCompleted) return;
+      archiveFinishedMatch(state, match);
+    },
     setmatch(state, action: PayloadAction<MatchSetup>) {
       state.preBallSnapshots = [];
       state.lastCompletedMatch = null;
@@ -926,8 +933,7 @@ const matchSlice = createSlice({
           ? match.teamA?.name ?? ''
           : match.teamB?.name ?? '';
       match.resultReason = resultReason;
-
-      archiveFinishedMatch(state, match);
+      // Do not archive immediately — allow UI to show completion modal on scoring screen.
     },
 
     resolveTieAsDraw(state) {
@@ -946,8 +952,7 @@ const matchSlice = createSlice({
       match.winnerTeamName = '';
       match.resultReason = 'TIE';
       match.tieResolvedBy = hadCompletedSuperOver ? 'super_over_tied' : 'draw';
-
-      archiveFinishedMatch(state, match);
+      // Do not archive immediately — allow UI to show completion modal on scoring screen.
     },
 
     beginSuperOver(state) {
@@ -1073,8 +1078,7 @@ const matchSlice = createSlice({
           : match.teamB?.name ?? '';
       match.resultReason = resultReason;
       match.tieResolvedBy = 'super_over';
-
-      archiveFinishedMatch(state, match);
+      // Do not archive immediately — allow UI to show completion modal on scoring screen.
     },
 
     applyMatchSettingsDecision(state, action: PayloadAction<ApplyMatchSettingsPayload>) {
@@ -1104,7 +1108,7 @@ const matchSlice = createSlice({
         match.winnerTeamName = '';
         match.resultReason = 'NO_RESULT';
         match.tieResolvedBy = undefined;
-        archiveFinishedMatch(state, match);
+        // Do not archive immediately — allow UI to show completion modal on scoring screen.
         return;
       }
 
@@ -1118,7 +1122,7 @@ const matchSlice = createSlice({
         match.winnerTeamName = '';
         match.resultReason = 'TIE';
         match.tieResolvedBy = hadCompletedSuperOver ? 'super_over_tied' : 'draw';
-        archiveFinishedMatch(state, match);
+        // Do not archive immediately — allow UI to show completion modal on scoring screen.
         return;
       }
 
@@ -1133,7 +1137,7 @@ const matchSlice = createSlice({
           w === 'teamA' ? match.teamA?.name ?? '' : match.teamB?.name ?? '';
         match.resultReason = 'DEFENDED';
         match.tieResolvedBy = hadCompletedSuperOver ? 'super_over' : undefined;
-        archiveFinishedMatch(state, match);
+        // Do not archive immediately — allow UI to show completion modal on scoring screen.
       }
     },
 
@@ -1187,6 +1191,7 @@ export const {
   deleteBall,
   insertBall,
   endMatch,
+  archiveCompletedMatch,
   clearHistory,
   clearLastCompletedMatch,
   addStrikerAndBowlerInnings,

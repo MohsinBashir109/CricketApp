@@ -41,6 +41,9 @@ const TournamentRow = ({
   const { isDark } = useThemeContext();
   const pct = clampPct(progressPct);
   const scrim = isDark ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.3)';
+  const artTitleColor = artBackground ? '#FFFFFF' : undefined;
+  const artSubColor = artBackground ? 'rgba(255,255,255,0.82)' : undefined;
+  const artChevronColor = artBackground ? 'rgba(255,255,255,0.75)' : undefined;
 
   const main = (
     <View>
@@ -53,12 +56,16 @@ const TournamentRow = ({
             />
           </View>
           <View style={styles.textCol}>
-            <ThemeText color="text" style={styles.title} numberOfLines={1}>
+            <ThemeText
+              color="text"
+              style={[styles.title, artTitleColor ? { color: artTitleColor } : null]}
+              numberOfLines={1}
+            >
               {title}
             </ThemeText>
             <ThemeText
               color="secondaryText"
-              style={styles.subtitle}
+              style={[styles.subtitle, artSubColor ? { color: artSubColor } : null]}
               numberOfLines={1}
             >
               {subtitle}
@@ -72,7 +79,10 @@ const TournamentRow = ({
             backgroundColor={statusBg}
             color={statusFg}
           />
-          <ThemeText color="secondaryText" style={styles.chevron}>
+          <ThemeText
+            color="secondaryText"
+            style={[styles.chevron, artChevronColor ? { color: artChevronColor } : null]}
+          >
             ›
           </ThemeText>
         </View>

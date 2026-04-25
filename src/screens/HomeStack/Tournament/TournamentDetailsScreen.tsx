@@ -12,14 +12,13 @@ import { useSelector } from 'react-redux';
 import { useFocusEffect } from '@react-navigation/native';
 import { TabView } from 'react-native-tab-view';
 import ThemeText from '../../../components/ThemeText';
+import LinearGradient from 'react-native-linear-gradient';
 import {
   selectTournamentById,
   selectTournamentTeams,
 } from '../../../features/tournament/tournamentSelectors';
 import { useThemeContext } from '../../../theme/themeContext';
-import { colors } from '../../../utils/colors';
 import { fontFamilies } from '../../../utils/fontfamilies';
-import { getTournamentTabBarTokens } from '../../../utils/tournamentTabBarTheme';
 import { fontPixel, heightPixel, widthPixel } from '../../../utils/constants';
 import { cardShadowLg } from '../../../utils/cardShadow';
 import HomeWrapper from '../../../wrappers/HomeWrapper';
@@ -46,7 +45,7 @@ const TournamentDetailsScreen = ({ route, navigation }: any) => {
     selectTournamentTeams(state, tournamentId),
   );
   const { isDark } = useThemeContext();
-  const themeColors = colors[isDark ? 'dark' : 'light'];
+  // themeColors unused in this screen currently (colors pulled per-component).
 
   const [index, setIndex] = useState(0);
   const [routes] = useState([
@@ -86,37 +85,57 @@ const TournamentDetailsScreen = ({ route, navigation }: any) => {
 
   const heroCatchLine = (() => {
     if (tournament.status === 'ongoing') {
-      return "LIVE. Gaps, partnerships, the table, all still in play, don't blink.";
+      return "Gaps, partnerships, the table, all still in play, don't blink.";
     }
     if (tournament.status === 'completed') {
       return "That's the game, end of innings. Rivalry, results, the lot, it all stays on this page.";
     }
-    return "Stumps, squads, a draw on the wall. The first over starts when you say go.";
+    return 'The first over starts when you say go.';
   })();
-  /** Surfaces that sit on the warm-gold/cream art, not cold white or neon blue. */
-  const heroInCardBg = isDark
-    ? 'rgba(14, 24, 44, 0.5)'
-    : 'rgba(255, 250, 242, 0.9)';
-  const heroInCardBorder = isDark
-    ? 'rgba(110, 150, 210, 0.2)'
-    : 'rgba(190, 150, 95, 0.2)';
-  const heroInCardIconPill = isDark
-    ? 'rgba(120, 175, 255, 0.1)'
-    : 'rgba(55, 95, 150, 0.08)';
-  const heroMutedBlue = isDark ? 'rgba(170, 200, 255, 0.85)' : '#3D5A7B';
-  const infoIconBlue = isDark ? 'rgba(150, 190, 255, 0.95)' : '#3A5580';
-  const heroOuterBorder = isDark
-    ? themeColors.border
-    : 'rgba(200, 170, 120, 0.28)';
+  const cardColors = {
+    goldBackground: '#D7A63D',
+    goldLight: '#F7D77A',
+    goldSoft: '#FFE9A6',
+    goldDeep: '#B77A14',
+    navyPrimary: '#082A5A',
+    royalBlue: '#0646B5',
+    blueDeep: '#021B3F',
+    titleText: '#082A5A',
+    bodyText: '#FFF6DC',
+    secondaryText: '#5F6F7A',
+    chipBackground: '#FFE6A3',
+    chipBorder: '#FFF1B8',
+    activeTabBackground: '#063B96',
+    activeTabText: '#FFFFFF',
+    inactiveTabText: '#082A5A',
+    divider: '#D6B65A',
+    shadow: '#8A5A0A',
+  } as const;
 
-  const tTab = getTournamentTabBarTokens(isDark);
-  const {
-    tabBarSurface,
-    tabBarFrameBorder,
-    tabBarActivePill,
-    tabBarActiveGold,
-    tabBarInactive,
-  } = tTab;
+  const heroInCardBg = isDark
+    ? 'rgba(2, 27, 63, 0.35)'
+    : cardColors.chipBackground;
+  const heroInCardBorder = isDark
+    ? 'rgba(255, 241, 184, 0.22)'
+    : cardColors.chipBorder;
+  const heroMutedBlue = isDark
+    ? 'rgba(255,246,220,0.86)'
+    : cardColors.navyPrimary;
+  const infoIconBlue = cardColors.activeTabText;
+  const heroOuterBorder = isDark
+    ? 'rgba(214, 182, 90, 0.28)'
+    : cardColors.divider;
+
+  const tabBarSurface = isDark
+    ? 'rgba(255, 233, 166, 0.12)'
+    : 'rgba(255, 233, 166, 0.65)';
+  const tabBarFrameBorder = isDark
+    ? 'rgba(214, 182, 90, 0.28)'
+    : cardColors.divider;
+  const tabBarActiveGold = cardColors.activeTabText;
+  const tabBarInactive = isDark
+    ? 'rgba(95, 111, 122, 0.9)'
+    : cardColors.secondaryText;
 
   const renderScene = ({ route: r }: any) => {
     switch (r.key) {
@@ -168,11 +187,24 @@ const TournamentDetailsScreen = ({ route, navigation }: any) => {
             <Pressable
               key={r.key}
               onPress={() => jumpTo(r.key)}
-              style={[
-                styles.tabItem,
-                active && { backgroundColor: tabBarActivePill },
-              ]}
+              style={[styles.tabItem, active && styles.tabItemActive]}
             >
+              {active ? (
+                <LinearGradient
+                  colors={[
+                    cardColors.royalBlue,
+                    cardColors.activeTabBackground,
+                    cardColors.blueDeep,
+                  ]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={[
+                    StyleSheet.absoluteFillObject,
+                    styles.tabItemActiveGrad,
+                  ]}
+                  pointerEvents="none"
+                />
+              ) : null}
               <Image
                 source={iconSource}
                 style={[
@@ -200,14 +232,6 @@ const TournamentDetailsScreen = ({ route, navigation }: any) => {
                   {r.title}
                 </Text>
               </ThemeText>
-              {active ? (
-                <View
-                  style={[
-                    styles.activeUnderline,
-                    { backgroundColor: tabBarActiveGold },
-                  ]}
-                />
-              ) : null}
             </Pressable>
           );
         })}
@@ -236,29 +260,29 @@ const TournamentDetailsScreen = ({ route, navigation }: any) => {
             imageStyle={styles.heroCardBgImage}
             resizeMode="cover"
           >
-            <View
-              style={[
-                StyleSheet.absoluteFillObject,
-                {
-                  backgroundColor: isDark
-                    ? 'rgba(0,0,0,0.22)'
-                    : 'rgba(255, 248, 238, 0.4)',
-                },
-              ]}
-              pointerEvents="none"
-            />
             <View style={styles.heroCardContentLayer}>
               <View style={[styles.heroCard]}>
                 <View style={styles.heroTextBlock}>
-                  <ThemeText color="text" style={styles.heroTournamentName}>
+                  <ThemeText
+                    color="white"
+                    style={[
+                      styles.heroTournamentName,
+                      {
+                        color: isDark
+                          ? cardColors.bodyText
+                          : cardColors.titleText,
+                      },
+                    ]}
+                  >
                     {tournament.name}
                   </ThemeText>
-                  <Text
-                    style={[styles.heroCatchLine, { color: heroMutedBlue }]}
+                  <ThemeText
+                    color="white"
+                    style={[styles.heroCatchLine]}
                     numberOfLines={3}
                   >
                     {heroCatchLine}
-                  </Text>
+                  </ThemeText>
                 </View>
 
                 {/* <View style={styles.statusRow}>
@@ -283,17 +307,21 @@ const TournamentDetailsScreen = ({ route, navigation }: any) => {
                       },
                     ]}
                   >
-                    <View
-                      style={[
-                        styles.infoIconCircle,
-                        { backgroundColor: heroInCardIconPill },
+                    <LinearGradient
+                      colors={[
+                        cardColors.royalBlue,
+                        cardColors.activeTabBackground,
+                        cardColors.blueDeep,
                       ]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.infoIconCircle}
                     >
                       <Image
                         source={matches}
                         style={[styles.infoIcon, { tintColor: infoIconBlue }]}
                       />
-                    </View>
+                    </LinearGradient>
                     <View style={styles.infoTextCol}>
                       <ThemeText
                         color="text"
@@ -323,17 +351,21 @@ const TournamentDetailsScreen = ({ route, navigation }: any) => {
                       },
                     ]}
                   >
-                    <View
-                      style={[
-                        styles.infoIconCircle,
-                        { backgroundColor: heroInCardIconPill },
+                    <LinearGradient
+                      colors={[
+                        cardColors.royalBlue,
+                        cardColors.activeTabBackground,
+                        cardColors.blueDeep,
                       ]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.infoIconCircle}
                     >
                       <Image
                         source={players}
                         style={[styles.infoIcon, { tintColor: infoIconBlue }]}
                       />
-                    </View>
+                    </LinearGradient>
                     <View style={styles.infoTextCol}>
                       <ThemeText
                         color="text"
@@ -346,7 +378,7 @@ const TournamentDetailsScreen = ({ route, navigation }: any) => {
                         style={[styles.infoSub, { color: heroMutedBlue }]}
                         numberOfLines={2}
                       >
-                        All registered
+                        Register
                       </Text>
                     </View>
                   </View>
@@ -362,17 +394,21 @@ const TournamentDetailsScreen = ({ route, navigation }: any) => {
                       },
                     ]}
                   >
-                    <View
-                      style={[
-                        styles.infoIconCircle,
-                        { backgroundColor: heroInCardIconPill },
+                    <LinearGradient
+                      colors={[
+                        cardColors.royalBlue,
+                        cardColors.activeTabBackground,
+                        cardColors.blueDeep,
                       ]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.infoIconCircle}
                     >
                       <Image
                         source={throphy}
                         style={[styles.infoIcon, { tintColor: infoIconBlue }]}
                       />
-                    </View>
+                    </LinearGradient>
                     <View style={styles.infoTextCol}>
                       <ThemeText
                         color="text"
@@ -468,7 +504,7 @@ const styles = StyleSheet.create({
   /** Name + copy stay in a left column; card artwork stays in the right area. */
   heroTextBlock: {
     alignSelf: 'flex-start',
-    width: '66%',
+    width: '60%',
     minWidth: 0,
   },
   title: {
@@ -542,27 +578,28 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   infoIconCircle: {
-    width: widthPixel(25),
-    height: widthPixel(25),
+    width: widthPixel(30),
+    height: widthPixel(30),
     borderRadius: widthPixel(999),
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
   infoIcon: {
-    width: widthPixel(13),
-    height: widthPixel(13),
+    width: widthPixel(16),
+    height: widthPixel(16),
     resizeMode: 'contain',
   },
   infoTitle: {
     fontFamily: fontFamilies.semibold,
-    fontSize: fontPixel(9),
+    fontSize: fontPixel(10),
     letterSpacing: 0.4,
     textAlign: 'left',
   },
   infoSub: {
     marginTop: heightPixel(3),
-    fontSize: fontPixel(9),
-    lineHeight: fontPixel(12),
+    fontSize: fontPixel(10),
+    lineHeight: fontPixel(13),
     textAlign: 'left',
     fontFamily: fontFamilies.medium,
   },
@@ -586,6 +623,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: 'transparent',
+    overflow: 'hidden',
+  },
+  tabItemActive: {
+    backgroundColor: 'transparent',
+  },
+  tabItemActiveGrad: {
+    borderRadius: widthPixel(16),
   },
   tabIcon: {
     width: widthPixel(16),
@@ -602,10 +646,8 @@ const styles = StyleSheet.create({
     textTransform: 'capitalize',
   },
   activeUnderline: {
-    marginTop: heightPixel(4),
-    height: 2,
-    width: widthPixel(22),
-    borderRadius: widthPixel(999),
+    height: 0,
+    width: 0,
   },
 });
 

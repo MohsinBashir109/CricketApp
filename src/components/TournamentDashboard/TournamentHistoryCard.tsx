@@ -1,12 +1,9 @@
 import React from 'react';
-import { Image, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import ThemeText from '../ThemeText';
 import { fontFamilies } from '../../utils/fontfamilies';
 import { fontPixel, heightPixel, widthPixel } from '../../utils/constants';
 import { useThemeContext } from '../../theme/themeContext';
-
-/** require() is most reliable for RN static images across Android/iOS */
-const TORN_CARD_BG = require('../../assets/images/tornamentcard.png');
 
 type TournamentHistoryCardProps = {
   title: string;
@@ -28,22 +25,22 @@ const TournamentHistoryCard = ({
   onPress,
 }: TournamentHistoryCardProps) => {
   const { isDark } = useThemeContext();
-  const scrimColor = isDark ? 'rgba(0,0,0,0.22)' : 'rgba(255,255,255,0.28)';
+  const bg = isDark ? 'rgba(20, 26, 24, 0.72)' : 'rgba(255,255,255,0.92)';
 
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [
         styles.card,
-        { borderColor, borderWidth: 1, opacity: pressed ? 0.95 : 1 },
+        {
+          borderColor,
+          borderWidth: 1,
+          backgroundColor: bg,
+          opacity: pressed ? 0.95 : 1,
+        },
       ]}
     >
       <View style={styles.inner}>
-        <Image source={TORN_CARD_BG} style={styles.cardBg} resizeMode="cover" />
-        <View
-          style={[StyleSheet.absoluteFillObject, { backgroundColor: scrimColor }]}
-          pointerEvents="none"
-        />
         <View style={styles.innerRow}>
           <View style={[styles.iconWrap, { backgroundColor: iconBg }]}>
             <ThemeText color="text" style={[styles.iconGlyph, { color: iconColor }]}>
@@ -78,9 +75,6 @@ const styles = StyleSheet.create({
     borderRadius: widthPixel(18),
     overflow: 'hidden',
     minHeight: heightPixel(68),
-  },
-  cardBg: {
-    ...StyleSheet.absoluteFillObject,
   },
   innerRow: {
     flexDirection: 'row',

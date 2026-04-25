@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import {
   Alert,
+  ActivityIndicator,
   Image,
   Modal,
   Pressable,
@@ -15,7 +16,7 @@ import ThemeText from '../../../../components/ThemeText';
 import Button from '../../../../components/themeButton';
 import FixturePlannerModal from '../../../../components/Modals/FixturePlannerModal';
 import EditFixtureModal from '../../../../components/Modals/EditFixtureModal';
-import { cross, fixturecard, setting } from '../../../../assets/images';
+import { cross, setting } from '../../../../assets/images';
 import { matches as matchesIcon } from '../../../../assets/images';
 import { RootState } from '../../../../features/store/rootReducer';
 import {
@@ -49,20 +50,23 @@ import {
   widthPixel,
 } from '../../../../utils/constants';
 import { cardShadowSm } from '../../../../utils/cardShadow';
-import { getTournamentTabBarTokens } from '../../../../utils/tournamentTabBarTheme';
 import { routes as appRoutes } from '../../../../utils/routes';
 import dayjs from 'dayjs';
 import type { MatchSetup } from '../../../../types/Playertype';
+import AppCardLoader from '../../../../components/AppCardLoader';
+import { getReadableError } from '../../../../utils/getReadableError';
+import {
+  showErrorToast,
+  showInfoToast,
+  showSuccessToast,
+  showWarningToast,
+} from '../../../../utils/toast';
 import {
   findMatchForFixture,
   footerCaption,
   groupFixturesByDate,
   type FixtureListVariant,
 } from './fixtureCardUtils';
-
-/** Tab list cards: warm in-card surface, slightly lifted for a lighter read. */
-const fixtureTabCardBgLight = 'rgba(255, 252, 248, 0.97)';
-const fixtureTabCardBgDark = 'rgba(22, 32, 50, 0.42)';
 
 function fixtureSideName(f: any, side: 'A' | 'B', teamsById: Record<string, any>) {
   const id = side === 'A' ? f.teamAId : f.teamBId;
@@ -148,10 +152,7 @@ const ScheduleMatchCard = ({
     return Math.max(0, Math.min(100, (balls / (ov * 6)) * 100));
   })();
 
-  const cardBg = isDark ? fixtureTabCardBgDark : fixtureTabCardBgLight;
-  const scrim = isDark
-    ? 'rgba(0,0,0,0.12)'
-    : 'rgba(255, 252, 248, 0.22)';
+  const cardBg = theme.surface;
 
   return (
     <View
@@ -162,18 +163,6 @@ const ScheduleMatchCard = ({
         styles.scheduleCardStretch,
       ]}
     >
-      <Image
-        source={fixturecard}
-        style={[
-          styles.fixtureCardArt,
-          isDark ? styles.fixtureCardArtBlendDark : styles.fixtureCardArtBlendLight,
-        ]}
-        resizeMode="cover"
-      />
-      <View
-        style={[StyleSheet.absoluteFillObject, { backgroundColor: scrim }]}
-        pointerEvents="none"
-      />
       <View style={styles.scheduleCardContentLayer}>
       <Pressable onPress={() => onOpenFixture(f.id)} style={styles.scheduleCardMain}>
         <View style={styles.activeRowTop}>
@@ -308,7 +297,7 @@ const FixturesList = ({
           isDark ? styles.cardShadowDark : styles.cardShadowLight,
           {
             borderColor: theme.border,
-            backgroundColor: isDark ? fixtureTabCardBgDark : fixtureTabCardBgLight,
+            backgroundColor: theme.surface,
           },
           styles.emptyCardStretch,
         ]}
@@ -381,8 +370,6 @@ const TournamentFixturesTab = ({ tournamentId, navigation }: any) => {
   const dispatch = useDispatch();
   const { isDark } = useThemeContext();
   const theme = colors[isDark ? 'dark' : 'light'];
-  const tTab = getTournamentTabBarTokens(isDark);
-
   const fixtures = useSelector((s: RootState) =>
     selectTournamentFixtures(s, tournamentId),
   );
@@ -401,6 +388,11 @@ const TournamentFixturesTab = ({ tournamentId, navigation }: any) => {
   const [plannerOpen, setPlannerOpen] = useState(false);
   const [editingFixtureId, setEditingFixtureId] = useState<string | null>(null);
   const [startFixtureId, setStartFixtureId] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isAddingFixture, setIsAddingFixture] = useState(false);
+  const [isSavingFixture, setIsSavingFixture] = useState(false);
+  const [isDeletingFixtureId, setIsDeletingFixtureId] = useState<string | null>(null);
+  const [isStartingFixture, setIsStartingFixture] = useState(false);
   const [outerRoutes] = useState([
     { key: 'full', title: 'Full' },
     { key: 'group', title: 'Groups' },
@@ -535,6 +527,71 @@ const TournamentFixturesTab = ({ tournamentId, navigation }: any) => {
 
   const openStartModal = (fixtureId: string) => setStartFixtureId(fixtureId);
 
+  const handleGenerate = useCallback(
+    async (payload: any) => {
+      if (isGenerating) return;
+      try {
+        setIsGenerating(true);
+        showInfoToast(
+          'Generating fixtures',
+          'Please wait while we prepare the tournament schedule.',
+        );
+        // Give React a tick to render the loader before heavy sync work.
+        await new Promise<void>(resolve => setTimeout(() => resolve(), 0));
+
+        if (payload.scheduleVariant === 'full') {
+          const teamNamesById: Record<string, string> = {};
+          teams.forEach(t => {
+            teamNamesById[t.id] = t.name;
+          });
+          dispatch(
+            generateFullTournamentSchedule({
+              tournamentId,
+              overs: payload.overs,
+              playersPerTeam: payload.playersPerTeam,
+              doubleRoundRobin: payload.doubleRoundRobin,
+              startAtIso: payload.startAtIso,
+              matchesPerDayMode: payload.matchesPerDayMode,
+              matchesPerDay: payload.matchesPerDay,
+              randomMinPerDay: payload.randomMinPerDay,
+              randomMaxPerDay: payload.randomMaxPerDay,
+              allowedWeekdays: payload.allowedWeekdays,
+              qualifiersPerGroup: payload.qualifiersPerGroup,
+              openGroupQualifiers: payload.openGroupQualifiers,
+              knockoutEnabled: payload.knockoutEnabled ?? true,
+              teamNamesById,
+              forceRegenerate: fixtures.length > 0,
+            }),
+          );
+        } else {
+          dispatch(
+            generateTournamentFixtures({
+              tournamentId,
+              mode: payload.mode,
+              overs: payload.overs,
+              playersPerTeam: payload.playersPerTeam,
+              doubleRoundRobin: payload.doubleRoundRobin,
+              startAtIso: payload.startAtIso,
+              matchesPerDayMode: payload.matchesPerDayMode,
+              matchesPerDay: payload.matchesPerDay,
+              randomMinPerDay: payload.randomMinPerDay,
+              randomMaxPerDay: payload.randomMaxPerDay,
+              allowedWeekdays: payload.allowedWeekdays,
+              qualifiersPerGroup: payload.qualifiersPerGroup,
+            }),
+          );
+        }
+
+        showSuccessToast('Fixtures generated', 'Tournament schedule is ready.');
+      } catch (e) {
+        showErrorToast('Failed to generate fixtures', getReadableError(e));
+      } finally {
+        setIsGenerating(false);
+      }
+    },
+    [dispatch, fixtures.length, isGenerating, teams, tournamentId],
+  );
+
   const editingFixture = useMemo(() => {
     if (!editingFixtureId) return null;
     return fixtures.find((f: any) => f.id === editingFixtureId) ?? null;
@@ -585,6 +642,7 @@ const TournamentFixturesTab = ({ tournamentId, navigation }: any) => {
             onDeleteFixture={(fixtureId: string) => {
               const f = fixtures.find(item => item.id === fixtureId);
               if (!f) return;
+              if (isDeletingFixtureId) return;
               Alert.alert(
                 'Delete fixture',
                 'Remove this fixture from the tournament?',
@@ -593,10 +651,18 @@ const TournamentFixturesTab = ({ tournamentId, navigation }: any) => {
                   {
                     text: 'Delete',
                     style: 'destructive',
-                    onPress: () =>
-                      dispatch(
-                        deleteTournamentFixture({ tournamentId, fixtureId }),
-                      ),
+                    onPress: async () => {
+                      if (isDeletingFixtureId) return;
+                      try {
+                        setIsDeletingFixtureId(fixtureId);
+                        dispatch(deleteTournamentFixture({ tournamentId, fixtureId }));
+                        showSuccessToast('Fixture deleted');
+                      } catch (e) {
+                        showErrorToast('Failed to delete fixture', getReadableError(e));
+                      } finally {
+                        setIsDeletingFixtureId(null);
+                      }
+                    },
                   },
                 ],
               );
@@ -653,7 +719,7 @@ const TournamentFixturesTab = ({ tournamentId, navigation }: any) => {
     <View
       style={[
         styles.innerTabBar,
-        { borderBottomColor: tTab.tabBarFrameBorder },
+        { borderBottomColor: theme.border },
       ]}
     >
       {navigationState.routes.map((r: any, idx: number) => {
@@ -664,14 +730,14 @@ const TournamentFixturesTab = ({ tournamentId, navigation }: any) => {
             onPress={() => jumpTo(r.key)}
             style={[
               styles.innerTabItem,
-              active && { borderBottomColor: tTab.tabBarActiveGold },
+              active && { borderBottomColor: theme.primary },
             ]}
           >
             <Text
               style={[
                 styles.innerTabLabel,
                 active && styles.innerTabLabelActive,
-                { color: active ? tTab.tabBarActiveGold : tTab.tabBarInactive },
+                { color: active ? theme.primary : theme.secondaryText },
               ]}
               numberOfLines={1}
             >
@@ -688,8 +754,8 @@ const TournamentFixturesTab = ({ tournamentId, navigation }: any) => {
       style={[
         styles.tabBar,
         {
-          backgroundColor: tTab.tabBarSurface,
-          borderColor: tTab.tabBarFrameBorder,
+          backgroundColor: theme.surface,
+          borderColor: theme.border,
         },
       ]}
     >
@@ -701,28 +767,18 @@ const TournamentFixturesTab = ({ tournamentId, navigation }: any) => {
             onPress={() => jumpTo(r.key)}
             style={[
               styles.tabItem,
-              active && { backgroundColor: tTab.tabBarActivePill },
+              active && { backgroundColor: theme.primaryMuted },
             ]}
           >
             <Text
               style={[
                 styles.tabLabel,
-                { color: active ? tTab.tabBarActiveGold : tTab.tabBarInactive },
+                { color: active ? theme.primary : theme.secondaryText },
               ]}
               numberOfLines={1}
             >
               {r.title}
             </Text>
-            {active ? (
-              <View
-                style={[
-                  styles.tournamentTabBarUnderline,
-                  { backgroundColor: tTab.tabBarActiveGold },
-                ]}
-              />
-            ) : (
-              <View style={styles.tournamentTabBarUnderlineShim} />
-            )}
           </Pressable>
         );
       })}
@@ -838,7 +894,10 @@ const TournamentFixturesTab = ({ tournamentId, navigation }: any) => {
           <View style={styles.headerActions}>
             <Pressable
               onPress={() => {
-                if (teams.length < 3) return;
+                if (teams.length < 3) {
+                  showWarningToast('Not enough teams', 'Add at least 3 teams to generate fixtures.');
+                  return;
+                }
                 if (fixtures.length > 0) {
                   Alert.alert(
                     'Regenerate fixtures?',
@@ -856,25 +915,42 @@ const TournamentFixturesTab = ({ tournamentId, navigation }: any) => {
                   setPlannerOpen(true);
                 }
               }}
+              disabled={isGenerating}
               style={[styles.smallCta, { backgroundColor: theme.primaryMuted }]}
             >
+              {isGenerating ? (
+                <ActivityIndicator size="small" color={theme.primary} />
+              ) : null}
               <ThemeText color="primary" style={styles.smallCtaText}>
-                Generate
+                {isGenerating ? 'Generating…' : 'Generate'}
               </ThemeText>
             </Pressable>
             <Pressable
-              onPress={() => {
-                if (teams.length < 3) return;
-                const teamAId = teams[0].id;
-                const teamBId = teams[1].id;
-                dispatch(
-                  addTournamentFixture({
-                    tournamentId,
-                    teamAId,
-                    teamBId,
-                    overs: 10,
-                  }),
-                );
+              disabled={isAddingFixture || isGenerating}
+              onPress={async () => {
+                if (isAddingFixture || isGenerating) return;
+                if (teams.length < 3) {
+                  showWarningToast('Not enough teams', 'Add at least 3 teams to add a fixture.');
+                  return;
+                }
+                try {
+                  setIsAddingFixture(true);
+                  const teamAId = teams[0].id;
+                  const teamBId = teams[1].id;
+                  dispatch(
+                    addTournamentFixture({
+                      tournamentId,
+                      teamAId,
+                      teamBId,
+                      overs: 10,
+                    }),
+                  );
+                  showSuccessToast('Fixture added', 'You can edit details from the list.');
+                } catch (e) {
+                  showErrorToast('Failed to add fixture', getReadableError(e));
+                } finally {
+                  setIsAddingFixture(false);
+                }
               }}
               style={[styles.smallCta, { backgroundColor: theme.primaryMuted }]}
             >
@@ -886,6 +962,24 @@ const TournamentFixturesTab = ({ tournamentId, navigation }: any) => {
         ) : null}
       </View>
 
+      <Modal
+        visible={isGenerating}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => null}
+      >
+        <View style={styles.generatingBackdrop}>
+          <AppCardLoader
+            visible
+            title=""
+            subtitle=""
+            fullWidth={false}
+            containerStyle={styles.generatingLoaderCard}
+          />
+        </View>
+      </Modal>
+
       <TabView
         navigationState={{ index: outerIndex, routes: outerRoutes }}
         renderScene={renderOuterScene}
@@ -896,11 +990,13 @@ const TournamentFixturesTab = ({ tournamentId, navigation }: any) => {
       {fixtures.length === 0 && canGenerateOrAddFixtures ? (
         <View style={styles.bottomCta}>
           <Button
-            title="Generate fixtures"
+            title={isGenerating ? 'Generating fixtures…' : 'Generate fixtures'}
             onPress={() => {
               if (teams.length < 3) return;
               setPlannerOpen(true);
             }}
+            disabled={isGenerating}
+            loading={isGenerating}
           />
         </View>
       ) : null}
@@ -936,50 +1032,10 @@ const TournamentFixturesTab = ({ tournamentId, navigation }: any) => {
               ? maxOpenQualifiers
               : maxQualifiersPerGroup
           }
-          onClose={() => setPlannerOpen(false)}
+          onClose={() => (isGenerating ? null : setPlannerOpen(false))}
           onGenerate={payload => {
-            if (payload.scheduleVariant === 'full') {
-              const teamNamesById: Record<string, string> = {};
-              teams.forEach(t => {
-                teamNamesById[t.id] = t.name;
-              });
-              dispatch(
-                generateFullTournamentSchedule({
-                  tournamentId,
-                  overs: payload.overs,
-                  playersPerTeam: payload.playersPerTeam,
-                  doubleRoundRobin: payload.doubleRoundRobin,
-                  startAtIso: payload.startAtIso,
-                  matchesPerDayMode: payload.matchesPerDayMode,
-                  matchesPerDay: payload.matchesPerDay,
-                  randomMinPerDay: payload.randomMinPerDay,
-                  randomMaxPerDay: payload.randomMaxPerDay,
-                  allowedWeekdays: payload.allowedWeekdays,
-                  qualifiersPerGroup: payload.qualifiersPerGroup,
-                  openGroupQualifiers: payload.openGroupQualifiers,
-                  knockoutEnabled: payload.knockoutEnabled ?? true,
-                  teamNamesById,
-                  forceRegenerate: fixtures.length > 0,
-                }),
-              );
-            } else {
-              dispatch(
-                generateTournamentFixtures({
-                  tournamentId,
-                  mode: payload.mode,
-                  overs: payload.overs,
-                  playersPerTeam: payload.playersPerTeam,
-                  doubleRoundRobin: payload.doubleRoundRobin,
-                  startAtIso: payload.startAtIso,
-                  matchesPerDayMode: payload.matchesPerDayMode,
-                  matchesPerDay: payload.matchesPerDay,
-                  randomMinPerDay: payload.randomMinPerDay,
-                  randomMaxPerDay: payload.randomMaxPerDay,
-                  allowedWeekdays: payload.allowedWeekdays,
-                  qualifiersPerGroup: payload.qualifiersPerGroup,
-                }),
-              );
-            }
+            setPlannerOpen(false);
+            handleGenerate(payload);
           }}
         />
       ) : null}
@@ -1000,40 +1056,49 @@ const TournamentFixturesTab = ({ tournamentId, navigation }: any) => {
           resultSummary,
           completeWithoutScoring,
         }) => {
-          dispatch(
-            updateTournamentFixture({
-              tournamentId,
-              fixtureId,
-              teamAId,
-              teamBId,
-              scheduledAt: scheduledAtIso,
-              overs,
-              playersPerTeam,
-              status,
-              resultSummary,
-            }),
-          );
-          if (completeWithoutScoring) {
+          if (isSavingFixture) return;
+          try {
+            setIsSavingFixture(true);
             dispatch(
-              completeFixture({
+              updateTournamentFixture({
                 tournamentId,
                 fixtureId,
-                status: 'completed',
-                resultSummary: completeWithoutScoring.resultSummary,
-                winnerTeamId: completeWithoutScoring.winnerTeamId,
-                manualOutcome: completeWithoutScoring.manualOutcome,
+                teamAId,
+                teamBId,
+                scheduledAt: scheduledAtIso,
+                overs,
+                playersPerTeam,
+                status,
+                resultSummary,
               }),
             );
-            const st = store.getState();
-            const patches = computeKnockoutFillFromGroupStage(st, tournamentId);
-            if (patches.length) {
+            if (completeWithoutScoring) {
               dispatch(
-                applyFixtureSlotPatches({
+                completeFixture({
                   tournamentId,
-                  patches,
+                  fixtureId,
+                  status: 'completed',
+                  resultSummary: completeWithoutScoring.resultSummary,
+                  winnerTeamId: completeWithoutScoring.winnerTeamId,
+                  manualOutcome: completeWithoutScoring.manualOutcome,
                 }),
               );
+              const st = store.getState();
+              const patches = computeKnockoutFillFromGroupStage(st, tournamentId);
+              if (patches.length) {
+                dispatch(
+                  applyFixtureSlotPatches({
+                    tournamentId,
+                    patches,
+                  }),
+                );
+              }
             }
+            showSuccessToast('Fixture saved', 'Changes have been updated.');
+          } catch (e) {
+            showErrorToast('Failed to save fixture', getReadableError(e));
+          } finally {
+            setIsSavingFixture(false);
           }
         }}
       />
@@ -1082,23 +1147,42 @@ const TournamentFixturesTab = ({ tournamentId, navigation }: any) => {
             ) : (
               <Button
                 title="Start scoring"
-                disabled={!startScorable || !startTeamA || !startTeamB}
+                loading={isStartingFixture}
+                disabled={!startScorable || !startTeamA || !startTeamB || isStartingFixture}
                 onPress={() => {
-                  if (!startFixtureId || !startFixture || !startTeamA || !startTeamB) return;
-                  const matchId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-                  dispatch(setFixtureLive({ tournamentId, fixtureId: startFixtureId, matchId }));
-                  setStartFixtureId(null);
-                  navigation.navigate(appRoutes.startMatch, {
-                    presetMatch: {
-                      tournamentId,
-                      fixtureId: startFixtureId,
-                      matchId,
-                      teamA: startTeamA,
-                      teamB: startTeamB,
-                      overs: startFixture.overs,
-                      playersPerTeam: startFixture.playersPerTeam ?? null,
-                    },
-                  });
+                  if (isStartingFixture) return;
+                  if (!startFixtureId || !startFixture || !startTeamA || !startTeamB) {
+                    showWarningToast('Missing teams', 'Confirm both teams before starting scoring.');
+                    return;
+                  }
+                  try {
+                    setIsStartingFixture(true);
+                    const matchId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+                    dispatch(
+                      setFixtureLive({
+                        tournamentId,
+                        fixtureId: startFixtureId,
+                        matchId,
+                      }),
+                    );
+                    setStartFixtureId(null);
+                    navigation.navigate(appRoutes.startMatch, {
+                      presetMatch: {
+                        tournamentId,
+                        fixtureId: startFixtureId,
+                        matchId,
+                        teamA: startTeamA,
+                        teamB: startTeamB,
+                        overs: startFixture.overs,
+                        playersPerTeam: startFixture.playersPerTeam ?? null,
+                      },
+                    });
+                    showSuccessToast('Match started', 'Scoring is ready.');
+                  } catch (e) {
+                    showErrorToast('Failed to start match', getReadableError(e));
+                  } finally {
+                    setIsStartingFixture(false);
+                  }
                 }}
               />
             )}
@@ -1155,10 +1239,11 @@ const styles = StyleSheet.create({
   },
   tabItem: {
     flex: 1,
-    paddingVertical: heightPixel(8),
+    paddingVertical: 0,
     paddingHorizontal: widthPixel(4),
     borderRadius: widthPixel(10),
     alignItems: 'center',
+    justifyContent: 'center',
     minHeight: heightPixel(44),
     borderWidth: 0,
   },
@@ -1166,21 +1251,22 @@ const styles = StyleSheet.create({
     fontFamily: fontFamilies.semibold,
     fontSize: fontPixel(13),
     textTransform: 'capitalize',
+    textAlignVertical: 'center',
   },
   /** Upcoming / Live / Completed: classic underlined row (not the pill + chip style). */
   innerTabBar: {
     flexDirection: 'row',
     backgroundColor: 'transparent',
     borderBottomWidth: StyleSheet.hairlineWidth,
-    paddingVertical: heightPixel(8),
-    minHeight: heightPixel(44),
+    paddingVertical: heightPixel(4),
+    minHeight: heightPixel(36),
     marginBottom: heightPixel(10),
   },
   innerTabItem: {
     flex: 1,
-    paddingVertical: heightPixel(14),
+    paddingVertical: heightPixel(10),
     alignItems: 'center',
-    borderBottomWidth: 2,
+    borderBottomWidth: 1,
     borderBottomColor: 'transparent',
   },
   innerTabLabel: {
@@ -1193,16 +1279,13 @@ const styles = StyleSheet.create({
     letterSpacing: 0.4,
   },
   tournamentTabBarUnderline: {
-    marginTop: heightPixel(4),
-    height: 2,
-    width: widthPixel(24),
-    borderRadius: widthPixel(999),
+    height: 0,
+    width: 0,
   },
   /** Keeps height stable when a tab is inactive (no gold bar). */
   tournamentTabBarUnderlineShim: {
-    marginTop: heightPixel(4),
-    height: 2,
-    width: widthPixel(24),
+    height: 0,
+    width: 0,
     opacity: 0,
   },
   list: {
@@ -1254,8 +1337,6 @@ const styles = StyleSheet.create({
   fixtureCardArt: {
     ...StyleSheet.absoluteFillObject,
   },
-  fixtureCardArtBlendLight: { opacity: 0.2 },
-  fixtureCardArtBlendDark: { opacity: 0.2 },
   scheduleCardContentLayer: {
     position: 'relative',
     zIndex: 1,
@@ -1533,6 +1614,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: widthPixel(12),
     paddingTop: heightPixel(10),
     paddingBottom: heightPixel(14),
+  },
+  generatingBackdrop: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+    paddingHorizontal: widthPixel(16),
+  },
+  generatingLoaderCard: {
+    marginTop: 0,
+    marginBottom: 0,
   },
   startWrap: {
     flex: 1,

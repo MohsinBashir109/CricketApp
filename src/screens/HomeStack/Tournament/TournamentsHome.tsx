@@ -194,7 +194,7 @@ const TournamentsHome = ({ navigation }: any) => {
                 id: t.id,
                 borderColor: themeColors.border,
                 backgroundColor: themeColors.surface,
-                artBackground: idx === 0,
+                artBackground: false,
                 title: t.name ?? 'Tournament',
                 subtitle: `${meta} • ${teamsMeta}`.trim(),
                 leftIcon,

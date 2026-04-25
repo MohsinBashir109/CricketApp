@@ -6,11 +6,13 @@ import {
 import React, { Fragment } from 'react';
 import { StatusBar } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import Toast from 'react-native-toast-message';
 
 import { AuthNavigation } from './authstack/AuthNavigation';
 import { HomeNavigation } from './homestack/homeNavigation';
 // import { useThemeContext } from '../theme/themeContext';
 import { routes } from '../utils/routes';
+import { toastConfig } from '../utils/toast';
 
 const MyStack = createNativeStackNavigator();
 
@@ -32,6 +34,7 @@ export const MainNavigator = () => {
           <MyStack.Screen name={routes.home} component={HomeNavigation} />
         </MyStack.Navigator>
       </NavigationContainer>
+      <Toast config={toastConfig} />
     </Fragment>
   );
 };
