@@ -72,6 +72,22 @@ export const HomeNavigation = () => {
         component={Home.CreateTournamentScreen}
       />
       <HomeStack.Screen
+        name={routes.tournamentStructure}
+        component={Home.TournamentStructureScreen}
+      />
+      <HomeStack.Screen
+        name={routes.tournamentReview}
+        component={Home.TournamentReviewScreen}
+      />
+      <HomeStack.Screen
+        name={routes.chooseTeamsForTournament}
+        component={Home.ChooseTeamsScreen}
+      />
+      <HomeStack.Screen
+        name={routes.addNewTeamForTournament}
+        component={Home.AddNewTeamForTournamentScreen}
+      />
+      <HomeStack.Screen
         name={routes.tournamentDetails}
         component={Home.TournamentDetailsScreen}
       />

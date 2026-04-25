@@ -15,8 +15,8 @@ import ThemeText from '../../../../components/ThemeText';
 import Button from '../../../../components/themeButton';
 import FixturePlannerModal from '../../../../components/Modals/FixturePlannerModal';
 import EditFixtureModal from '../../../../components/Modals/EditFixtureModal';
-import { cross } from '../../../../assets/images';
-import { setting } from '../../../../assets/images';
+import { cross, fixturecard, setting } from '../../../../assets/images';
+import { matches as matchesIcon } from '../../../../assets/images';
 import { RootState } from '../../../../features/store/rootReducer';
 import {
   selectTournamentFixtures,
@@ -56,8 +56,6 @@ import {
   findMatchForFixture,
   footerCaption,
   groupFixturesByDate,
-  inningsBattingFor,
-  scoreLineFromInnings,
   type FixtureListVariant,
 } from './fixtureCardUtils';
 
@@ -118,15 +116,6 @@ const ScheduleMatchCard = ({
           : 'completed'
       : listVariant;
 
-  const scoreA =
-    match && (v === 'live' || v === 'completed')
-      ? scoreLineFromInnings(inningsBattingFor(match, 'teamA'))
-      : '—';
-  const scoreB =
-    match && (v === 'live' || v === 'completed')
-      ? scoreLineFromInnings(inningsBattingFor(match, 'teamB'))
-      : '—';
-
   const caption = footerCaption(f, match, listVariant);
   const canSummary =
     !!onViewSummary &&
@@ -135,37 +124,82 @@ const ScheduleMatchCard = ({
   const showHighlightsSlot =
     ['completed', 'no_result', 'abandoned'].includes(f.status) && (canSummary || !!f.resultSummary);
 
+  const statusPill = (() => {
+    if (v === 'live') return 'Live';
+    if (v === 'upcoming') return 'Upcoming';
+    return 'Completed';
+  })();
+
+  const pct = (() => {
+    if (v === 'completed') return 100;
+    if (v === 'upcoming') return 0;
+    if (!match) return null;
+    const ov = f.overs ?? null;
+    if (!ov) return null;
+    const inn =
+      match.currentInnings === 2 ? match.innings2 ?? null : match.innings1 ?? null;
+    const balls = inn?.totalBalls ?? null;
+    if (balls == null) return null;
+    return Math.max(0, Math.min(100, (balls / (ov * 6)) * 100));
+  })();
+
+  const scrim = isDark ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.3)';
+
   return (
     <View
       style={[
         styles.scheduleCard,
         isDark ? styles.cardShadowDark : styles.cardShadowLight,
-        { borderColor: theme.border, backgroundColor: theme.surface },
+        { borderColor: theme.border },
         styles.scheduleCardStretch,
       ]}
     >
+      <Image source={fixturecard} style={styles.fixtureCardArt} resizeMode="cover" />
+      <View
+        style={[StyleSheet.absoluteFillObject, { backgroundColor: scrim }]}
+        pointerEvents="none"
+      />
+      <View style={styles.scheduleCardContentLayer}>
       <Pressable onPress={() => onOpenFixture(f.id)} style={styles.scheduleCardMain}>
-        <View style={styles.scheduleHeaderRow}>
-          <Text style={[styles.scheduleMetaLeft, { color: theme.secondaryText }]} numberOfLines={1}>
-            {headerLeft}
-          </Text>
-          <Text style={[styles.scheduleMetaRight, { color: theme.secondaryText }]}>
-            {headerDate}
-          </Text>
+        <View style={styles.activeRowTop}>
+          <View style={[styles.leadingIconWrap, { backgroundColor: theme.primaryMuted }]}>
+            <Image source={matchesIcon} style={[styles.leadingIcon, { tintColor: theme.primary }]} />
+          </View>
+
+          <View style={styles.activeTextCol}>
+            <Text style={[styles.activeTitle, { color: theme.text }]} numberOfLines={1}>
+              {na} vs {nb}
+            </Text>
+            <Text style={[styles.activeSub, { color: theme.secondaryText }]} numberOfLines={1}>
+              {headerLeft} · {headerDate}
+            </Text>
+          </View>
+
+          <View style={styles.activeRightCol}>
+            <View style={[styles.statusPill, { backgroundColor: theme.primaryMuted }]}>
+              <Text style={[styles.statusPillText, { color: theme.primary }]} numberOfLines={1}>
+                {statusPill}
+              </Text>
+            </View>
+            <Text style={[styles.chevron, { color: theme.secondaryText }]}>›</Text>
+          </View>
         </View>
 
-        <View style={styles.teamScoreRow}>
-          <Text style={[styles.teamNameCell, { color: theme.text }]} numberOfLines={1}>
-            {na}
-          </Text>
-          <Text style={[styles.scoreCell, { color: theme.text }]}>{scoreA}</Text>
-        </View>
-        <View style={styles.teamScoreRow}>
-          <Text style={[styles.teamNameCell, { color: theme.text }]} numberOfLines={1}>
-            {nb}
-          </Text>
-          <Text style={[styles.scoreCell, { color: theme.text }]}>{scoreB}</Text>
-        </View>
+        {pct != null ? (
+          <View style={styles.progressRow}>
+            <View style={[styles.progressTrack, { backgroundColor: theme.gray3 }]}>
+              <View
+                style={[
+                  styles.progressFill,
+                  { backgroundColor: theme.primary, width: `${pct}%` as any },
+                ]}
+              />
+            </View>
+            <Text style={[styles.progressText, { color: theme.secondaryText }]}>
+              {Math.round(pct)}%
+            </Text>
+          </View>
+        ) : null}
 
         {f.status === 'upcoming' ? (
           <View style={styles.liveHintRow}>
@@ -217,6 +251,7 @@ const ScheduleMatchCard = ({
           </Pressable>
         </View>
       ) : null}
+      </View>
     </View>
   );
 };
@@ -1212,11 +1247,92 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: widthPixel(14),
     overflow: 'hidden',
+    position: 'relative',
+  },
+  fixtureCardArt: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  scheduleCardContentLayer: {
+    position: 'relative',
+    zIndex: 1,
   },
   scheduleCardMain: {
     paddingHorizontal: widthPixel(12),
     paddingTop: heightPixel(12),
     paddingBottom: heightPixel(10),
+  },
+  activeRowTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: widthPixel(12),
+  },
+  leadingIconWrap: {
+    width: widthPixel(44),
+    height: widthPixel(44),
+    borderRadius: widthPixel(14),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  leadingIcon: {
+    width: widthPixel(22),
+    height: widthPixel(22),
+    resizeMode: 'contain',
+  },
+  activeTextCol: {
+    flex: 1,
+    minWidth: 0,
+  },
+  activeTitle: {
+    fontFamily: fontFamilies.semibold,
+    fontSize: fontPixel(14),
+  },
+  activeSub: {
+    marginTop: heightPixel(2),
+    fontFamily: fontFamilies.medium,
+    fontSize: fontPixel(12),
+    lineHeight: fontPixel(16),
+  },
+  activeRightCol: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    gap: heightPixel(6),
+  },
+  statusPill: {
+    paddingHorizontal: widthPixel(10),
+    paddingVertical: heightPixel(6),
+    borderRadius: widthPixel(999),
+  },
+  statusPillText: {
+    fontFamily: fontFamilies.semibold,
+    fontSize: fontPixel(10),
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
+  },
+  chevron: {
+    marginTop: heightPixel(-2),
+    fontFamily: fontFamilies.medium,
+    fontSize: fontPixel(18),
+  },
+  progressRow: {
+    marginTop: heightPixel(10),
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: widthPixel(10),
+  },
+  progressTrack: {
+    flex: 1,
+    height: heightPixel(6),
+    borderRadius: widthPixel(999),
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: widthPixel(999),
+  },
+  progressText: {
+    fontFamily: fontFamilies.semibold,
+    fontSize: fontPixel(11),
   },
   scheduleHeaderRow: {
     flexDirection: 'row',

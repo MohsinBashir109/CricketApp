@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import {
   Image,
+  ImageBackground,
   Platform,
   Pressable,
   ScrollView,
   StatusBar,
   StyleSheet,
+  Text,
   View,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
@@ -13,7 +15,7 @@ import { useSelector } from 'react-redux';
 import { SceneMap, TabView } from 'react-native-tab-view';
 import MatchHistory from '../../../components/Flatlistcomponents/MatchHistory';
 import ThemeText from '../../../components/ThemeText';
-import { backarrow } from '../../../assets/images';
+import { backarrow, historybackgroung } from '../../../assets/images';
 import { colors } from '../../../utils/colors';
 import { fontFamilies } from '../../../utils/fontfamilies';
 import { fontPixel, heightPixel, widthPixel } from '../../../utils/constants';
@@ -23,6 +25,8 @@ import { useWindowDimensions } from 'react-native';
 import { selectAllTournaments } from '../../../features/tournament/tournamentSelectors';
 import { routes } from '../../../utils/routes';
 import { useRoute } from '@react-navigation/native';
+
+const TORN_CARD = require('../../../assets/images/tornamentcard.png');
 
 const MatchHistoryScreen = () => {
   const navigation = useNavigation();
@@ -88,7 +92,7 @@ const MatchHistoryScreen = () => {
       showsVerticalScrollIndicator={false}
       contentContainerStyle={styles.content}
     >
-      <MatchHistory history={match?.history} />
+      <MatchHistory history={match?.history} cardArt cardAccent="primary" />
     </ScrollView>
   );
 
@@ -119,49 +123,75 @@ const MatchHistoryScreen = () => {
         tournaments
           .filter(tournament => tournament.status === 'completed')
           .map(tournament => (
-          <Pressable
-            key={tournament.id}
-            // @ts-ignore
-            onPress={() =>
-              navigation.navigate(routes.tournamentDetails, {
-                tournamentId: tournament.id,
-              })
-            }
-            style={({ pressed }) => [
-              styles.tournamentCard,
-              isDark ? styles.cardShadowDark : styles.cardShadowLight,
-              {
-                backgroundColor: theme.surface,
-                borderColor: theme.border,
-                opacity: pressed ? 0.94 : 1,
-              },
-            ]}
-          >
-            <View style={styles.tournamentHeader}>
-              <ThemeText color="text" style={styles.tournamentName}>
-                {tournament.name}
-              </ThemeText>
-              <View
-                style={[
-                  styles.badge,
-                  { backgroundColor: theme.primaryMuted },
-                ]}
-              >
-                <ThemeText color="primary" style={styles.badgeText}>
-                  {String(tournament.status).toUpperCase()}
-                </ThemeText>
+            <Pressable
+              key={tournament.id}
+              // @ts-ignore
+              onPress={() =>
+                navigation.navigate(routes.tournamentDetails, {
+                  tournamentId: tournament.id,
+                })
+              }
+              style={({ pressed }) => [
+                styles.tournamentCardOuter,
+                isDark ? styles.cardShadowDark : styles.cardShadowLight,
+                {
+                  borderColor: theme.border,
+                  opacity: pressed ? 0.92 : 1,
+                },
+              ]}
+            >
+              <View style={styles.tournamentCardArt}>
+                <Image
+                  source={TORN_CARD}
+                  style={styles.tournamentCardBg}
+                  resizeMode="cover"
+                />
+                <View
+                  style={[
+                    StyleSheet.absoluteFillObject,
+                    {
+                      backgroundColor: isDark
+                        ? 'rgba(0,0,0,0.22)'
+                        : 'rgba(255,255,255,0.28)',
+                    },
+                  ]}
+                  pointerEvents="none"
+                />
+                <View style={styles.tournamentCardInner}>
+                  <View style={styles.tournamentHeader}>
+                    <ThemeText color="text" style={styles.tournamentName}>
+                      {tournament.name}
+                    </ThemeText>
+                    <View
+                      style={[
+                        styles.badge,
+                        {
+                          backgroundColor: isDark
+                            ? 'rgba(215,166,61,0.22)'
+                            : 'rgba(215,166,61,0.3)',
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[styles.badgeText, { color: theme.accent }]}
+                        numberOfLines={1}
+                      >
+                        {String(tournament.status).toUpperCase()}
+                      </Text>
+                    </View>
+                  </View>
+                  <ThemeText color="secondaryText" style={styles.tournamentMeta}>
+                    {tournament.formatType === 'groupBased'
+                      ? `${tournament.groupCount} groups`
+                      : 'Open tournament'}
+                  </ThemeText>
+                  <ThemeText color="secondaryText" style={styles.tournamentMeta}>
+                    {tournament.teamCount} teams
+                  </ThemeText>
+                </View>
               </View>
-            </View>
-            <ThemeText color="secondaryText" style={styles.tournamentMeta}>
-              {tournament.formatType === 'groupBased'
-                ? `${tournament.groupCount} groups`
-                : 'Open tournament'}
-            </ThemeText>
-            <ThemeText color="secondaryText" style={styles.tournamentMeta}>
-              {tournament.teamCount} teams
-            </ThemeText>
-          </Pressable>
-        ))
+            </Pressable>
+          ))
       )}
     </ScrollView>
   );
@@ -172,47 +202,63 @@ const MatchHistoryScreen = () => {
   });
 
   return (
-    <View style={[styles.root, { backgroundColor: theme.background }]}>
-      <StatusBar
-        translucent
-        backgroundColor="transparent"
-        barStyle={isDark ? 'light-content' : 'dark-content'}
-      />
-
+    <ImageBackground
+      source={historybackgroung}
+      style={styles.root}
+      resizeMode="cover"
+      imageStyle={[styles.bgImage, isDark ? styles.bgImageDark : styles.bgImageLight]}
+    >
       <View
+        pointerEvents="none"
         style={[
-          styles.topBar,
-          {
-            paddingTop:
-              Platform.OS === 'android'
-                ? (StatusBar.currentHeight ?? 0) + 8
-                : 52,
-            backgroundColor: theme.surface,
-            borderBottomColor: theme.border,
-          },
+          StyleSheet.absoluteFillObject,
+          isDark ? styles.scrimDark : styles.scrimLight,
         ]}
-      >
-        <Pressable hitSlop={16} onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Image source={backarrow} style={styles.backIcon} tintColor={theme.text} />
-        </Pressable>
-        <View style={styles.topTitles}>
-          <ThemeText style={styles.screenTitle} color="text">
-            Match history
-          </ThemeText>
-          <ThemeText style={styles.screenSub} color="secondaryText">
-            Matches and tournaments
-          </ThemeText>
-        </View>
-      </View>
-
-      <TabView
-        navigationState={{ index, routes: tabRoutes }}
-        renderScene={renderScene}
-        onIndexChange={setIndex}
-        renderTabBar={props => <CustomTabBar {...props} />}
-        initialLayout={{ width: layout.width }}
       />
-    </View>
+      <View style={styles.contentShell}>
+        <StatusBar
+          translucent
+          backgroundColor="transparent"
+          barStyle={isDark ? 'light-content' : 'dark-content'}
+        />
+
+        <View
+          style={[
+            styles.topBar,
+            {
+              paddingTop:
+                Platform.OS === 'android'
+                  ? (StatusBar.currentHeight ?? 0) + 8
+                  : 52,
+              backgroundColor: isDark
+                ? 'rgba(20, 26, 24, 0.92)'
+                : 'rgba(255, 255, 255, 0.94)',
+              borderBottomColor: theme.border,
+            },
+          ]}
+        >
+          <Pressable hitSlop={16} onPress={() => navigation.goBack()} style={styles.backBtn}>
+            <Image source={backarrow} style={styles.backIcon} tintColor={theme.text} />
+          </Pressable>
+          <View style={styles.topTitles}>
+            <ThemeText style={styles.screenTitle} color="text">
+              Match history
+            </ThemeText>
+            <ThemeText style={styles.screenSub} color="secondaryText">
+              Matches and tournaments
+            </ThemeText>
+          </View>
+        </View>
+
+        <TabView
+          navigationState={{ index, routes: tabRoutes }}
+          renderScene={renderScene}
+          onIndexChange={setIndex}
+          renderTabBar={props => <CustomTabBar {...props} />}
+          initialLayout={{ width: layout.width }}
+        />
+      </View>
+    </ImageBackground>
   );
 };
 
@@ -222,6 +268,25 @@ const styles = StyleSheet.create({
   cardShadowLight: cardShadowSm(false),
   cardShadowDark: cardShadowSm(true),
   root: {
+    flex: 1,
+    width: '100%',
+  },
+  bgImage: {
+    transform: [{ scale: 1.04 }],
+  },
+  bgImageLight: {
+    opacity: 0.5,
+  },
+  bgImageDark: {
+    opacity: 0.4,
+  },
+  scrimLight: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  scrimDark: {
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  },
+  contentShell: {
     flex: 1,
     width: '100%',
   },
@@ -296,11 +361,24 @@ const styles = StyleSheet.create({
     lineHeight: fontPixel(20),
     fontSize: fontPixel(14),
   },
-  tournamentCard: {
+  tournamentCardOuter: {
     borderWidth: 1,
     borderRadius: widthPixel(18),
-    padding: widthPixel(16),
     marginBottom: heightPixel(12),
+    overflow: 'hidden',
+  },
+  tournamentCardArt: {
+    borderRadius: widthPixel(17),
+    overflow: 'hidden',
+    minHeight: heightPixel(88),
+  },
+  tournamentCardBg: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  tournamentCardInner: {
+    padding: widthPixel(16),
+    position: 'relative',
+    zIndex: 1,
   },
   tournamentHeader: {
     flexDirection: 'row',

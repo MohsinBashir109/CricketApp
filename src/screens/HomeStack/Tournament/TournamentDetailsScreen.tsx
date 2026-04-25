@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   Image,
   ImageBackground,
@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import { useSelector } from 'react-redux';
+import { useFocusEffect } from '@react-navigation/native';
 import { TabView } from 'react-native-tab-view';
 import ThemeText from '../../../components/ThemeText';
 import {
@@ -19,14 +20,14 @@ import { useThemeContext } from '../../../theme/themeContext';
 import { colors } from '../../../utils/colors';
 import { fontFamilies } from '../../../utils/fontfamilies';
 import { fontPixel, heightPixel, widthPixel } from '../../../utils/constants';
-import { cardShadowLg, cardShadowSm } from '../../../utils/cardShadow';
+import { cardShadowLg } from '../../../utils/cardShadow';
 import HomeWrapper from '../../../wrappers/HomeWrapper';
 import { RootState } from '../../../features/store/rootReducer';
 import TournamentFixturesTab from './tabs/TournamentFixturesTab';
 import TournamentPointsTab from './tabs/TournamentPointsTab';
 import TournamentStatsTab from './tabs/TournamentStatsTab';
 import TournamentTeamsTab from './tabs/TournamentTeamsTab';
-import { cardbackgroun, cardt } from '../../../assets/images';
+import { fixturecard } from '../../../assets/images';
 import {
   lightning,
   matches,
@@ -54,9 +55,22 @@ const TournamentDetailsScreen = ({ route, navigation }: any) => {
     { key: 'stats', title: 'Stats' },
   ]);
 
+  useFocusEffect(
+    useCallback(() => {
+      const initialTab = route?.params?.initialTab as string | undefined;
+      if (initialTab === 'fixtures') {
+        setIndex(1);
+        navigation.setParams({ initialTab: undefined } as Record<
+          string,
+          unknown
+        >);
+      }
+    }, [navigation, route?.params?.initialTab]),
+  );
+
   if (!tournament) {
     return (
-      <HomeWrapper>
+      <HomeWrapper headerShown>
         <View style={styles.missingState}>
           <ThemeText color="text" style={styles.title}>
             Tournament not found
@@ -68,6 +82,46 @@ const TournamentDetailsScreen = ({ route, navigation }: any) => {
       </HomeWrapper>
     );
   }
+
+  const heroCatchLine = (() => {
+    if (tournament.status === 'ongoing') {
+      return "LIVE. Gaps, partnerships, the table, all still in play, don't blink.";
+    }
+    if (tournament.status === 'completed') {
+      return "That's the game, end of innings. Rivalry, results, the lot, it all stays on this page.";
+    }
+    return "Stumps, squads, a draw on the wall. The first over starts when you say go.";
+  })();
+  /** Surfaces that sit on the warm-gold/cream art, not cold white or neon blue. */
+  const heroInCardBg = isDark
+    ? 'rgba(14, 24, 44, 0.5)'
+    : 'rgba(255, 250, 242, 0.9)';
+  const heroInCardBorder = isDark
+    ? 'rgba(110, 150, 210, 0.2)'
+    : 'rgba(190, 150, 95, 0.2)';
+  const heroInCardIconPill = isDark
+    ? 'rgba(120, 175, 255, 0.1)'
+    : 'rgba(55, 95, 150, 0.08)';
+  const heroMutedBlue = isDark ? 'rgba(170, 200, 255, 0.85)' : '#3D5A7B';
+  const infoIconBlue = isDark ? 'rgba(150, 190, 255, 0.95)' : '#3A5580';
+  const heroOuterBorder = isDark
+    ? themeColors.border
+    : 'rgba(200, 170, 120, 0.28)';
+
+  /** Tab bar: warm gold/cream to match the fixture art (not the default blue chrome). */
+  const tabBarSurface = isDark
+    ? 'rgba(32, 26, 20, 0.52)'
+    : 'rgba(255, 244, 228, 0.9)';
+  const tabBarFrameBorder = isDark
+    ? 'rgba(200, 165, 100, 0.22)'
+    : 'rgba(200, 160, 95, 0.3)';
+  const tabBarActivePill = isDark
+    ? 'rgba(200, 150, 70, 0.22)'
+    : 'rgba(255, 215, 170, 0.55)';
+  const tabBarActiveGold = isDark ? themeColors.accent : '#5C3D1A';
+  const tabBarInactive = isDark
+    ? 'rgba(175, 165, 150, 0.65)'
+    : 'rgba(95, 78, 60, 0.48)';
 
   const renderScene = ({ route: r }: any) => {
     switch (r.key) {
@@ -95,14 +149,13 @@ const TournamentDetailsScreen = ({ route, navigation }: any) => {
   };
 
   const CustomTabBar = ({ navigationState, jumpTo }: any) => {
-    const blue = isDark ? '#3EA0FF' : '#1565D8';
     return (
       <View
         style={[
           styles.tabBar,
           {
-            backgroundColor: themeColors.surface,
-            borderColor: themeColors.border,
+            backgroundColor: tabBarSurface,
+            borderColor: tabBarFrameBorder,
           },
         ]}
       >
@@ -120,16 +173,17 @@ const TournamentDetailsScreen = ({ route, navigation }: any) => {
             <Pressable
               key={r.key}
               onPress={() => jumpTo(r.key)}
-              style={[styles.tabItem, active && {}]}
+              style={[
+                styles.tabItem,
+                active && { backgroundColor: tabBarActivePill },
+              ]}
             >
               <Image
                 source={iconSource}
                 style={[
                   styles.tabIcon,
                   {
-                    tintColor: active
-                      ? blue
-                      : themeColors.tabIconDefault ?? themeColors.gray2,
+                    tintColor: active ? tabBarActiveGold : tabBarInactive,
                   },
                 ]}
                 resizeMode="contain"
@@ -143,9 +197,7 @@ const TournamentDetailsScreen = ({ route, navigation }: any) => {
                   style={[
                     styles.tabLabel,
                     {
-                      color: active
-                        ? blue
-                        : themeColors.tabIconDefault ?? themeColors.gray2,
+                      color: active ? tabBarActiveGold : tabBarInactive,
                     },
                   ]}
                   numberOfLines={1}
@@ -155,7 +207,10 @@ const TournamentDetailsScreen = ({ route, navigation }: any) => {
               </ThemeText>
               {active ? (
                 <View
-                  style={[styles.activeUnderline, { backgroundColor: blue }]}
+                  style={[
+                    styles.activeUnderline,
+                    { backgroundColor: tabBarActiveGold },
+                  ]}
                 />
               ) : null}
             </Pressable>
@@ -166,7 +221,7 @@ const TournamentDetailsScreen = ({ route, navigation }: any) => {
   };
 
   return (
-    <HomeWrapper>
+    <HomeWrapper headerShown>
       <View style={styles.container}>
         <StatusBar
           translucent
@@ -180,30 +235,38 @@ const TournamentDetailsScreen = ({ route, navigation }: any) => {
             isDark ? styles.heroShadowDark : styles.heroShadowLight,
           ]}
         >
-          <View
-            style={[
-              styles.heroCardWrap,
-              {
-                borderColor: themeColors.border,
-                backgroundColor: themeColors.surface,
-              },
-            ]}
+          <ImageBackground
+            source={fixturecard}
+            style={[styles.heroCardWrap, { borderColor: heroOuterBorder }]}
+            imageStyle={styles.heroCardBgImage}
+            resizeMode="cover"
           >
-          <View style={[styles.heroCard]}>
-            <View style={styles.heroTopRow}>
-              <View style={styles.heroIconCircle}>
-                <Image
-                  source={cardt}
-                  style={[styles.heroIcon, { tintColor: '#1565D8' }]}
-                />
-              </View>
-            </View>
+            <View
+              style={[
+                StyleSheet.absoluteFillObject,
+                {
+                  backgroundColor: isDark
+                    ? 'rgba(0,0,0,0.22)'
+                    : 'rgba(255, 248, 238, 0.4)',
+                },
+              ]}
+              pointerEvents="none"
+            />
+            <View style={styles.heroCardContentLayer}>
+              <View style={[styles.heroCard]}>
+                <View style={styles.heroTextBlock}>
+                  <ThemeText color="text" style={styles.heroTournamentName}>
+                    {tournament.name}
+                  </ThemeText>
+                  <Text
+                    style={[styles.heroCatchLine, { color: heroMutedBlue }]}
+                    numberOfLines={3}
+                  >
+                    {heroCatchLine}
+                  </Text>
+                </View>
 
-            <ThemeText color="text" style={styles.title}>
-              {tournament.name}
-            </ThemeText>
-
-            {/* <View style={styles.statusRow}>
+                {/* <View style={styles.statusRow}>
               <View style={styles.statusDot} />
               <ThemeText color="secondaryText" style={styles.statusText}>
                 {tournament.formatType === 'groupBased'
@@ -212,134 +275,139 @@ const TournamentDetailsScreen = ({ route, navigation }: any) => {
               </ThemeText>
             </View> */}
 
-            <View style={styles.infoRow}>
-              <View
-                style={[
-                  styles.infoCard,
-                  isDark ? styles.infoShadowDark : styles.infoShadowLight,
-                  {
-                    backgroundColor: themeColors.background,
-                    borderColor: themeColors.border,
-                  },
-                ]}
-              >
-                <View style={styles.infoIconCircle}>
-                  <Image
-                    source={matches}
-                    style={[styles.infoIcon, { tintColor: '#1565D8' }]}
-                  />
-                </View>
-                <View style={styles.infoTextCol}>
-                  <ThemeText
-                    color="text"
-                    style={styles.infoTitle}
-                    numberOfLines={1}
+                <View style={styles.infoRow}>
+                  <View
+                    style={[
+                      styles.infoCard,
+                      isDark
+                        ? styles.infoCardShadowDark
+                        : styles.infoCardShadowLight,
+                      {
+                        backgroundColor: heroInCardBg,
+                        borderColor: heroInCardBorder,
+                      },
+                    ]}
                   >
-                    UPCOMING
-                  </ThemeText>
-                  <ThemeText
-                    color="secondaryText"
-                    style={styles.infoSub}
-                    numberOfLines={1}
-                  >
-                    Matches ahead
-                  </ThemeText>
-                </View>
-              </View>
+                    <View
+                      style={[
+                        styles.infoIconCircle,
+                        { backgroundColor: heroInCardIconPill },
+                      ]}
+                    >
+                      <Image
+                        source={matches}
+                        style={[styles.infoIcon, { tintColor: infoIconBlue }]}
+                      />
+                    </View>
+                    <View style={styles.infoTextCol}>
+                      <ThemeText
+                        color="text"
+                        style={styles.infoTitle}
+                        numberOfLines={1}
+                      >
+                        UPCOMING
+                      </ThemeText>
+                      <Text
+                        style={[styles.infoSub, { color: heroMutedBlue }]}
+                        numberOfLines={2}
+                      >
+                        Up next
+                      </Text>
+                    </View>
+                  </View>
 
-              <View
-                style={[
-                  styles.infoCard,
-                  isDark ? styles.infoShadowDark : styles.infoShadowLight,
-                  {
-                    backgroundColor: themeColors.background,
-                    borderColor: themeColors.border,
-                  },
-                ]}
-              >
-                <View style={styles.infoIconCircle}>
-                  <Image
-                    source={players}
-                    style={[styles.infoIcon, { tintColor: '#1565D8' }]}
-                  />
-                </View>
-                <View style={styles.infoTextCol}>
-                  <ThemeText
-                    color="text"
-                    style={styles.infoTitle}
-                    numberOfLines={1}
+                  <View
+                    style={[
+                      styles.infoCard,
+                      isDark
+                        ? styles.infoCardShadowDark
+                        : styles.infoCardShadowLight,
+                      {
+                        backgroundColor: heroInCardBg,
+                        borderColor: heroInCardBorder,
+                      },
+                    ]}
                   >
-                    {teams.length} TEAMS
-                  </ThemeText>
-                  <ThemeText
-                    color="secondaryText"
-                    style={styles.infoSub}
-                    numberOfLines={1}
+                    <View
+                      style={[
+                        styles.infoIconCircle,
+                        { backgroundColor: heroInCardIconPill },
+                      ]}
+                    >
+                      <Image
+                        source={players}
+                        style={[styles.infoIcon, { tintColor: infoIconBlue }]}
+                      />
+                    </View>
+                    <View style={styles.infoTextCol}>
+                      <ThemeText
+                        color="text"
+                        style={styles.infoTitle}
+                        numberOfLines={1}
+                      >
+                        {teams.length} TEAMS
+                      </ThemeText>
+                      <Text
+                        style={[styles.infoSub, { color: heroMutedBlue }]}
+                        numberOfLines={2}
+                      >
+                        All registered
+                      </Text>
+                    </View>
+                  </View>
+                  <View
+                    style={[
+                      styles.infoCard,
+                      isDark
+                        ? styles.infoCardShadowDark
+                        : styles.infoCardShadowLight,
+                      {
+                        backgroundColor: heroInCardBg,
+                        borderColor: heroInCardBorder,
+                      },
+                    ]}
                   >
-                    Competing
-                  </ThemeText>
-                </View>
-              </View>
-              <View
-                style={[
-                  styles.infoCard,
-                  isDark ? styles.infoShadowDark : styles.infoShadowLight,
-                  {
-                    backgroundColor: themeColors.background,
-                    borderColor: themeColors.border,
-                  },
-                ]}
-              >
-                <View style={styles.infoIconCircle}>
-                  <Image
-                    source={throphy}
-                    style={[styles.infoIcon, { tintColor: '#1565D8' }]}
-                  />
-                </View>
-                <View style={styles.infoTextCol}>
-                  <ThemeText
-                    color="text"
-                    style={styles.infoTitle}
-                    numberOfLines={1}
-                  >
-                    FIXTURE
-                  </ThemeText>
-                  <ThemeText
-                    color="secondaryText"
-                    style={styles.infoSub}
-                    numberOfLines={1}
-                  >
-                    Schedule
-                  </ThemeText>
-                </View>
-              </View>
+                    <View
+                      style={[
+                        styles.infoIconCircle,
+                        { backgroundColor: heroInCardIconPill },
+                      ]}
+                    >
+                      <Image
+                        source={throphy}
+                        style={[styles.infoIcon, { tintColor: infoIconBlue }]}
+                      />
+                    </View>
+                    <View style={styles.infoTextCol}>
+                      <ThemeText
+                        color="text"
+                        style={styles.infoTitle}
+                        numberOfLines={1}
+                      >
+                        FIXTURE
+                      </ThemeText>
+                      <Text
+                        style={[styles.infoSub, { color: heroMutedBlue }]}
+                        numberOfLines={2}
+                      >
+                        Schedule
+                      </Text>
+                    </View>
+                  </View>
 
-              {/*  */}
+                  {/*  */}
+                </View>
+
+                <CustomTabBar
+                  navigationState={{ index, routes }}
+                  jumpTo={(k: string) => {
+                    const idx = routes.findIndex(r => r.key === k);
+                    if (idx >= 0) setIndex(idx);
+                  }}
+                />
+              </View>
             </View>
-
-            <CustomTabBar
-              navigationState={{ index, routes }}
-              jumpTo={(k: string) => {
-                const idx = routes.findIndex(r => r.key === k);
-                if (idx >= 0) setIndex(idx);
-              }}
-            />
-          </View>
-          <ImageBackground
-            imageStyle={{ opacity: 0.75 }}
-            source={cardbackgroun}
-            resizeMode="contain"
-            style={{
-              width: widthPixel(260),
-              height: heightPixel(260),
-              position: 'absolute',
-              top: heightPixel(-80),
-              right: widthPixel(-60),
-              opacity: 0.85,
-              borderTopRightRadius: widthPixel(20),
-            }}
-          />
-          </View>
+          </ImageBackground>
         </View>
 
         <TabView
@@ -372,44 +440,61 @@ const styles = StyleSheet.create({
     marginTop: heightPixel(10),
     borderRadius: widthPixel(20),
   },
-  heroShadowLight: cardShadowLg(false),
+  heroShadowLight: {
+    shadowColor: 'rgba(55, 40, 25, 0.2)',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 6,
+  },
   heroShadowDark: cardShadowLg(true),
   heroCardWrap: {
     width: '100%',
     borderWidth: 1,
     borderRadius: widthPixel(20),
     overflow: 'hidden',
-    // marginBottom: heightPixel(14),
+  },
+  /** Rounds the bitmap inside `ImageBackground` (image is a separate view on some platforms). */
+  heroCardBgImage: {
+    borderRadius: widthPixel(20),
+  },
+  heroCardContentLayer: {
+    position: 'relative',
+    zIndex: 1,
+    width: '100%',
+    alignItems: 'flex-start',
   },
   heroCard: {
     borderRadius: widthPixel(20),
     padding: widthPixel(14),
+    width: '100%',
+    alignItems: 'flex-start',
   },
-  heroTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: heightPixel(4),
-    // elevation: 2,
-  },
-  heroIconCircle: {
-    width: widthPixel(60),
-    height: widthPixel(60),
-    borderRadius: widthPixel(999),
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(21,101,216,0.10)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(21,101,216,0.22)',
-  },
-  heroIcon: {
-    width: widthPixel(40),
-    height: widthPixel(40),
-    resizeMode: 'contain',
+  /** Name + copy stay in a left column; card artwork stays in the right area. */
+  heroTextBlock: {
+    alignSelf: 'flex-start',
+    width: '66%',
+    minWidth: 0,
   },
   title: {
     fontSize: fontPixel(20),
     fontFamily: fontFamilies.bold,
+  },
+  heroTournamentName: {
+    fontSize: fontPixel(25),
+    lineHeight: fontPixel(30),
+    fontFamily: fontFamilies.bold,
+    textAlign: 'left',
+    alignSelf: 'stretch',
+    letterSpacing: -0.2,
+  },
+  heroCatchLine: {
+    marginTop: heightPixel(8),
+    fontSize: fontPixel(16),
+    lineHeight: fontPixel(22),
+    fontFamily: fontFamilies.medium,
+    textAlign: 'left',
+    alignSelf: 'stretch',
   },
   statusRow: {
     flexDirection: 'row',
@@ -430,33 +515,43 @@ const styles = StyleSheet.create({
   },
   infoRow: {
     flexDirection: 'row',
-    gap: widthPixel(5),
-    marginTop: heightPixel(10),
-
-    // backgroundColor: 'red',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    alignSelf: 'stretch',
+    gap: widthPixel(6),
+    marginTop: heightPixel(14),
   },
   infoCard: {
-    // width: widthPixel(108),
-    // height: heightPixel(58),
+    flex: 1,
     flexDirection: 'row',
+    minWidth: 0,
     alignItems: 'center',
     justifyContent: 'flex-start',
-    borderWidth: 1,
-    borderRadius: widthPixel(10),
-    width: widthPixel(105),
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: widthPixel(12),
     paddingVertical: heightPixel(10),
     paddingHorizontal: widthPixel(8),
-    zIndex: 9999,
   },
-  infoShadowLight: cardShadowSm(false),
-  infoShadowDark: cardShadowSm(true),
+  infoCardShadowLight: {
+    shadowColor: 'rgba(45, 38, 30, 0.18)',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 5,
+    elevation: 1,
+  },
+  infoCardShadowDark: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
+  },
   infoIconCircle: {
     width: widthPixel(25),
     height: widthPixel(25),
     borderRadius: widthPixel(999),
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(21,101,216,0.10)',
   },
   infoIcon: {
     width: widthPixel(13),
@@ -464,16 +559,17 @@ const styles = StyleSheet.create({
     resizeMode: 'contain',
   },
   infoTitle: {
-    fontFamily: fontFamilies.bold,
+    fontFamily: fontFamilies.semibold,
     fontSize: fontPixel(9),
-    letterSpacing: 0.3,
+    letterSpacing: 0.4,
     textAlign: 'left',
   },
   infoSub: {
-    marginTop: heightPixel(2),
+    marginTop: heightPixel(3),
     fontSize: fontPixel(9),
-    lineHeight: fontPixel(13),
+    lineHeight: fontPixel(12),
     textAlign: 'left',
+    fontFamily: fontFamilies.medium,
   },
   infoTextCol: {
     // flex: 1,
@@ -482,10 +578,10 @@ const styles = StyleSheet.create({
   },
   tabBar: {
     flexDirection: 'row',
-    marginTop: heightPixel(10),
-    borderRadius: widthPixel(18),
+    marginTop: heightPixel(12),
+    borderRadius: widthPixel(14),
     borderWidth: StyleSheet.hairlineWidth,
-    padding: widthPixel(4),
+    padding: widthPixel(3),
   },
   tabItem: {
     flex: 1,
@@ -511,9 +607,9 @@ const styles = StyleSheet.create({
     textTransform: 'capitalize',
   },
   activeUnderline: {
-    marginTop: heightPixel(6),
-    height: heightPixel(2),
-    width: widthPixel(30),
+    marginTop: heightPixel(4),
+    height: 2,
+    width: widthPixel(22),
     borderRadius: widthPixel(999),
   },
 });

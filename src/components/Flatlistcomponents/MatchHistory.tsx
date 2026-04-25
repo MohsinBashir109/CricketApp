@@ -1,4 +1,4 @@
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { fontPixel, heightPixel, widthPixel } from '../../utils/constants';
 import { cardShadowSm } from '../../utils/cardShadow';
 
@@ -16,11 +16,17 @@ import { RootState } from '../../features/store/rootReducer';
 
 interface MatchHistoryProps {
   history?: MatchSetup[];
+  /** Show tournament card art; pair with `cardAccent`. */
+  cardArt?: boolean;
+  /** `primary` = blue (single matches). `gold` = tournament styling. */
+  cardAccent?: 'primary' | 'gold';
 }
 
-const MatchHistory = ({ history }: MatchHistoryProps) => {
+const MatchHistory = ({ history, cardArt = false, cardAccent = 'primary' }: MatchHistoryProps) => {
   const { isDark } = useThemeContext();
   const theme = colors[isDark ? 'dark' : 'light'];
+  const gold = theme.accent;
+  const useGold = cardArt && cardAccent === 'gold';
   const navigation = useNavigation();
   const tournamentsById = useSelector((s: RootState) => s.tournament.tournamentsById);
 
@@ -74,11 +80,24 @@ const MatchHistory = ({ history }: MatchHistoryProps) => {
     }
   };
 
+  const resultPillBg = useGold
+    ? isDark
+      ? 'rgba(215,166,61,0.2)'
+      : 'rgba(215,166,61,0.22)'
+    : theme.primaryMuted;
+  const statusPillBg = useGold
+    ? isDark
+      ? 'rgba(215,166,61,0.16)'
+      : 'rgba(255,255,255,0.75)'
+    : theme.surfaceElevated;
+
   const renderItem = ({ item }: { item: MatchSetup }) => (
     <MatchCard
       teamAName={item?.teamA?.name}
       teamBName={item?.teamB?.name}
       onPress={() => openSummary(item)}
+      artBackground={cardArt}
+      artAccent={cardAccent}
       matchTypeLabel={
         item?.tournamentId
           ? tournamentsById?.[item.tournamentId]?.name ?? 'Tournament'
@@ -89,22 +108,37 @@ const MatchHistory = ({ history }: MatchHistoryProps) => {
         <View
           style={[
             styles.statusPill,
-            { backgroundColor: theme.surfaceElevated, borderColor: theme.border },
+            {
+              backgroundColor: statusPillBg,
+              borderColor: useGold ? 'rgba(215,166,61,0.35)' : theme.border,
+            },
           ]}
         >
-          <ThemeText color="secondaryText" style={styles.statusText}>
-            Completed
-          </ThemeText>
+          {useGold ? (
+            <Text style={[styles.statusText, { color: gold, fontFamily: fontFamilies.semibold }]}>
+              Completed
+            </Text>
+          ) : (
+            <ThemeText color="secondaryText" style={styles.statusText}>
+              Completed
+            </ThemeText>
+          )}
         </View>
         <ThemeText color="desText" style={styles.metaRight}>
           Tap to view scorecard
         </ThemeText>
       </View>
 
-      <View style={[styles.resultPill, { backgroundColor: theme.primaryMuted }]}>
-        <ThemeText color="primary" style={styles.resultText} numberOfLines={2}>
-          {getIccResultText(item)}
-        </ThemeText>
+      <View style={[styles.resultPill, { backgroundColor: resultPillBg }]}>
+        {useGold ? (
+          <Text style={[styles.resultText, { color: gold }]} numberOfLines={2}>
+            {getIccResultText(item)}
+          </Text>
+        ) : (
+          <ThemeText color="primary" style={styles.resultText} numberOfLines={2}>
+            {getIccResultText(item)}
+          </ThemeText>
+        )}
       </View>
     </MatchCard>
   );

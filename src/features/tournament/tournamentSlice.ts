@@ -13,6 +13,7 @@ import {
   TournamentEntity,
   TournamentGroup,
   TournamentSettings,
+  TournamentStructureDraftResult,
   TournamentTeam,
 } from '../../types/TournamentTypes';
 import { generateTournamentSchedulePlan } from './tournamentScheduleGenerator';
@@ -30,6 +31,13 @@ interface TournamentState {
    * Not part of domain model (may exist in persisted state until consumed).
    */
   pickFromSavedTeamsResult: string[] | null;
+  /**
+   * Transient UI bridge: `ChooseTeamsScreen` confirm writes here; `CreateTournamentFlow` consumes and clears.
+   * Avoids navigating to createTournament (which can push a new instance and reset the wizard).
+   */
+  confirmChooseTeamsResult: string[] | null;
+  /** Transient: `TournamentStructureScreen` saves here; create flow consumes and clears. */
+  tournamentStructureResult: TournamentStructureDraftResult | null;
 }
 
 export type GenerateTournamentFixturesPayload = {
@@ -80,6 +88,8 @@ const initialState: TournamentState = {
   fixturesById: {},
   fixtureIdsByTournamentId: {},
   pickFromSavedTeamsResult: null,
+  confirmChooseTeamsResult: null,
+  tournamentStructureResult: null,
 };
 
 const createId = (prefix: string) =>
@@ -997,6 +1007,20 @@ const tournamentSlice = createSlice({
       state.pickFromSavedTeamsResult = null;
     },
 
+    submitConfirmChooseTeamsResult(state, action: PayloadAction<string[]>) {
+      state.confirmChooseTeamsResult = [...action.payload];
+    },
+    clearConfirmChooseTeamsResult(state) {
+      state.confirmChooseTeamsResult = null;
+    },
+
+    submitTournamentStructureResult(state, action: PayloadAction<TournamentStructureDraftResult>) {
+      state.tournamentStructureResult = { ...action.payload };
+    },
+    clearTournamentStructureResult(state) {
+      state.tournamentStructureResult = null;
+    },
+
     deleteTournamentFixture(
       state,
       action: PayloadAction<{ tournamentId: string; fixtureId: string }>,
@@ -1035,6 +1059,10 @@ export const {
   updateTournamentFixture,
   submitPickFromSavedTeamsResult,
   clearPickFromSavedTeamsResult,
+  submitConfirmChooseTeamsResult,
+  clearConfirmChooseTeamsResult,
+  submitTournamentStructureResult,
+  clearTournamentStructureResult,
 } =
   tournamentSlice.actions;
 

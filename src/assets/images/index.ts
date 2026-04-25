@@ -34,7 +34,17 @@ import lightmode2 from './lightmode2.png';
 import cardbackgroun from './cardbackgroun.png';
 import cardt from './cardt.png';
 import lightmodesplash from './lightmodesplash.png';
+import tournament from './tournament.png';
+import singlematch from './singlematch.png';
+import historybackgroung from './historybackgroung.png';
+import tornamentcard from './tornamentcard.png';
+import fixturecard from './fixturecard.png';
 export {
+  fixturecard,
+  tornamentcard,
+  historybackgroung,
+  singlematch,
+  tournament,
   lightmodesplash,
   cardt,
   cardbackgroun,
