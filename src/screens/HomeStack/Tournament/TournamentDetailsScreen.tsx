@@ -19,6 +19,7 @@ import {
 import { useThemeContext } from '../../../theme/themeContext';
 import { colors } from '../../../utils/colors';
 import { fontFamilies } from '../../../utils/fontfamilies';
+import { getTournamentTabBarTokens } from '../../../utils/tournamentTabBarTheme';
 import { fontPixel, heightPixel, widthPixel } from '../../../utils/constants';
 import { cardShadowLg } from '../../../utils/cardShadow';
 import HomeWrapper from '../../../wrappers/HomeWrapper';
@@ -108,20 +109,14 @@ const TournamentDetailsScreen = ({ route, navigation }: any) => {
     ? themeColors.border
     : 'rgba(200, 170, 120, 0.28)';
 
-  /** Tab bar: warm gold/cream to match the fixture art (not the default blue chrome). */
-  const tabBarSurface = isDark
-    ? 'rgba(32, 26, 20, 0.52)'
-    : 'rgba(255, 244, 228, 0.9)';
-  const tabBarFrameBorder = isDark
-    ? 'rgba(200, 165, 100, 0.22)'
-    : 'rgba(200, 160, 95, 0.3)';
-  const tabBarActivePill = isDark
-    ? 'rgba(200, 150, 70, 0.22)'
-    : 'rgba(255, 215, 170, 0.55)';
-  const tabBarActiveGold = isDark ? themeColors.accent : '#5C3D1A';
-  const tabBarInactive = isDark
-    ? 'rgba(175, 165, 150, 0.65)'
-    : 'rgba(95, 78, 60, 0.48)';
+  const tTab = getTournamentTabBarTokens(isDark);
+  const {
+    tabBarSurface,
+    tabBarFrameBorder,
+    tabBarActivePill,
+    tabBarActiveGold,
+    tabBarInactive,
+  } = tTab;
 
   const renderScene = ({ route: r }: any) => {
     switch (r.key) {

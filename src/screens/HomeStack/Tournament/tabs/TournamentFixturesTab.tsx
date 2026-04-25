@@ -49,6 +49,7 @@ import {
   widthPixel,
 } from '../../../../utils/constants';
 import { cardShadowSm } from '../../../../utils/cardShadow';
+import { getTournamentTabBarTokens } from '../../../../utils/tournamentTabBarTheme';
 import { routes as appRoutes } from '../../../../utils/routes';
 import dayjs from 'dayjs';
 import type { MatchSetup } from '../../../../types/Playertype';
@@ -58,6 +59,10 @@ import {
   groupFixturesByDate,
   type FixtureListVariant,
 } from './fixtureCardUtils';
+
+/** Tab list cards: warm in-card surface, slightly lifted for a lighter read. */
+const fixtureTabCardBgLight = 'rgba(255, 252, 248, 0.97)';
+const fixtureTabCardBgDark = 'rgba(22, 32, 50, 0.42)';
 
 function fixtureSideName(f: any, side: 'A' | 'B', teamsById: Record<string, any>) {
   const id = side === 'A' ? f.teamAId : f.teamBId;
@@ -143,18 +148,28 @@ const ScheduleMatchCard = ({
     return Math.max(0, Math.min(100, (balls / (ov * 6)) * 100));
   })();
 
-  const scrim = isDark ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.3)';
+  const cardBg = isDark ? fixtureTabCardBgDark : fixtureTabCardBgLight;
+  const scrim = isDark
+    ? 'rgba(0,0,0,0.12)'
+    : 'rgba(255, 252, 248, 0.22)';
 
   return (
     <View
       style={[
         styles.scheduleCard,
         isDark ? styles.cardShadowDark : styles.cardShadowLight,
-        { borderColor: theme.border },
+        { borderColor: theme.border, backgroundColor: cardBg },
         styles.scheduleCardStretch,
       ]}
     >
-      <Image source={fixturecard} style={styles.fixtureCardArt} resizeMode="cover" />
+      <Image
+        source={fixturecard}
+        style={[
+          styles.fixtureCardArt,
+          isDark ? styles.fixtureCardArtBlendDark : styles.fixtureCardArtBlendLight,
+        ]}
+        resizeMode="cover"
+      />
       <View
         style={[StyleSheet.absoluteFillObject, { backgroundColor: scrim }]}
         pointerEvents="none"
@@ -291,7 +306,10 @@ const FixturesList = ({
         style={[
           styles.empty,
           isDark ? styles.cardShadowDark : styles.cardShadowLight,
-          { borderColor: theme.border, backgroundColor: theme.surface },
+          {
+            borderColor: theme.border,
+            backgroundColor: isDark ? fixtureTabCardBgDark : fixtureTabCardBgLight,
+          },
           styles.emptyCardStretch,
         ]}
       >
@@ -363,6 +381,7 @@ const TournamentFixturesTab = ({ tournamentId, navigation }: any) => {
   const dispatch = useDispatch();
   const { isDark } = useThemeContext();
   const theme = colors[isDark ? 'dark' : 'light'];
+  const tTab = getTournamentTabBarTokens(isDark);
 
   const fixtures = useSelector((s: RootState) =>
     selectTournamentFixtures(s, tournamentId),
@@ -631,43 +650,33 @@ const TournamentFixturesTab = ({ tournamentId, navigation }: any) => {
   };
 
   const renderInnerTabBar = ({ navigationState, jumpTo }: any) => (
-    <View style={[styles.innerTabBar, { borderBottomColor: theme.border }]}>
-      {navigationState.routes.map((r: any, i: number) => {
-        const active = navigationState.index === i;
+    <View
+      style={[
+        styles.innerTabBar,
+        { borderBottomColor: tTab.tabBarFrameBorder },
+      ]}
+    >
+      {navigationState.routes.map((r: any, idx: number) => {
+        const active = navigationState.index === idx;
         return (
           <Pressable
             key={r.key}
             onPress={() => jumpTo(r.key)}
             style={[
               styles.innerTabItem,
-              active &&
-                (isDark
-                  ? styles.innerBlueBorderDark
-                  : styles.innerBlueBorderLight),
+              active && { borderBottomColor: tTab.tabBarActiveGold },
             ]}
           >
-            <ThemeText
-              color="secondaryText"
-              style={styles.innerTabLabelShim}
+            <Text
+              style={[
+                styles.innerTabLabel,
+                active && styles.innerTabLabelActive,
+                { color: active ? tTab.tabBarActiveGold : tTab.tabBarInactive },
+              ]}
               numberOfLines={1}
             >
-              <Text
-                style={[
-                  styles.innerTabLabel,
-                  active && styles.innerTabLabelActive,
-                  {
-                    color: active
-                      ? isDark
-                        ? '#3EA0FF'
-                        : '#1565D8'
-                      : theme.secondaryText,
-                  },
-                ]}
-                numberOfLines={1}
-              >
-                {r.title}
-              </Text>
-            </ThemeText>
+              {r.title}
+            </Text>
           </Pressable>
         );
       })}
@@ -678,48 +687,42 @@ const TournamentFixturesTab = ({ tournamentId, navigation }: any) => {
     <View
       style={[
         styles.tabBar,
-        { borderColor: theme.border, backgroundColor: theme.surface },
+        {
+          backgroundColor: tTab.tabBarSurface,
+          borderColor: tTab.tabBarFrameBorder,
+        },
       ]}
     >
-      {navigationState.routes.map((r: any, i: number) => {
-        const active = navigationState.index === i;
+      {navigationState.routes.map((r: any, idx: number) => {
+        const active = navigationState.index === idx;
         return (
           <Pressable
             key={r.key}
             onPress={() => jumpTo(r.key)}
             style={[
               styles.tabItem,
-              active && {
-                backgroundColor: theme.primaryMuted,
-                borderColor: undefined,
-              },
-              active &&
-                (isDark
-                  ? styles.outerBlueBorderDark
-                  : styles.outerBlueBorderLight),
+              active && { backgroundColor: tTab.tabBarActivePill },
             ]}
           >
-            <ThemeText
-              color="secondaryText"
-              style={styles.innerTabLabelShim}
+            <Text
+              style={[
+                styles.tabLabel,
+                { color: active ? tTab.tabBarActiveGold : tTab.tabBarInactive },
+              ]}
               numberOfLines={1}
             >
-              <Text
+              {r.title}
+            </Text>
+            {active ? (
+              <View
                 style={[
-                  styles.tabLabel,
-                  {
-                    color: active
-                      ? isDark
-                        ? '#3EA0FF'
-                        : '#1565D8'
-                      : theme.secondaryText,
-                  },
+                  styles.tournamentTabBarUnderline,
+                  { backgroundColor: tTab.tabBarActiveGold },
                 ]}
-                numberOfLines={1}
-              >
-                {r.title}
-              </Text>
-            </ThemeText>
+              />
+            ) : (
+              <View style={styles.tournamentTabBarUnderlineShim} />
+            )}
           </Pressable>
         );
       })}
@@ -1146,27 +1149,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     borderRadius: widthPixel(14),
     borderWidth: StyleSheet.hairlineWidth,
-    padding: widthPixel(4),
+    padding: widthPixel(3),
     gap: widthPixel(6),
     marginBottom: heightPixel(10),
   },
   tabItem: {
     flex: 1,
-    paddingVertical: heightPixel(10),
-    borderRadius: widthPixel(12),
+    paddingVertical: heightPixel(8),
+    paddingHorizontal: widthPixel(4),
+    borderRadius: widthPixel(10),
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'transparent',
+    minHeight: heightPixel(44),
+    borderWidth: 0,
   },
   tabLabel: {
     fontFamily: fontFamilies.semibold,
     fontSize: fontPixel(13),
+    textTransform: 'capitalize',
   },
+  /** Upcoming / Live / Completed: classic underlined row (not the pill + chip style). */
   innerTabBar: {
     flexDirection: 'row',
     backgroundColor: 'transparent',
     borderBottomWidth: StyleSheet.hairlineWidth,
-    paddingVertical: heightPixel(10),
+    paddingVertical: heightPixel(8),
     minHeight: heightPixel(44),
     marginBottom: heightPixel(10),
   },
@@ -1186,22 +1192,18 @@ const styles = StyleSheet.create({
   innerTabLabelActive: {
     letterSpacing: 0.4,
   },
-  innerTabLabelShim: {
-    // ThemeText enforces its own color at the end of style[];
-    // we render a nested Text for custom active color.
-    lineHeight: fontPixel(16),
+  tournamentTabBarUnderline: {
+    marginTop: heightPixel(4),
+    height: 2,
+    width: widthPixel(24),
+    borderRadius: widthPixel(999),
   },
-  outerBlueBorderLight: {
-    borderColor: '#1565D8',
-  },
-  outerBlueBorderDark: {
-    borderColor: '#3EA0FF',
-  },
-  innerBlueBorderLight: {
-    borderBottomColor: '#1565D8',
-  },
-  innerBlueBorderDark: {
-    borderBottomColor: '#3EA0FF',
+  /** Keeps height stable when a tab is inactive (no gold bar). */
+  tournamentTabBarUnderlineShim: {
+    marginTop: heightPixel(4),
+    height: 2,
+    width: widthPixel(24),
+    opacity: 0,
   },
   list: {
     paddingBottom: heightPixel(18),
@@ -1252,6 +1254,8 @@ const styles = StyleSheet.create({
   fixtureCardArt: {
     ...StyleSheet.absoluteFillObject,
   },
+  fixtureCardArtBlendLight: { opacity: 0.2 },
+  fixtureCardArtBlendDark: { opacity: 0.2 },
   scheduleCardContentLayer: {
     position: 'relative',
     zIndex: 1,
